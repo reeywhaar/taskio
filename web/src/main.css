@@ -288,3 +288,83 @@ input[type="checkbox"]:focus-visible {
     animation: none;
   }
 }
+
+/*
+ * Something on its way.
+ *
+ * A band of lighter grey travelling across a darker one: it reads as waiting rather than as
+ * broken, which a still rectangle does not — and it is the same two greys everything else is
+ * drawn from, so it does not announce itself as a third thing.
+ */
+@keyframes dummy {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+.dummy {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-fill) 25%,
+    var(--color-line) 37%,
+    var(--color-fill) 63%
+  );
+  background-size: 400% 100%;
+  animation: dummy 1.4s ease-in-out infinite;
+}
+
+/* Still, but still grey: the shape is the message, the movement only softens the wait. */
+@media (prefers-reduced-motion: reduce) {
+  .dummy {
+    animation: none;
+    background-image: none;
+    background-color: var(--color-fill);
+  }
+}
+
+/*
+ * Something is on its way, somewhere above.
+ *
+ * A pulse crossing the line rather than the whole line fading in and out: a bar that blinks
+ * says the page is unwell, where a thing travelling says the page is working. It is the brand
+ * colour, arriving out of nothing and leaving into it, so the line itself is never drawn — a
+ * rule across the top of a list would read as a border that comes and goes.
+ */
+@keyframes pulse-across {
+  from {
+    transform: translateX(-60%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+.pulse {
+  overflow: hidden;
+}
+
+.pulse::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 40%;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brand),
+    transparent
+  );
+  animation: pulse-across 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Still on, because it is the only thing saying the list is not the answer yet. */
+@media (prefers-reduced-motion: reduce) {
+  .pulse::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}

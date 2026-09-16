@@ -11,7 +11,9 @@ import {
 import { deleteTokensById, getTokens } from "@app/api/actions/tokens";
 import type { Token } from "@app/api/types";
 import { qk } from "@app/api/keys";
+import { Boundary } from "@app/components/Boundary";
 import { Button } from "@app/components/Button";
+import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
 import { PasswordDialog } from "@app/islands/app/PasswordDialog";
 import { RecoveryDialog } from "@app/islands/app/RecoveryDialog";
 import { TokenDialog } from "@app/islands/app/TokenDialog";
@@ -26,11 +28,18 @@ export function Settings() {
   return (
     <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-3 py-4 md:px-6">
-        <section>
-          <Heading>Account</Heading>
+        <Panel
+          title="Account"
+          state={me}
+          dummy={
+            <>
+              <Dummy className="h-4 w-56" />
+              <Dummy className="mt-3 h-11 w-24" />
+            </>
+          }
+        >
           <p className="text-sm text-muted">
-            Signed in as{" "}
-            <span className="text-fg">{me.data?.username ?? "…"}</span>
+            Signed in as <span className="text-fg">{me.data?.username}</span>
             {me.data?.role === "admin" ? (
               <>
                 {" · "}
@@ -48,7 +57,7 @@ export function Settings() {
           >
             Sign out
           </Button>
-        </section>
+        </Panel>
 
         <Password />
         <Recovery />
@@ -66,8 +75,7 @@ function Password() {
   const [changed, setChanged] = useState(false);
 
   return (
-    <section>
-      <Heading>Password</Heading>
+    <Panel title="Password">
       <Button
         onClick={() => {
           setChanged(false);
@@ -88,7 +96,7 @@ function Password() {
           if (saved) setChanged(true);
         }}
       />
-    </section>
+    </Panel>
   );
 }
 
@@ -111,7 +119,15 @@ function Recovery() {
     onSuccess: () => client.invalidateQueries({ queryKey: qk.account }),
   });
 
-  if (!account.data) return null;
+  // Waiting rather than absent: a section that appears once the answer lands pushes everything
+  // under it down, so it holds its place with a shape.
+  if (account.isPending || account.isError) {
+    return (
+      <Panel title="Recovery address" state={account}>
+        {null}
+      </Panel>
+    );
+  }
   const { recovery_email: current, relay_configured: relay } = account.data;
   // The section is not shown when the instance has no relay and the account has no address:
   // explaining an administrator's job on everybody's settings page is aimed at somebody who is
@@ -119,8 +135,7 @@ function Recovery() {
   if (!relay && !current) return null;
 
   return (
-    <section>
-      <Heading>Recovery address</Heading>
+    <Panel title="Recovery address">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className={current ? "" : "text-muted"}>
           {current || "None on file."}
@@ -149,7 +164,7 @@ function Recovery() {
         current={current ?? ""}
         onClose={() => setProving(false)}
       />
-    </section>
+    </Panel>
   );
 }
 
@@ -163,14 +178,28 @@ function mb(n: number): string {
  */
 function Storage() {
   const account = useQuery({ queryKey: qk.account, queryFn: getAccount });
-  if (!account.data) return null;
+  if (account.isPending || account.isError) {
+    return (
+      <Panel
+        title="Attachments"
+        state={account}
+        dummy={
+          <>
+            <Dummy className="h-4 w-64" />
+            <Dummy className="mt-2 h-1.5 w-full max-w-sm" />
+          </>
+        }
+      >
+        {null}
+      </Panel>
+    );
+  }
 
   const { used, quota, max } = account.data.assets;
   const share = quota > 0 ? Math.min(1, used / quota) : 0;
 
   return (
-    <section>
-      <Heading>Attachments</Heading>
+    <Panel title="Attachments">
       <p className="text-sm text-muted">
         <span className="text-fg">
           {mb(used)} of {mb(quota)}
@@ -183,7 +212,7 @@ function Storage() {
           style={{ width: `${Math.max(2, share * 100)}%` }}
         />
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -192,6 +221,47 @@ function Heading({ children }: { children: React.ReactNode }) {
     <h2 className="mb-2 text-sm font-semibold tracking-wide text-faint uppercase">
       {children}
     </h2>
+  );
+}
+
+/**
+ * One section: a heading that is always there, and under it whatever the answer allows.
+ *
+ * Nothing half-drawn. A section waiting on an answer shows the shape of one rather than its own
+ * words with the values missing — "Signed in as" followed by a gap is a sentence that says
+ * something untrue for as long as it is on screen.
+ *
+ * The heading stays through all three states, so the page keeps its outline and nothing below
+ * jumps as each section settles.
+ */
+function Panel({
+  title,
+  state,
+  dummy,
+  children,
+}: {
+  title: string;
+  /** The query this section is waiting on, if it waits on one. */
+  state?: { isPending: boolean; isError: boolean; refetch: () => void };
+  dummy?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <Heading>{title}</Heading>
+      <Boundary what={title} onReset={() => state?.refetch()}>
+        {state?.isError ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-accent">{title} could not be read.</p>
+            <Button onClick={() => state.refetch()}>Try again</Button>
+          </div>
+        ) : state?.isPending ? (
+          (dummy ?? <DummyLines />)
+        ) : (
+          children
+        )}
+      </Boundary>
+    </section>
   );
 }
 
@@ -207,8 +277,17 @@ function Tokens() {
   });
 
   return (
-    <section>
-      <Heading>Tokens</Heading>
+    <Panel
+      title="Tokens"
+      state={tokens}
+      dummy={
+        <>
+          <DummyLines count={1} />
+          <Dummy className="mt-3 h-11 w-32" />
+          <DummyRows className="mt-3" />
+        </>
+      }
+    >
       <p className="mb-3 text-sm text-muted">
         How something that is not a browser uses taskio.{" "}
         <a className="underline" href="/docs">
@@ -250,7 +329,7 @@ function Tokens() {
 
       <TokenDialog open={minting} onClose={() => setMinting(false)} />
       <TokenScopeDialog token={editing} onClose={() => setEditing(null)} />
-    </section>
+    </Panel>
   );
 }
 
@@ -275,8 +354,7 @@ function Sessions() {
   });
 
   return (
-    <section>
-      <Heading>Sessions</Heading>
+    <Panel title="Sessions" state={sessions} dummy={<DummyRows />}>
       <ul className="flex flex-col">
         {(sessions.data?.sessions ?? []).map((session) => (
           <li
@@ -317,6 +395,6 @@ function Sessions() {
       <Button className="mt-3" onClick={() => revokeOthers.mutate()}>
         Sign out everywhere else
       </Button>
-    </section>
+    </Panel>
   );
 }

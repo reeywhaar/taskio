@@ -336,9 +336,7 @@ function List({
       {/* Its own row rather than an overlay: it is the same two pixels whatever is under it,
           and it moves nothing on the way in or out. */}
       <div className="h-0.5 shrink-0 overflow-hidden" aria-hidden="true">
-        {stale ? (
-          <div className="h-full w-full animate-pulse bg-brand" />
-        ) : null}
+        {stale ? <div className="pulse h-full w-full" /> : null}
       </div>
 
       <div

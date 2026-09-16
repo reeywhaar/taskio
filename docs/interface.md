@@ -148,6 +148,29 @@ means, and what the pills spell into the URL: tasks carrying every one of them, 
 It is set where the location is kept, not by whoever renders the list. A tab kept in step by
 the call sites that remember to is a tab that falls behind one of them.
 
+## A section waits as a shape, not as its own words with gaps in
+
+"Signed in as" followed by nothing is a sentence that says something untrue for as long as it
+is on screen. A section with an answer outstanding draws grey rectangles the size of what is
+coming instead — so nothing is half-written, and nothing below jumps when the answer lands and
+the shape is replaced by the same-sized thing.
+
+The heading stays through all of it. It is the one part that never depended on an answer, and
+keeping it means the page has its outline from the first paint.
+
+The grey moves, because a still rectangle reads as broken where a travelling one reads as
+waiting. It is the two greys everything else is drawn from, so it does not announce itself as a
+third thing, and it stops moving where somebody has asked for less motion.
+
+## One broken section does not take the page
+
+Each section is wrapped, so a render that throws shows a line and a way to try again rather
+than blanking the island. It latches: new props alone do not clear it, because a boundary that
+retries on every render of a component that throws during render is a loop. Somebody says when.
+
+Trying again is worth offering because most of what breaks a render here is data that was not
+what it claimed, and the next answer may be.
+
 ## A pin and a tick are drawn before the server agrees
 
 Both are one bit, and a button that waits a round trip to show it is a button somebody presses
