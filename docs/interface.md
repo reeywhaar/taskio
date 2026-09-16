@@ -142,6 +142,15 @@ means, and what the pills spell into the URL: tasks carrying every one of them, 
 It is set where the location is kept, not by whoever renders the list. A tab kept in step by
 the call sites that remember to is a tab that falls behind one of them.
 
+## A pin and a tick are drawn before the server agrees
+
+Both are one bit, and a button that waits a round trip to show it is a button somebody presses
+twice. The row is changed in every cached list at once, the request goes out behind it, and a
+refusal puts the old pages back.
+
+Only what the row draws is changed there. Where the row then belongs is the server's answer,
+because the ordering has a tiebreak this side does not know.
+
 ## The last answer stays until the next one arrives
 
 Lighting a tag asks a different question, and a list that empties while the answer is in flight

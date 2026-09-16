@@ -17,6 +17,7 @@ import {
 import { ApiError } from "@app/api/transport";
 import type { Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
+import { optimisticTask, restoreTasks } from "@app/api/optimistic";
 import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
 import { SearchIcon } from "@app/components/icons/Icon";
@@ -149,18 +150,29 @@ function List({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  // Both draw the answer first and send it after: one bit, and a button that waits a round
+  // trip to show it is a button somebody presses twice.
   const toggleDone = useMutation({
     mutationFn: (task: Task) =>
       task.status === "done"
         ? postTasksByIdTodo(task.id)
         : postTasksByIdDone(task.id),
-    onSuccess: () => client.invalidateQueries({ queryKey: qk.tasks }),
+    onMutate: (task) =>
+      optimisticTask(client, task.id, (t) => ({
+        ...t,
+        status: t.status === "done" ? "todo" : "done",
+      })),
+    onError: (_err, _task, before) => before && restoreTasks(client, before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
   });
 
   const togglePinned = useMutation({
     mutationFn: (task: Task) =>
       patchTasksById(task.id, { pinned: !task.pinned }),
-    onSuccess: () => client.invalidateQueries({ queryKey: qk.tasks }),
+    onMutate: (task) =>
+      optimisticTask(client, task.id, (t) => ({ ...t, pinned: !t.pinned })),
+    onError: (_err, _task, before) => before && restoreTasks(client, before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
   });
 
   const toggleTag = (slug: string) => {
