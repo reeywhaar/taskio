@@ -99,7 +99,7 @@ export function Editor({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-center gap-1 text-sm">
         {(["write", "preview"] as const).map((name) => (
           <button
@@ -148,14 +148,14 @@ export function Editor({
             e.preventDefault();
             void upload(files);
           }}
-          className="w-full rounded-md border-[1.5px] border-line bg-bg p-3 text-fg focus:border-brand focus:outline-none"
+          className="w-full min-h-40 flex-1 rounded-md border-[1.5px] border-line bg-bg p-3 text-fg focus:border-brand focus:outline-none"
           placeholder="Markdown. Paste a file, or @ a task."
         />
       ) : (
         // The current buffer rather than the saved one: the toggle answers "what will this look
         // like", not "what did I save".
         <div
-          className="prose min-h-40 rounded-md border-[1.5px] border-line bg-bg p-3 text-sm"
+          className="prose min-h-40 flex-1 overflow-y-auto rounded-md border-[1.5px] border-line bg-bg p-3 text-sm"
           dangerouslySetInnerHTML={{ __html: render(value) }}
         />
       )}

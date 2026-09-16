@@ -130,7 +130,7 @@ export function TaskDialog({
       ) : null}
 
       {task.data ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex items-center gap-2">
             <TaskId id={task.data.id} />
             {done ? <span className="text-xs text-muted">finished</span> : null}

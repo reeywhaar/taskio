@@ -128,6 +128,22 @@ means, and what the pills spell into the URL: tasks carrying every one of them, 
 It is set where the location is kept, not by whoever renders the list. A tab kept in step by
 the call sites that remember to is a tab that falls behind one of them.
 
+## A dialog is the whole screen on a phone
+
+A centred card on a phone spends its margins on the page behind it, which nobody is reading,
+and leaves the editor a slot to type into. Below the breakpoint the dialog is the viewport:
+no inset, no rounding, no border. Above it, the centred card it always was.
+
+Either way the body scrolls and the footer does not, so what a dialog asks for is never below
+the fold with nothing to press. The editor takes the slack, which is the point of the screen
+being full — a description is the thing you opened it to write.
+
+**Nothing is lit on opening unless it asked to be.** `showModal()` focuses the first control it
+finds whether or not that control wanted focus, and in the task editor that is Delete — a ring
+on a destructive action reads as armed. React's `autoFocus` is a call rather than an attribute
+and has already run by then, so whatever holds focus at that moment is what asked for it: it
+gets it back, and where nothing did, the dialog holds it instead.
+
 ## Only the list scrolls
 
 Above the breakpoint the page itself does not move. The rail is its own column, the search box
