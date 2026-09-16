@@ -10,11 +10,9 @@ import { getTags } from "@app/api/actions/tags";
 import {
   getTasks,
   patchTasksById,
-  postTasks,
   postTasksByIdDone,
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
-import { ApiError } from "@app/api/transport";
 import type { Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
@@ -25,6 +23,7 @@ import { TextField } from "@app/components/TextField";
 import { Nav } from "@app/islands/app/Nav";
 import { TagCloud } from "@app/islands/app/TagCloud";
 import { rank, TaskRow } from "@app/islands/app/TaskRow";
+import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
 import { TaskDialog } from "@app/islands/app/TaskDialog";
 import { BulkBar } from "@app/islands/app/BulkBar";
 import { Settings } from "@app/islands/app/Settings";
@@ -102,8 +101,7 @@ function List({
   const { filters, route } = location;
   const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
-  const [title, setTitle] = useState("");
-  const [error, setError] = useState("");
+  const [writing, setWriting] = useState(false);
 
   // The screen's three choices are two questions to the API: pinned is a property of a todo,
   // so the pinned view is the todo list narrowed rather than a third status.
@@ -136,20 +134,6 @@ function List({
       if (offset) scrollToOffset(offset);
     }
   }, [route.name, list.data]);
-
-  const create = useMutation({
-    mutationFn: (name: string) =>
-      // Pressing "new task" with pills lit means the tags come with it.
-      postTasks({ title: name, tags: filters.tags }),
-    onSuccess: () => {
-      setTitle("");
-      setError("");
-      client.invalidateQueries({ queryKey: qk.tasks });
-      client.invalidateQueries({ queryKey: qk.tags });
-    },
-    onError: (err) =>
-      setError(err instanceof ApiError ? err.message : "Something went wrong."),
-  });
 
   // Both draw the answer first and send it after: one bit, and a button that waits a round
   // trip to show it is a button somebody presses twice.
@@ -273,31 +257,37 @@ function List({
         {/* Apart rather than adjacent: the segments choose which list this is, and Select begins
           doing something to it. Side by side they read as four of a kind. */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
-            {(["pinned", "todo", "done"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={filters.view === value}
-                onClick={() =>
-                  onGo({ ...location, filters: { ...filters, view: value } })
-                }
-                className={`flex items-center px-3 capitalize ${
-                  filters.view === value
-                    ? "bg-brand text-brand-ink"
-                    : "text-muted hover:bg-surface"
-                }`}
-              >
-                {value}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
+              {(["pinned", "todo", "done"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={filters.view === value}
+                  onClick={() =>
+                    onGo({ ...location, filters: { ...filters, view: value } })
+                  }
+                  className={`flex items-center px-3 capitalize ${
+                    filters.view === value
+                      ? "bg-brand text-brand-ink"
+                      : "text-muted hover:bg-surface"
+                  }`}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+
+            <Button
+              onClick={() => setSelection(selection ? null : [])}
+              aria-pressed={selection !== null}
+            >
+              {selection ? "Cancel" : "Select"}
+            </Button>
           </div>
 
-          <Button
-            onClick={() => setSelection(selection ? null : [])}
-            aria-pressed={selection !== null}
-          >
-            {selection ? "Cancel" : "Select"}
+          <Button variant="solid" onClick={() => setWriting(true)}>
+            New task
           </Button>
         </div>
 
@@ -308,29 +298,6 @@ function List({
             onToggle={toggleTag}
           />
         </div>
-
-        <form
-          className="mt-4 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (title.trim()) create.mutate(title);
-          }}
-        >
-          <TextField
-            placeholder="New task"
-            className="min-w-0 flex-1"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Button
-            type="submit"
-            variant="solid"
-            disabled={create.isPending || !title.trim()}
-          >
-            Add
-          </Button>
-        </form>
-        {error ? <p className="mt-2 text-sm text-accent">{error}</p> : null}
       </div>
 
       {/* Its own row rather than an overlay: it is the same two pixels whatever is under it,
@@ -412,6 +379,17 @@ function List({
           }}
         />
       ) : null}
+
+      {/* Opened with whatever pills are lit: filtering to home and pressing new task means a
+          home task, and typing the word again is work the screen knows the answer to. */}
+      <NewTaskDialog
+        open={writing}
+        tags={filters.tags}
+        onClose={(made) => {
+          setWriting(false);
+          if (made) onGo({ ...location, route: { name: "task", id: made } });
+        }}
+      />
 
       {route.name === "task" ? (
         <TaskDialog

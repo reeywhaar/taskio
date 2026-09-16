@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getTags } from "@app/api/actions/tags";
 import {
   deleteTasksById,
   getTasksById,
@@ -13,11 +12,8 @@ import { ApiError } from "@app/api/transport";
 import type { TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
-import { TextField } from "@app/components/TextField";
 import { Dialog } from "@app/components/Dialog";
-import { Editor } from "@app/islands/app/Editor";
-import { Field } from "@app/components/Field";
-import { TagCloud } from "@app/islands/app/TagCloud";
+import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { TaskId } from "@app/islands/app/TaskId";
 
 /**
@@ -39,22 +35,17 @@ export function TaskDialog({
     queryKey: qk.task(id),
     queryFn: () => getTasksById(id),
   });
-  const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
-
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-  // A string, not a number: a number input being cleared reads as NaN, and "" is what somebody
-  // typing -1 passes through on the way.
-  const [priority, setPriority] = useState("0");
+  const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!task.data) return;
-    setTitle(task.data.title);
-    setDescription(task.data.description);
-    setSelected(task.data.tags);
-    setPriority(String(task.data.priority));
+    setDraft({
+      title: task.data.title,
+      description: task.data.description,
+      priority: String(task.data.priority),
+      tags: task.data.tags,
+    });
   }, [task.data]);
 
   const invalidate = () => {
@@ -65,10 +56,10 @@ export function TaskDialog({
   const save = useMutation({
     mutationFn: () =>
       patchTasksById(id, {
-        title,
-        description,
-        tags: selected,
-        priority: Number(priority) || 0,
+        title: draft.title,
+        description: draft.description,
+        tags: draft.tags,
+        priority: Number(draft.priority) || 0,
       }),
     onSuccess: () => {
       invalidate();
@@ -136,46 +127,7 @@ export function TaskDialog({
             {done ? <span className="text-xs text-muted">finished</span> : null}
           </div>
 
-          <TextField
-            className="w-full"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-
-          <Editor
-            value={description}
-            onChange={setDescription}
-            limits={{ assetMax: 10 << 20 }}
-          />
-
-          <Field
-            label="Priority"
-            hint="Higher sorts higher. A pin beats any number."
-          >
-            <TextField
-              type="number"
-              className="w-24"
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-            />
-          </Field>
-
-          <TagCloud
-            tags={tags.data?.tags ?? []}
-            selected={selected}
-            onToggle={(slug) =>
-              setSelected((current) =>
-                current.includes(slug)
-                  ? current.filter((s) => s !== slug)
-                  : [...current, slug],
-              )
-            }
-            onCreate={(slug) =>
-              setSelected((current) =>
-                current.includes(slug) ? current : [...current, slug],
-              )
-            }
-          />
+          <TaskForm draft={draft} onChange={setDraft} />
 
           <Mentions
             heading="Mentions"
