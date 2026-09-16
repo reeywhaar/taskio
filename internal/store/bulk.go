@@ -36,6 +36,41 @@ func (s *Store) BulkDone(ctx context.Context, principalID string, scope *filter.
 	})
 }
 
+// BulkPriority sets one number across a set.
+//
+// The statement carries its own comparison, so a set already at that number is not a write: no
+// updated_at moves, nothing is marked changed, and nobody's tab is woken for it.
+func (s *Store) BulkPriority(ctx context.Context, principalID string, scope *filter.Node, refs []string, priority int) error {
+	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+		now := s.Now()
+		for _, seq := range seqs {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE tasks SET priority = ?, updated_at = ?
+				  WHERE seq = ? AND priority <> ?`,
+				priority, unix(now), seq, priority); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// BulkPinned pins or unpins a set.
+func (s *Store) BulkPinned(ctx context.Context, principalID string, scope *filter.Node, refs []string, pinned bool) error {
+	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+		now := s.Now()
+		for _, seq := range seqs {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE tasks SET pinned = ?, updated_at = ?
+				  WHERE seq = ? AND pinned <> ?`,
+				pinned, unix(now), seq, pinned); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // BulkTagChange adds and removes tags across a set.
 func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *filter.Node, refs []string, change BulkTags) error {
 	add, err := validTags(change.Add)

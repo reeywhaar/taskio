@@ -108,3 +108,81 @@ func TestBulkTaggingCannotRemoveATokensOwnScope(t *testing.T) {
 		t.Errorf("tags = %v, want home kept and repair gone", got)
 	}
 }
+
+func TestBulkPriority(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	low := c.task(`{"title":"Low"}`)["id"].(string)
+	high := c.task(`{"title":"High"}`)["id"].(string)
+	c.task(`{"title":"Untouched"}`)
+
+	body := fmt.Sprintf(`{"ids":[%q,%q],"priority":7}`, low, high)
+	if resp := c.do("POST", "/api/tasks/bulk/priority", body); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("bulk priority = %s", resp.Status)
+	}
+
+	page := c.list("")
+	if got := titles(page); got[0] != "High" || got[1] != "Low" || got[2] != "Untouched" {
+		t.Errorf("order = %v, want the two lifted above the one left alone", got)
+	}
+	for _, row := range page["tasks"].([]any)[:2] {
+		if got := row.(map[string]any)["priority"]; got != float64(7) {
+			t.Errorf("priority = %v", got)
+		}
+	}
+}
+
+// One value across the set, not an increment: asking twice is asking for the same thing.
+func TestBulkPriorityIsASetNotAnAdd(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap","priority":3}`)["id"].(string)
+
+	body := fmt.Sprintf(`{"ids":[%q],"priority":5}`, id)
+	c.do("POST", "/api/tasks/bulk/priority", body)
+	c.do("POST", "/api/tasks/bulk/priority", body)
+
+	if got := c.json(c.do("GET", "/api/tasks/"+id, ""))["priority"]; got != float64(5) {
+		t.Errorf("priority = %v, want 5 both times", got)
+	}
+}
+
+func TestBulkPinning(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	first := c.task(`{"title":"One"}`)["id"].(string)
+	second := c.task(`{"title":"Two"}`)["id"].(string)
+	ids := fmt.Sprintf(`{"ids":[%q,%q]`, first, second)
+
+	if resp := c.do("POST", "/api/tasks/bulk/pinned", ids+`,"pinned":true}`); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("bulk pin = %s", resp.Status)
+	}
+	if got := len(c.list("?pinned=true")["tasks"].([]any)); got != 2 {
+		t.Errorf("%d pinned, want both", got)
+	}
+
+	if resp := c.do("POST", "/api/tasks/bulk/pinned", ids+`,"pinned":false}`); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("bulk unpin = %s", resp.Status)
+	}
+	if got := len(c.list("?pinned=true")["tasks"].([]any)); got != 0 {
+		t.Errorf("%d still pinned", got)
+	}
+}
+
+// A scoped token reaches only its own, here as everywhere.
+func TestBulkPriorityStaysInsideAScope(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	a := mintToken(t, s, c, "claude", "and(work)")
+
+	outside := c.task(`{"title":"Home thing","tags":["home"]}`)["id"].(string)
+	body := fmt.Sprintf(`{"ids":[%q],"priority":9}`, outside)
+	if resp := a.do("POST", "/api/tasks/bulk/priority", body); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("a scoped token reached outside itself: %s", resp.Status)
+	}
+	if got := c.json(c.do("GET", "/api/tasks/"+outside, ""))["priority"]; got != float64(0) {
+		t.Errorf("priority = %v, want it untouched", got)
+	}
+}

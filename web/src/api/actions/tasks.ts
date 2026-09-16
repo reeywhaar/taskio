@@ -61,5 +61,17 @@ export const postTasksBulkTags = (
     body: { ids, add, remove },
   });
 
+export const postTasksBulkPriority = (ids: string[], priority: number) =>
+  request<void>("/api/tasks/bulk/priority", {
+    method: "POST",
+    body: { ids, priority },
+  });
+
+export const postTasksBulkPinned = (ids: string[], pinned: boolean) =>
+  request<void>("/api/tasks/bulk/pinned", {
+    method: "POST",
+    body: { ids, pinned },
+  });
+
 export const postTasksBulkDelete = (ids: string[]) =>
   request<void>("/api/tasks/bulk/delete", { method: "POST", body: { ids } });

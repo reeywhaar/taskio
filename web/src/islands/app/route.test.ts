@@ -78,10 +78,10 @@ describe("title", () => {
     expect(at([])).toBe("taskio");
   });
 
-  /** "and" because that is what the filter means: every one of them, not any. */
+  /** Commas: a tab strip cuts off at about twenty characters and "and" costs four a tag. */
   it("names the lit tags", () => {
     expect(at(["web"])).toBe("web :: taskio");
-    expect(at(["web", "job"])).toBe("web and job :: taskio");
+    expect(at(["web", "job"])).toBe("web, job :: taskio");
   });
 
   // The view and the search box are what somebody is doing, not where they have parked.

@@ -3,6 +3,8 @@ import { useState } from "react";
 import {
   postTasksBulkDelete,
   postTasksBulkDone,
+  postTasksBulkPinned,
+  postTasksBulkPriority,
   postTasksBulkTags,
   postTasksBulkTodo,
 } from "@app/api/actions/tasks";
@@ -16,8 +18,8 @@ import { TextField } from "@app/components/TextField";
  * Delete asks for confirmation and nothing else does: the others are visible and reversible in
  * one tap, and delete is neither.
  *
- * The status button follows the view, which fixes the status every selected task has, so it is
- * always the one that moves them — the pinned view is todos, so it finishes them. See
+ * The status and pin buttons follow the view, which fixes what every selected task already is,
+ * so each is always the one that moves them: the pinned view unpins, every other one pins. See
  * docs/interface.md.
  */
 export function BulkBar({
@@ -29,8 +31,11 @@ export function BulkBar({
   view: Filters["view"];
   onDone: () => void;
 }) {
-  const [tagging, setTagging] = useState(false);
+  // One prompt at a time: tagging and setting a number both ask for something typed, and two
+  // fields in a bar this size is a bar nobody can find the buttons in.
+  const [asking, setAsking] = useState<"tag" | "priority" | null>(null);
   const [slug, setSlug] = useState("");
+  const [priority, setPriority] = useState("0");
   const [busy, setBusy] = useState(false);
 
   const run = async (action: () => Promise<unknown>) => {
@@ -50,7 +55,7 @@ export function BulkBar({
       <span className="text-sm text-muted">{ids.length} selected</span>
       <span className="flex-1" />
 
-      {tagging ? (
+      {asking === "tag" ? (
         <form
           className="flex items-center gap-2"
           onSubmit={(e) => {
@@ -69,7 +74,27 @@ export function BulkBar({
           <Button type="submit" variant="solid" disabled={busy}>
             Add
           </Button>
-          <Button onClick={() => setTagging(false)}>Cancel</Button>
+          <Button onClick={() => setAsking(null)}>Cancel</Button>
+        </form>
+      ) : asking === "priority" ? (
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(() => postTasksBulkPriority(ids, Number(priority) || 0));
+          }}
+        >
+          <TextField
+            autoFocus
+            type="number"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-24"
+          />
+          <Button type="submit" variant="solid" disabled={busy}>
+            Set
+          </Button>
+          <Button onClick={() => setAsking(null)}>Cancel</Button>
         </form>
       ) : (
         <>
@@ -87,7 +112,21 @@ export function BulkBar({
           </Button>
           <Button
             disabled={busy || ids.length === 0}
-            onClick={() => setTagging(true)}
+            onClick={() =>
+              run(() => postTasksBulkPinned(ids, view !== "pinned"))
+            }
+          >
+            {view === "pinned" ? "Unpin" : "Pin"}
+          </Button>
+          <Button
+            disabled={busy || ids.length === 0}
+            onClick={() => setAsking("priority")}
+          >
+            Priority
+          </Button>
+          <Button
+            disabled={busy || ids.length === 0}
+            onClick={() => setAsking("tag")}
           >
             Tag
           </Button>

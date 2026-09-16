@@ -46,6 +46,40 @@ func (s *Server) bulkTags(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+type bulkPriorityRequest struct {
+	IDs      []string `json:"ids"`
+	Priority int      `json:"priority"`
+}
+
+func (s *Server) bulkPriority(w http.ResponseWriter, r *http.Request) {
+	var req bulkPriorityRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.store.BulkPriority(r.Context(), principalOf(r).ID, scopeOf(r), req.IDs, req.Priority); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type bulkPinnedRequest struct {
+	IDs    []string `json:"ids"`
+	Pinned bool     `json:"pinned"`
+}
+
+func (s *Server) bulkPinned(w http.ResponseWriter, r *http.Request) {
+	var req bulkPinnedRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.store.BulkPinned(r.Context(), principalOf(r).ID, scopeOf(r), req.IDs, req.Pinned); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // bulkDelete is a POST rather than a DELETE with a body: a body on DELETE is legal and is
 // dropped by enough intermediaries and client libraries that it is not worth being right about.
 func (s *Server) bulkDelete(w http.ResponseWriter, r *http.Request) {

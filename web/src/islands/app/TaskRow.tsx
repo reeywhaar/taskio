@@ -4,9 +4,10 @@ import { excerpt } from "@app/markdown";
 import { TaskId } from "@app/islands/app/TaskId";
 
 /**
- * The card is the way in. The title stays a real button so the keyboard and a screen reader
- * have something to land on and announce, but it carries no hover of its own: underlining one
- * line of a card that is entirely clickable says the rest of it is not.
+ * The card is the way in, and while a selection is being made it is the way to pick instead.
+ * The title stays a real button so the keyboard and a screen reader have something to land on
+ * and announce, but it carries no hover of its own: underlining one line of a card that is
+ * entirely clickable says the rest of it is not.
  *
  * Everything else in the card is a control in its own right — the mark, the id, a link in the
  * description — and each stops the click from reaching the card behind it.
@@ -20,8 +21,19 @@ import { TaskId } from "@app/islands/app/TaskId";
  * three different baselines; centring the row instead fails on a wrapped title, which pushes
  * its first line above the marks and its second below.
  */
+/**
+ * What a task sorts under: pinned first, then the number.
+ *
+ * Exported because the list draws the gap between one run and the next, and it is the same
+ * answer the server sorted by — two spellings of it would put a line in the wrong place.
+ */
+export function rank(task: Task): string {
+  return `${task.pinned ? 1 : 0}:${task.priority}`;
+}
+
 export function TaskRow({
   task,
+  apart = false,
   selectable,
   selected,
   onSelect,
@@ -30,6 +42,8 @@ export function TaskRow({
   onTogglePinned,
 }: {
   task: Task;
+  /** Set on the first row of a new run, which is where the wider gap goes. */
+  apart?: boolean;
   selectable: boolean;
   selected: boolean;
   onSelect: (id: string) => void;
@@ -43,14 +57,24 @@ export function TaskRow({
   return (
     <li
       onClick={() => {
-        // A click that ends a selection is somebody reading, not somebody opening.
+        // A click that ends a text selection is somebody reading, not somebody pressing.
         if (window.getSelection()?.toString()) return;
-        onOpen(task.id);
+        // While picking, the card picks. Opening a task from a row somebody is ticking is the
+        // wrong half of a mode, and the box is a small target to have to hit.
+        if (selectable) onSelect(task.id);
+        else onOpen(task.id);
       }}
-      className="group flex cursor-pointer items-start gap-3 rounded-lg bg-surface px-3 py-2.5 hover:bg-fill"
+      className={`group flex cursor-pointer items-start gap-3 rounded-lg bg-surface px-3 py-2.5 hover:bg-fill ${
+        apart ? "mt-4" : ""
+      }`}
     >
       {selectable ? (
-        <span className="flex h-6 shrink-0 items-center">
+        // The box reports the tick itself; without this the card behind it reports a second
+        // one and the row toggles back to where it started.
+        <span
+          className="flex h-6 shrink-0 items-center"
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             type="checkbox"
             aria-label={`Select ${task.title}`}
@@ -73,16 +97,19 @@ export function TaskRow({
             else is using the room. The number leads: an unpinned row still spends the pin's
             width, and behind it the number would sit off the left edge the id sets. */}
         <span className="flex items-center gap-1">
-          {/* Only when it has one. A zero on every row is a column of noughts that says
-              nothing, and the number is here to be noticed. */}
-          {task.priority !== 0 ? (
-            <span
-              className="rounded-full bg-brand px-1.5 py-0.5 text-xs font-medium tabular-nums text-brand-ink"
-              title={`Priority ${task.priority}`}
-            >
-              {task.priority}
-            </span>
-          ) : null}
+          {/* A nought on every row is a column of noughts that says nothing, so it keeps out
+              of the way until somebody points at the row — where it stands beside the pin
+              rather than leaving it there on its own. */}
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
+              task.priority === 0
+                ? "bg-line text-muted opacity-0 group-hover:opacity-100"
+                : "bg-brand text-brand-ink"
+            }`}
+            title={`Priority ${task.priority}`}
+          >
+            {task.priority}
+          </span>
 
           <button
             type="button"

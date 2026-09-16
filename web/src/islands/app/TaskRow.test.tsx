@@ -39,9 +39,20 @@ describe("TaskRow", () => {
     expect(screen.getByTitle("Priority 5").textContent).toBe("5");
   });
 
-  it("draws nothing for the ordinary case", () => {
+  // A nought keeps out of the way until the row is pointed at, where it stands beside the pin.
+  it("keeps a nought out of the way until the row is pointed at", () => {
     row();
-    expect(screen.queryByTitle(/^Priority/)).toBeNull();
+    const zero = screen.getByTitle("Priority 0");
+    expect(zero.textContent).toBe("0");
+    expect(zero.className).toContain("opacity-0");
+    expect(zero.className).toContain("group-hover:opacity-100");
+  });
+
+  it("does not hide one that is set", () => {
+    row({ priority: 3 });
+    expect(screen.getByTitle("Priority 3").className).not.toContain(
+      "opacity-0",
+    );
   });
 
   it("shows a negative one, which sorts below the rest", () => {
@@ -62,6 +73,41 @@ describe("TaskRow", () => {
         .getByRole("button", { name: "Unpin Fix the tap" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  /**
+   * The bug: ticking a row opened it. Picking and opening are two halves of a mode, and the
+   * box is a small target to have to hit.
+   */
+  it("picks rather than opens while a selection is being made", () => {
+    const onOpen = vi.fn();
+    const onSelect = vi.fn();
+    row({}, { selectable: true, onOpen, onSelect });
+
+    fireEvent.click(screen.getByText("Fix the tap"));
+    expect(onSelect).toHaveBeenCalledWith("8qw4tz9k");
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("opens when nothing is being picked", () => {
+    const onOpen = vi.fn();
+    const onSelect = vi.fn();
+    row({}, { onOpen, onSelect });
+
+    fireEvent.click(screen.getByText("Fix the tap"));
+    expect(onOpen).toHaveBeenCalledWith("8qw4tz9k");
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  // The box itself must not count twice: once from the input, once from the card behind it.
+  it("counts a click on the box once", () => {
+    const onSelect = vi.fn();
+    row({}, { selectable: true, onSelect });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select Fix the tap" }),
+    );
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   // Every control in the card stops the click from reaching the card behind it.

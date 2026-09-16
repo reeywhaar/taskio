@@ -112,10 +112,12 @@ POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 DELETE /api/tasks/{id}
 
-POST   /api/tasks/bulk/done    {ids}
-POST   /api/tasks/bulk/todo    {ids}
-POST   /api/tasks/bulk/tags    {ids, add?, remove?}
-POST   /api/tasks/bulk/delete  {ids}
+POST   /api/tasks/bulk/done      {ids}
+POST   /api/tasks/bulk/todo      {ids}
+POST   /api/tasks/bulk/tags      {ids, add?, remove?}
+POST   /api/tasks/bulk/priority  {ids, priority}
+POST   /api/tasks/bulk/pinned    {ids, pinned}
+POST   /api/tasks/bulk/delete    {ids}
 
 GET    /api/tags
 PATCH  /api/tags/{slug}        {slug}
@@ -131,6 +133,9 @@ One transaction each, all or nothing: an unknown or unreachable id refuses the w
 than applying eleven of twelve changes. At most 500 ids.
 
 `bulk/tags` applies `remove` after `add`, so a slug in both is removed.
+
+`bulk/priority` and `bulk/pinned` set one value across the set — they do not add to what is
+there. A task already at that value is not written: `updated_at` does not move for it.
 
 ### `GET /api/tasks`
 

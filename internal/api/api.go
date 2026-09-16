@@ -111,6 +111,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/bulk/done", s.requireAuth(s.bulkDone(true)))
 	s.handleAgent("POST /api/tasks/bulk/todo", s.requireAuth(s.bulkDone(false)))
 	s.handleAgent("POST /api/tasks/bulk/tags", s.requireAuth(s.bulkTags))
+	s.handleAgent("POST /api/tasks/bulk/priority", s.requireAuth(s.bulkPriority))
+	s.handleAgent("POST /api/tasks/bulk/pinned", s.requireAuth(s.bulkPinned))
 	s.handleAgent("POST /api/tasks/bulk/delete", s.requireAuth(s.bulkDelete))
 
 	s.handleAgent("POST /api/assets", s.requireAuth(s.putAsset))

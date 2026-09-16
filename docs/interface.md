@@ -73,8 +73,14 @@ Both order the live list, pinned first and then by priority, and they stay separ
 they answer different questions: a pin is where somebody put a task and a priority is how much
 it matters. Collapsed into one number, unpinning would mean lowering a score.
 
-The number is drawn only when it is not zero. A nought on every row is a column of noughts that
-says nothing, and the capsule is there to be noticed.
+The number is drawn plainly only when it is not zero. A nought on every row is a column of
+noughts that says nothing, so it waits until the row is pointed at — where it stands beside the
+pin rather than leaving it there on its own.
+
+**A wider gap falls where the run changes**, so the bands are something to see rather than
+something to work out by reading the capsules down the column. The list asks the row what it
+sorts under rather than working it out again, because two spellings of that would put a line in
+the wrong place.
 
 Both sit in the left column, under the id, where the row is already as wide as eight
 characters and nothing else is using the room. The number comes first: an unpinned row still
@@ -201,6 +207,20 @@ and never for a `pushState` one. The offset is written into the history entry be
 is read for it depends on the width — above the breakpoint the list's own container scrolls and
 `window.scrollY` is always zero, below it the reverse — so both are read and the one that is
 not zero is the answer. There is only ever one of them scrolling.
+
+## Picking and opening are two halves of a mode
+
+While a selection is being made the card picks; otherwise it opens. Opening a task from a row
+somebody is ticking is the wrong half, and the box is a small target to have to hit. The box
+itself stops the click reaching the card, or the row counts the tick twice and toggles back to
+where it started.
+
+## The checkbox is ours
+
+`appearance: none`, then the field's border weight and colour, the brand when it is ticked, and
+a tick drawn with a clip path rather than typed — a glyph would be whatever font happened to
+load. Where `corner-shape: squircle` is understood it rounds further; everywhere else the
+radius stands on its own.
 
 ## A card is clicked, not its title
 

@@ -90,12 +90,12 @@ const NAME = "taskio";
  * makes one of these different from another is the filter — the view and the search box are
  * things somebody is doing right now rather than a place they have parked.
  *
- * "and" between them because that is what the filter means, and what the pills spell into the
- * URL: these are tasks carrying every one of them, not any.
+ * Commas rather than "and", which is what the filter means but costs four characters a tag in
+ * a strip that is already cut off at about twenty.
  */
 export function title(location: Location): string {
   const { tags } = location.filters;
-  return tags.length > 0 ? `${tags.join(" and ")} :: ${NAME}` : NAME;
+  return tags.length > 0 ? `${tags.join(", ")} :: ${NAME}` : NAME;
 }
 
 export function href(location: Location): string {

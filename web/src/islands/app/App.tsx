@@ -23,7 +23,7 @@ import { SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
 import { Nav } from "@app/islands/app/Nav";
 import { TagCloud } from "@app/islands/app/TagCloud";
-import { TaskRow } from "@app/islands/app/TaskRow";
+import { rank, TaskRow } from "@app/islands/app/TaskRow";
 import { TaskDialog } from "@app/islands/app/TaskDialog";
 import { BulkBar } from "@app/islands/app/BulkBar";
 import { Settings } from "@app/islands/app/Settings";
@@ -209,7 +209,9 @@ function List({
           />
         </span>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* Apart rather than adjacent: the segments choose which list this is, and Select begins
+          doing something to it. Side by side they read as four of a kind. */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
             {(["pinned", "todo", "done"] as const).map((value) => (
               <button
@@ -296,10 +298,13 @@ function List({
             </p>
           ) : (
             <ul className="mt-4 flex flex-col gap-2">
-              {tasks.map((task) => (
+              {tasks.map((task, i) => (
                 <TaskRow
                   key={task.id}
                   task={task}
+                  // A wider gap where the run changes, so the bands are something to see
+                  // rather than something to work out by reading down the column.
+                  apart={i > 0 && rank(tasks[i - 1]!) !== rank(task)}
                   selectable={selection !== null}
                   selected={selection?.includes(task.id) ?? false}
                   onSelect={(id) =>
