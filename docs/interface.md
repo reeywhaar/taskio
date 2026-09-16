@@ -218,11 +218,17 @@ Either way the body scrolls and the footer does not, so what a dialog asks for i
 the fold with nothing to press. The editor takes the slack, which is the point of the screen
 being full — a description is the thing you opened it to write.
 
+A shut dialog is `display: none` and says so itself. `flex` would otherwise win the argument
+against the browser's own `dialog:not([open])` rule, and every shut dialog on a page lays
+itself out as a 3px sliver of border across whatever is behind it.
+
 **Nothing is lit on opening unless it asked to be.** `showModal()` focuses the first control it
 finds whether or not that control wanted focus, and in the task editor that is Delete — a ring
-on a destructive action reads as armed. React's `autoFocus` is a call rather than an attribute
-and has already run by then, so whatever holds focus at that moment is what asked for it: it
-gets it back, and where nothing did, the dialog holds it instead.
+on a destructive action reads as armed. A field asks with `data-autofocus`; where none does,
+the dialog holds focus instead.
+
+`data-autofocus` rather than React's `autoFocus`, which is a call rather than an attribute and
+runs while the dialog is still hidden — where focusing anything is a no-op.
 
 ## Only the list scrolls
 

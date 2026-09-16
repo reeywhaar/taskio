@@ -107,7 +107,7 @@ export function RecoveryDialog({
             </p>
             <Field label="The code from the mail">
               <TextField
-                autoFocus
+                data-autofocus
                 className="w-full"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -121,7 +121,7 @@ export function RecoveryDialog({
           >
             <TextField
               type="email"
-              autoFocus
+              data-autofocus
               className="w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

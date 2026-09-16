@@ -26,7 +26,7 @@ describe("Dialog", () => {
     expect(document.activeElement?.tagName).toBe("DIALOG");
   });
 
-  // React's autoFocus is a call rather than an attribute, and it has already run by then.
+  // data-autofocus, because React's autoFocus is a call that runs while this is still hidden.
   it("gives focus back to a field that asked for it", () => {
     mount(
       <Dialog
@@ -35,7 +35,7 @@ describe("Dialog", () => {
         title="Change your password"
         footer={<button type="button">Cancel</button>}
       >
-        <input autoFocus aria-label="Current password" />
+        <input data-autofocus aria-label="Current password" />
       </Dialog>,
     );
     expect(document.activeElement).toBe(

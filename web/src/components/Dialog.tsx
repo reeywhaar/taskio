@@ -60,20 +60,17 @@ export function Dialog({
     // Guarded both ways: showModal on an open dialog throws, and close on a shut one fires a
     // second close event that would call onClose again.
     if (open && !dialog.open) {
-      // React's autoFocus is a call, not an attribute, and it has already run by the time this
-      // effect does — so whatever is focused inside the dialog now is what asked for it.
-      const asked =
-        document.activeElement instanceof HTMLElement &&
-        dialog.contains(document.activeElement)
-          ? document.activeElement
-          : null;
-
       dialog.showModal();
 
       // showModal focuses the first control it finds whether or not that control wanted it,
-      // and a ring on Delete reads as armed. Give it back to whatever asked, or to the dialog,
-      // where escape and the tab order still work and nothing is lit.
-      if (asked) asked.focus();
+      // and a ring on Delete reads as armed. A field says so with data-autofocus; where none
+      // does, the dialog holds focus, and escape and the tab order still work from there with
+      // nothing lit.
+      //
+      // data-autofocus rather than React's autoFocus, which is a call and not an attribute:
+      // it runs while this is still display:none, where focusing anything is a no-op.
+      const wants = dialog.querySelector("[data-autofocus]");
+      if (wants instanceof HTMLElement) wants.focus();
       else dialog.focus();
     } else if (!open && dialog.open) dialog.close();
   }, [open]);
@@ -109,13 +106,17 @@ export function Dialog({
           onClose();
         startedOnBackdrop.current = false;
       }}
+      // hidden until it is open, because `flex` would otherwise win the argument against the
+      // browser's own `dialog:not([open]) { display: none }` — a shut dialog then lays itself
+      // out as a 3px sliver of border across whatever is behind it.
+      //
       // The whole screen on a phone. A centred card there spends its margins on the page
       // behind it, which nobody is reading, and leaves the editor a slot to type into.
       //
       // m-auto is load-bearing above that: a modal dialog is centred with inset:0; margin:auto,
       // and Tailwind's preflight resets margin to 0, which leaves only the inset and drops it
       // in the corner.
-      className={`flex h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-surface p-0 text-fg backdrop:bg-black/50 focus:outline-none sm:m-auto sm:h-auto sm:max-h-[85dvh] sm:rounded-xl sm:border-[1.5px] sm:border-line ${
+      className={`hidden h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-surface p-0 text-fg backdrop:bg-black/50 focus:outline-none open:flex sm:m-auto sm:h-auto sm:max-h-[85dvh] sm:rounded-xl sm:border-[1.5px] sm:border-line ${
         wide
           ? "sm:w-[min(42rem,calc(100vw-2rem))]"
           : "sm:w-[min(28rem,calc(100vw-2rem))]"

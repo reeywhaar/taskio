@@ -100,7 +100,7 @@ export function TokenDialog({
         >
           <Field label="What is it for">
             <TextField
-              autoFocus
+              data-autofocus
               className="w-full"
               placeholder="claude"
               value={label}

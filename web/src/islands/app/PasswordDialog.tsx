@@ -108,7 +108,7 @@ export function PasswordDialog({
           <TextField
             type="password"
             autoComplete="current-password"
-            autoFocus
+            data-autofocus
             className="w-full"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}

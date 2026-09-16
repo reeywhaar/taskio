@@ -104,7 +104,7 @@ export function RelayDialog({
         <Fields>
           <Field label="Host">
             <TextField
-              autoFocus
+              data-autofocus
               className="w-full"
               placeholder="smtp.example.com"
               value={form.host}
@@ -249,7 +249,7 @@ export function TestMailDialog({
         <Field label="To">
           <TextField
             type="email"
-            autoFocus
+            data-autofocus
             className="w-full"
             placeholder="you@example.com"
             value={to}

@@ -224,9 +224,18 @@ function List({
       behavior: still ? "auto" : "smooth",
     });
     // And a flash on arrival, because a row that has moved looks like every other row.
+    //
+    // Taken off again as soon as it has played. A class left behind replays every time the row
+    // is reordered — the browser restarts a CSS animation on an element that is taken out of
+    // the DOM and put back, which reordering does — so rows pinned earlier flash along with
+    // the one being pinned now. The timer is for reduced motion, where the animation is turned
+    // off and animationend never comes.
     row.classList.remove("flash");
     void row.offsetWidth; // restart it, if the same row is pinned twice
     row.classList.add("flash");
+    const done = () => row.classList.remove("flash");
+    row.addEventListener("animationend", done, { once: true });
+    window.setTimeout(done, 1200);
   }, [tasks]);
 
   return (

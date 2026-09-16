@@ -92,7 +92,7 @@ export function LimitsDialog({
           <Field label="Largest attachment (MB)">
             <TextField
               type="number"
-              autoFocus
+              data-autofocus
               className="w-full"
               value={max}
               onChange={(e) => setMax(Number(e.target.value))}
