@@ -50,6 +50,12 @@ table{border-collapse:collapse;width:100%;font-size:.95em;display:block;overflow
 th,td{border-bottom:1px solid var(--line);padding:.4rem .6rem;text-align:left;vertical-align:top}
 blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid var(--line);color:var(--muted)}
 .back{font-size:.9em;color:var(--muted)}
+.block{position:relative}
+.block button{position:absolute;top:.4rem;right:.4rem;font:inherit;font-size:.75rem;
+ color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:.375rem;
+ padding:.2rem .5rem;cursor:pointer;opacity:0;transition:opacity .1s}
+.block:hover button,.block button:focus-visible{opacity:1}
+@media (pointer:coarse){.block button{opacity:1}}
 </style>
 </head>
 <body>
@@ -57,6 +63,50 @@ blockquote{margin:1rem 0;padding-left:1rem;border-left:3px solid var(--line);col
 <p class="back"><a href="/">&larr; taskio</a> &middot; <a href="/docs.md">this page as markdown</a> &middot; <a href="/settings">get a token</a></p>
 ${body}
 </main>
+<script>
+/* An enhancement and nothing more: the page is the whole text without it, which matters because
+   the reader this page is written for does one GET and never runs any of this.
+
+   The same idea as src/codeblocks.ts, written twice on purpose — this page is built without the
+   bundle, and the two have nothing they can share but the shape. */
+for (const pre of document.querySelectorAll("pre")) {
+  const box = document.createElement("div");
+  box.className = "block";
+  pre.replaceWith(box);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.title = "Copy this block";
+  button.textContent = "Copy";
+  /* Without the newline marked puts at the end: pasted into a shell, a trailing newline is the
+     Return key, and the command runs before it has been read. */
+  const text = (pre.textContent || "").replace(/\\n$/, "");
+  button.addEventListener("click", async () => {
+    if (!(await copy(text))) return;
+    button.textContent = "Copied";
+    setTimeout(() => (button.textContent = "Copy"), 1200);
+  });
+  box.append(pre, button);
+}
+
+/* navigator.clipboard is not there outside a secure context, which is any instance reached over
+   plain http at something other than localhost. */
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const box = document.createElement("textarea");
+    box.value = text;
+    box.readOnly = true;
+    box.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.append(box);
+    box.select();
+    try { return document.execCommand("copy"); }
+    catch { return false; }
+    finally { box.remove(); }
+  }
+}
+</script>
 </body>
 </html>
 `;

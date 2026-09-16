@@ -1,7 +1,14 @@
-import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+} from "react";
 
 import { postAssets } from "@app/api/actions/assets";
 import { ApiError } from "@app/api/transport";
+import { addCopyButtons } from "@app/codeblocks";
 import { Button } from "@app/components/Button";
 import { render } from "@app/markdown";
 
@@ -35,6 +42,13 @@ export function Editor({
   const [tab, setTab] = useState<Tab>("write");
   const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+  const preview = useRef<HTMLDivElement>(null);
+
+  // After every render rather than on a change of the text: React replaces the preview's markup
+  // wholesale when it changes, which takes the buttons with it.
+  useEffect(() => {
+    if (preview.current) addCopyButtons(preview.current);
+  });
 
   /**
    * Insertion goes through execCommand where it exists.
@@ -155,6 +169,7 @@ export function Editor({
         // The current buffer rather than the saved one: the toggle answers "what will this look
         // like", not "what did I save".
         <div
+          ref={preview}
           className="prose min-h-40 flex-1 overflow-y-auto rounded-md border-[1.5px] border-line bg-bg p-3 text-sm"
           dangerouslySetInnerHTML={{ __html: render(value) }}
         />
