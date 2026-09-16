@@ -61,6 +61,29 @@ func TestAPinnedTaskSitsAboveAHigherPriorityOne(t *testing.T) {
 	}
 }
 
+// Pinning decides the band and priority decides the order inside it, so the pinned group is
+// itself sorted rather than being a heap that happens to float.
+func TestPriorityOrdersWithinThePinnedGroup(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	c.task(`{"title":"Pinned, middling","pinned":true,"priority":3}`)
+	c.task(`{"title":"Pinned, urgent","pinned":true,"priority":9}`)
+	c.task(`{"title":"Pinned, later","pinned":true,"priority":-5}`)
+	c.task(`{"title":"Loud but unpinned","priority":99}`)
+
+	want := []string{"Pinned, urgent", "Pinned, middling", "Pinned, later", "Loud but unpinned"}
+	got := c.order("")
+	if len(got) != len(want) {
+		t.Fatalf("order = %v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+}
+
 // Pinning is a property, not a status: a pinned task is still a todo.
 func TestAPinnedTaskIsStillOnTheTodoList(t *testing.T) {
 	s, st := newServerStore(t, nil)

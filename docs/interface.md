@@ -73,6 +73,9 @@ Both order the live list, pinned first and then by priority, and they stay separ
 they answer different questions: a pin is where somebody put a task and a priority is how much
 it matters. Collapsed into one number, unpinning would mean lowering a score.
 
+The pin decides the band and the number decides the order inside it, so a pinned run is itself
+sorted rather than a heap that happens to float.
+
 The number is drawn plainly only when it is not zero. A nought on every row is a column of
 noughts that says nothing, so it waits until the row is pointed at — where it stands beside the
 pin rather than leaving it there on its own.

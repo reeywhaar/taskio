@@ -178,6 +178,9 @@ and a priority is how much it matters, so lowering a number does not unpin anyth
 | `priority` | any integer, `0` by default | Higher sorts higher. Negative sorts below the unset ones |
 | `pinned` | `true` or `false` | Sorts above every unpinned task, whatever their priority |
 
+Pinning decides the band and priority decides the order inside it, so a pinned list is itself
+sorted rather than a heap that happens to float.
+
 **Pinning is a property, not a status.** A pinned task is still a todo and still comes back from
 `status=todo`; `?pinned=true` narrows to them, and the two compose — `?pinned=true&status=done`
 is the pinned things already finished.
