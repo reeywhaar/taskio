@@ -386,10 +386,7 @@ function List({
       <NewTaskDialog
         open={writing}
         tags={filters.tags}
-        onClose={(made) => {
-          setWriting(false);
-          if (made) onGo({ ...location, route: { name: "task", id: made } });
-        }}
+        onClose={() => setWriting(false)}
       />
 
       {route.name === "task" ? (

@@ -27,7 +27,7 @@ export function NewTaskDialog({
   open: boolean;
   /** The lit pills, which a new task starts with. */
   tags: string[];
-  onClose: (made?: string) => void;
+  onClose: () => void;
 }) {
   const client = useQueryClient();
   const [draft, setDraft] = useState<Draft>(emptyDraft(tags));
@@ -49,10 +49,13 @@ export function NewTaskDialog({
         tags: draft.tags,
         priority: Number(draft.priority) || 0,
       }),
-    onSuccess: (task) => {
+    // Written and gone. Opening the task that was just written puts a second modal where the
+    // first one was, and two wide dialogs with the same fields in the same place read as one
+    // dialog that would not close.
+    onSuccess: () => {
       client.invalidateQueries({ queryKey: qk.tasks });
       client.invalidateQueries({ queryKey: qk.tags });
-      onClose(task.id);
+      onClose();
     },
     onError: (err) =>
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
@@ -63,12 +66,12 @@ export function NewTaskDialog({
   return (
     <Dialog
       open={open}
-      onClose={() => onClose()}
+      onClose={onClose}
       title="New task"
       wide
       footer={
         <>
-          <Button onClick={() => onClose()} disabled={create.isPending}>
+          <Button onClick={onClose} disabled={create.isPending}>
             Cancel
           </Button>
           <Button
