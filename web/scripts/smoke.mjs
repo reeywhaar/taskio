@@ -33,15 +33,21 @@ class Browser {
   #session;
 
   static async launch(profile) {
-    const proc = spawn(chromium, [
-      "--headless=new",
-      `--remote-debugging-port=${port}`,
-      `--user-data-dir=${profile}`,
-      "--no-first-run",
-      "--disable-gpu",
-      // The instance under test serves http on a loopback address.
-      "--ignore-certificate-errors",
-    ]);
+    const proc = spawn(
+      chromium,
+      [
+        "--headless=new",
+        `--remote-debugging-port=${port}`,
+        `--user-data-dir=${profile}`,
+        "--no-first-run",
+        "--disable-gpu",
+        // The instance under test serves http on a loopback address.
+        "--ignore-certificate-errors",
+        // Nothing here reads chromium's output, and a pipe nobody drains fills and blocks the
+        // process writing into it — which looks like a browser that never finished starting.
+      ],
+      { stdio: "ignore" },
+    );
     proc.on("error", (err) => {
       console.error(`could not start ${chromium}: ${err.message}`);
       process.exit(2);
@@ -242,7 +248,15 @@ try {
   check("no uncaught errors", errors.length === 0, errors.join("; "));
 } finally {
   browser.close();
-  await rm(profile, { recursive: true, force: true });
+  // Retried and then forgiven: the browser is still flushing its caches as this runs, so the
+  // directory refuses to go and the run reports a failure it did not have. It is a temp
+  // directory either way.
+  await rm(profile, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 100,
+  }).catch(() => {});
 }
 
 if (failures.length > 0) {
