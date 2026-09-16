@@ -1,0 +1,379 @@
+package store
+
+import (
+	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"database/sql"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"taskio/internal/filter"
+)
+
+// How a token is spelled on the wire.
+const (
+	// TokenPrefix marks a secret in a log and in a config file.
+	TokenPrefix = "tk_"
+
+	// NoncedPrefix marks what a nonced token puts on the wire, which is not a secret at all.
+	//
+	// It exists because this credential ends up in transcripts: a tool call carrying a raw
+	// token is a live credential in a document nobody thinks of as one.
+	NoncedPrefix = "tkc_"
+
+	// NonceSep is a dot: unreserved in a URL, where a colon is a delimiter, so a nonced value
+	// goes into a query parameter without escaping. No field can contain one — they are digits
+	// and hex.
+	NonceSep = "."
+
+	// NonceWindow is how far a nonce may be from now, either way, to allow for clock skew.
+	NonceWindow = 5 * time.Minute
+
+	// hintLen is how much of a secret is kept to identify it in a listing, counted after the
+	// prefix, which every secret carries and which therefore identifies nothing.
+	hintLen = 8
+)
+
+// Token is an API credential belonging to one account.
+type Token struct {
+	// ID is the first 12 hex of sha256 of the secret. Derived, because a nonced value has to
+	// name which token is being proved and is built by the caller, who has never asked the
+	// server anything.
+	ID          string
+	PrincipalID string
+	Label       string
+	Hint        string
+	Scope       string
+	CreatedAt   time.Time
+	ExpiresAt   *time.Time
+	LastUsedAt  *time.Time
+	RevokedAt   *time.Time
+}
+
+// Live reports whether this token would authenticate now.
+func (t *Token) Live(now time.Time) bool {
+	return t.RevokedAt == nil && (t.ExpiresAt == nil || t.ExpiresAt.After(now))
+}
+
+// ScopeFilter parses the scope, or nil for a token that reaches the whole account.
+func (t *Token) ScopeFilter() (*filter.Node, error) {
+	if t.Scope == "" {
+		return nil, nil
+	}
+	return filter.Parse(t.Scope)
+}
+
+// CreateToken mints one and returns it with the secret, readable exactly once.
+func (s *Store) CreateToken(ctx context.Context, principalID, label, scope string, expires *time.Time) (*Token, string, error) {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return nil, "", Invalid("A token needs a label, so it can be recognised later.")
+	}
+	if len(label) > 64 {
+		return nil, "", Invalid("That label is longer than 64 characters.")
+	}
+
+	scope, err := canonicalScope(scope)
+	if err != nil {
+		return nil, "", err
+	}
+
+	raw, err := secret()
+	if err != nil {
+		return nil, "", err
+	}
+	value := TokenPrefix + raw
+
+	tok := &Token{
+		ID:          tokenID(value),
+		PrincipalID: principalID,
+		Label:       label,
+		Hint:        raw[:hintLen],
+		Scope:       scope,
+		CreatedAt:   s.Now(),
+		ExpiresAt:   expires,
+	}
+	var exp any
+	if expires != nil {
+		exp = unix(*expires)
+	}
+	_, err = s.writer.ExecContext(ctx,
+		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, scope, created_at, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tok.ID, principalID, label, tokenKey(value), tok.Hint, scope, unix(tok.CreatedAt), exp)
+	if err != nil {
+		return nil, "", fmt.Errorf("create token: %w", err)
+	}
+	s.changed()
+	return tok, value, nil
+}
+
+// Tokens lists one account's, newest first.
+func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
+	rows, err := s.reader.QueryContext(ctx,
+		`SELECT id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		   FROM tokens WHERE principal_id = ? ORDER BY created_at DESC`, principalID)
+	if err != nil {
+		return nil, fmt.Errorf("list tokens: %w", err)
+	}
+	defer rows.Close()
+
+	out := []*Token{}
+	for rows.Next() {
+		tok := &Token{PrincipalID: principalID}
+		var created int64
+		var expires, used, revoked sql.NullInt64
+		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &tok.Scope, &created,
+			&expires, &used, &revoked); err != nil {
+			return nil, err
+		}
+		tok.CreatedAt = time.Unix(created, 0).UTC()
+		tok.ExpiresAt = nullTime(expires)
+		tok.LastUsedAt = nullTime(used)
+		tok.RevokedAt = nullTime(revoked)
+		out = append(out, tok)
+	}
+	return out, rows.Err()
+}
+
+// RevokeToken marks one revoked rather than deleting it, so a token that turns up in a log
+// afterwards can still be named.
+// canonicalScope validates a scope and returns the spelling it is stored under.
+//
+// Stored canonically rather than as whatever was typed, so a listing shows one shape and two
+// spellings of one scope are one string. Shared by minting and editing: two copies of this is
+// two answers to what a scope may be, and the one that drifts is whichever is read less.
+func canonicalScope(scope string) (string, error) {
+	if scope == "" {
+		return "", nil
+	}
+	parsed, err := filter.Parse(scope)
+	if err != nil {
+		return "", Invalid("%s", err.Error())
+	}
+	if !isFlatAnd(parsed) {
+		// Only an unnested and() of slugs answers "create it with these tags", which is what a
+		// scope has to do.
+		return "", Invalid("A scope is a flat and() of tags, like and(work,inbox).")
+	}
+	return filter.Print(parsed), nil
+}
+
+// SetTokenScope changes what a token reaches, without reissuing it.
+//
+// The token itself does not change, so whatever holds it keeps working and starts seeing the
+// new scope on its next request. That is the point: the alternative is revoke and mint, which
+// means finding every place the old value was pasted.
+//
+// A revoked token is refused rather than quietly updated. It reaches nothing either way, and
+// succeeding would report a change that changes nothing.
+func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string) (*Token, error) {
+	scope, err := canonicalScope(scope)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tokens SET scope = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL`,
+		scope, principalID, id)
+	if err != nil {
+		return nil, fmt.Errorf("set token scope: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, NotFound("There is no such token.")
+	}
+	s.changed()
+
+	// Read back rather than returned from what was sent: the stored spelling is the canonical
+	// one, and the rest of the row is what the caller is about to redraw.
+	tok := &Token{PrincipalID: principalID, ID: id}
+	var created int64
+	var expires, used, revoked sql.NullInt64
+	err = s.reader.QueryRowContext(ctx,
+		`SELECT label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
+		Scan(&tok.Label, &tok.Hint, &tok.Scope, &created, &expires, &used, &revoked)
+	if err != nil {
+		return nil, fmt.Errorf("read token back: %w", err)
+	}
+	tok.CreatedAt = time.Unix(created, 0).UTC()
+	tok.ExpiresAt = nullTime(expires)
+	tok.LastUsedAt = nullTime(used)
+	tok.RevokedAt = nullTime(revoked)
+	return tok, nil
+}
+
+func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tokens SET revoked_at = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL`,
+		unix(s.Now()), principalID, id)
+	if err != nil {
+		return fmt.Errorf("revoke token: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return NotFound("There is no such token.")
+	}
+	s.changed()
+	return nil
+}
+
+// AuthenticateToken resolves a presented value, raw or nonced.
+//
+// One refusal for every way of being wrong — missing, unknown, expired, revoked, or a nonce out
+// of the window — because the difference tells whoever is guessing which half they got right.
+func (s *Store) AuthenticateToken(ctx context.Context, presented string) (*Token, error) {
+	now := s.Now()
+
+	if strings.HasPrefix(presented, NoncedPrefix) {
+		return s.authenticateNonced(ctx, presented, now)
+	}
+	if !strings.HasPrefix(presented, TokenPrefix) {
+		return nil, ErrNotFound
+	}
+	return s.tokenByKey(ctx, tokenKey(presented), now)
+}
+
+// NonceRefusal explains a nonced value's own shape, for the log and for nothing else.
+//
+// Clock skew is why this exists: a caller five minutes out fails every request, and a reply
+// saying "unknown token" sends somebody to audit a token that is fine.
+type NonceRefusal struct {
+	ID     string
+	Reason string
+}
+
+func (s *Store) authenticateNonced(ctx context.Context, presented string, now time.Time) (*Token, error) {
+	parts := strings.Split(strings.TrimPrefix(presented, NoncedPrefix), NonceSep)
+	if len(parts) != 3 {
+		return nil, noncedErr("", "it is not <nonce>.<id>.<digest>")
+	}
+	nonce, id, digest := parts[0], parts[1], parts[2]
+
+	// Parsed strictly as digits, which is what keeps the hashed base unambiguous.
+	secs, err := strconv.ParseInt(nonce, 10, 64)
+	if err != nil {
+		return nil, noncedErr(id, "the nonce is not a whole number of seconds")
+	}
+	at := time.Unix(secs, 0).UTC()
+	if skew := at.Sub(now); skew > NonceWindow || skew < -NonceWindow {
+		return nil, noncedErr(id, fmt.Sprintf(
+			"the nonce is %s from now, outside the %s window; check the clock on the caller",
+			skew.Round(time.Second).Abs(), NonceWindow))
+	}
+
+	var key []byte
+	err = s.reader.QueryRowContext(ctx, `SELECT secret_hash FROM tokens WHERE id = ?`, id).Scan(&key)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Nothing is said about whether the id exists: this must be no oracle for one.
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// The key goes last, where a length extension cannot reach it, and the comparison is
+	// constant time.
+	want := sha256.Sum256([]byte(nonce + NonceSep + id + NonceSep + hex.EncodeToString(key)))
+	if subtle.ConstantTimeCompare([]byte(digest), []byte(hex.EncodeToString(want[:]))) != 1 {
+		return nil, ErrNotFound
+	}
+	return s.tokenByKey(ctx, key, now)
+}
+
+func noncedErr(id, reason string) error {
+	return &noncedRefusal{NonceRefusal{ID: id, Reason: reason}}
+}
+
+type noncedRefusal struct{ NonceRefusal }
+
+func (n *noncedRefusal) Error() string { return "not found" }
+func (n *noncedRefusal) Unwrap() error { return ErrNotFound }
+
+// AsNonceRefusal reports what was wrong with a nonced value's shape, if that is what failed.
+func AsNonceRefusal(err error) (NonceRefusal, bool) {
+	var n *noncedRefusal
+	if errors.As(err, &n) {
+		return n.NonceRefusal, true
+	}
+	return NonceRefusal{}, false
+}
+
+func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Token, error) {
+	tok := &Token{}
+	var created int64
+	var expires, used, revoked sql.NullInt64
+	err := s.reader.QueryRowContext(ctx,
+		`SELECT id, principal_id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		   FROM tokens WHERE secret_hash = ?`, key).
+		Scan(&tok.ID, &tok.PrincipalID, &tok.Label, &tok.Hint, &tok.Scope, &created,
+			&expires, &used, &revoked)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("token: %w", err)
+	}
+	tok.CreatedAt = time.Unix(created, 0).UTC()
+	tok.ExpiresAt = nullTime(expires)
+	tok.LastUsedAt = nullTime(used)
+	tok.RevokedAt = nullTime(revoked)
+
+	if !tok.Live(now) {
+		return nil, ErrNotFound
+	}
+	// Stamping last-used is the process noticing itself, so it does not mark the database
+	// changed and does not schedule a backup.
+	s.writer.ExecContext(ctx, `UPDATE tokens SET last_used_at = ? WHERE id = ?`, unix(now), tok.ID)
+	return tok, nil
+}
+
+// NoncedValue builds what a caller would put on the wire. The CLI prints one; the tests use it.
+func NoncedValue(secretValue string, at time.Time) string {
+	key := hex.EncodeToString(tokenKey(secretValue))
+	id := key[:12]
+	nonce := strconv.FormatInt(at.Unix(), 10)
+	sum := sha256.Sum256([]byte(nonce + NonceSep + id + NonceSep + key))
+	return NoncedPrefix + nonce + NonceSep + id + NonceSep + hex.EncodeToString(sum[:])
+}
+
+// tokenKey is what the database stores: sha256 of the secret.
+//
+// Not bcrypt. A password is low-entropy and needs a slow hash to survive being guessed; a
+// 256-bit random secret cannot be guessed at any speed, and a slow hash on every API request
+// would be a rate limiter nobody asked for.
+func tokenKey(value string) []byte {
+	sum := sha256.Sum256([]byte(value))
+	return sum[:]
+}
+
+// tokenID names a token in public: the first 12 hex of the key, which is what a nonced value
+// carries and what a listing shows.
+func tokenID(value string) string { return hex.EncodeToString(tokenKey(value))[:12] }
+
+// isFlatAnd reports whether a scope is an unnested and() of slugs, or a single slug.
+func isFlatAnd(n *filter.Node) bool {
+	switch n.Op {
+	case filter.Leaf:
+		return true
+	case filter.And:
+		for _, a := range n.Args {
+			if a.Op != filter.Leaf {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func nullTime(v sql.NullInt64) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	at := time.Unix(v.Int64, 0).UTC()
+	return &at
+}

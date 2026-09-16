@@ -1,0 +1,140 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer commit on main should win the race for `latest` rather than queue behind an older
+# one that would overwrite it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/reeywhaar/taskio
+
+jobs:
+  # Publishing `latest` unconditionally means a broken commit becomes the image everyone
+  # pulls. This gate is the whole reason a push trigger is safe.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      # Deliberately with no frontend build present: the bundle is read at startup, so a
+      # missing one is the placeholder rather than a compile error.
+      - name: Test the backend
+        run: go test ./...
+
+      - name: Set up Node
+        # `current` rather than a pinned major: the image pins node:26 because a build that
+        # ships has to be reproducible, and this job only checks.
+        uses: actions/setup-node@v4
+        with:
+          node-version: current
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Check formatting
+        run: npm run format:check
+        working-directory: web
+
+      - name: Lint
+        run: npm run lint
+        working-directory: web
+
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: web
+
+      - name: Test the frontend
+        run: npm test
+        working-directory: web
+
+      - name: Build the bundle
+        run: npm run build
+        working-directory: web
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # The sha tag is what makes a rollback possible at all, since latest has moved.
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: VERSION=${{ github.sha }}
+          # Keeps the package listing to one real platform instead of an unknown/unknown
+          # entry beside it.
+          provenance: false
+
+      # Steps on publish rather than a job of their own: a fresh GHCR package is private, so
+      # a separate job would have to sign in again to pull the image it just pushed.
+      - name: Smoke-test the image
+        run: |
+          set -eu
+          docker pull "$IMAGE:${{ github.sha }}"
+          docker run --rm "$IMAGE:${{ github.sha }}" version
+          docker run -d --name taskio-smoke -p 8080:80 \
+            -e TASKIO_PUBLIC_URL=http://localhost:8080 "$IMAGE:${{ github.sha }}"
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/healthz | grep -q '"ok":true'
+          # A mistyped API path must answer JSON, or a fetch receives HTML it cannot parse.
+          curl -sS http://localhost:8080/api/nope | grep -q '"ok":false'
+          # Each shell carries the root div rather than the "has not been built" placeholder,
+          # which is the failure that otherwise reaches users looking like a successful publish.
+          for page in / /login /settings; do
+            curl -sS "http://localhost:8080$page" | grep -q 'id="root"'
+          done
+          # The page an agent reads, unauthenticated and with the text in it.
+          curl -sS http://localhost:8080/docs | grep -q 'taskio API'
+          curl -sSI http://localhost:8080/docs.md | grep -qi 'text/markdown'
+          docker logs taskio-smoke
+          docker rm -f taskio-smoke
