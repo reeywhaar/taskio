@@ -96,6 +96,10 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handle("POST /api/auth/logout", s.requireSession(s.logout))
 	s.handle("GET /api/auth/me", s.requireSession(s.me))
 
+	// A browser's own channel: an agent asking what changed has the list endpoints and a
+	// schedule of its own, and no reason to hold a connection open between them.
+	s.handle("GET /api/events", s.requireSession(s.events))
+
 	s.handleAgent("GET /api/tasks", s.requireAuth(s.listTasks))
 	s.handleAgent("POST /api/tasks", s.requireAuth(s.createTask))
 	s.handleAgent("GET /api/tasks/{id}", s.requireAuth(s.getTask))

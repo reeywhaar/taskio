@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -44,6 +45,11 @@ type Store struct {
 	// Session touches and last-used stamps are the process noticing itself, not somebody
 	// writing something down, so they do not bump it.
 	changes atomic.Uint64
+
+	// watchers are told when changes moves. A map because the only operations are add, remove
+	// and walk, and a connection removes itself by identity when its reader goes away.
+	watchMu  sync.Mutex
+	watchers map[chan struct{}]struct{}
 }
 
 const readers = 4
@@ -74,7 +80,12 @@ func Open(dir string) (*Store, error) {
 		return nil, err
 	}
 
-	s := &Store{writer: writer, reader: reader, now: time.Now}
+	s := &Store{
+		writer:   writer,
+		reader:   reader,
+		now:      time.Now,
+		watchers: map[chan struct{}]struct{}{},
+	}
 	if err := migrations.Run(context.Background(), writer); err != nil {
 		s.Close()
 		return nil, err
@@ -171,10 +182,49 @@ func (s *Store) Close() error {
 // changed records that content moved. Callers bump it only on a write that changed something,
 // which for an update means a non-zero RowsAffected from a statement carrying its own
 // comparison.
-func (s *Store) changed() { s.changes.Add(1) }
+func (s *Store) changed() {
+	s.changes.Add(1)
+	s.notify()
+}
 
 // Changes is the counter the backup loop compares against what the agent last accepted.
 func (s *Store) Changes() uint64 { return s.changes.Load() }
+
+/*
+Watchers are told when content moves, so a browser does not have to ask.
+
+One buffered slot each and a send that gives up when it is full: a watcher that has not read
+its last signal already knows there is something to fetch, and a hundred writes in a second are
+one refetch. Dropping is the coalescing.
+
+A watcher is every open tab on this instance rather than every tab of one account. The signal
+carries nothing — not what changed, not whose — and what a reader learns from it is that the
+database moved, which on an instance with a handful of accounts buys a needless GET and tells
+them a thing they could have learned by pressing reload.
+*/
+func (s *Store) Watch() (<-chan struct{}, func()) {
+	ch := make(chan struct{}, 1)
+	s.watchMu.Lock()
+	s.watchers[ch] = struct{}{}
+	s.watchMu.Unlock()
+
+	return ch, func() {
+		s.watchMu.Lock()
+		delete(s.watchers, ch)
+		s.watchMu.Unlock()
+	}
+}
+
+func (s *Store) notify() {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	for ch := range s.watchers {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
+}
 
 // unix is how every timestamp is stored: seconds in an INTEGER column.
 func unix(t time.Time) int64 { return t.UTC().Unix() }

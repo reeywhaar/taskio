@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -88,14 +89,22 @@ func serveCmd() *cobra.Command {
 			}
 			docs := api.NewDocs(webFS, sourceFS, cfg.PublicURL.String())
 
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+
+			// Every request is built on this one, so cancelling it ends the streams that are
+			// waiting for something to happen. Shutdown waits for what is in flight, and an
+			// event stream is in flight until the browser closes the tab — without this, a
+			// deploy spends the whole shutdown timeout waiting for somebody to go home.
+			streams, endStreams := context.WithCancel(context.Background())
+			defer endStreams()
+
 			srv := &http.Server{
 				Addr:              app.ListenAddr,
 				Handler:           api.New(cfg, log, st, spa, docs),
 				ReadHeaderTimeout: 10 * time.Second,
+				BaseContext:       func(net.Listener) context.Context { return streams },
 			}
-
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
-			defer stop()
 
 			// Waited on below, so neither is still writing when the database closes.
 			var background sync.WaitGroup
@@ -128,6 +137,9 @@ func serveCmd() *cobra.Command {
 				shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				log.Info("shutting down")
+				// Before Shutdown rather than after: it waits for active requests, and a
+				// stream only stops being active when its context ends.
+				endStreams()
 				err := srv.Shutdown(shutdown)
 				// Before the deferred Close, or a sweep mid-pass writes into a database that is
 				// being checkpointed.

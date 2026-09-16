@@ -12,6 +12,7 @@ import {
 import { ApiError } from "@app/api/transport";
 import type { Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
+import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
 import { SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
@@ -32,6 +33,7 @@ import {
 
 export function App() {
   const { location, go, replace, close } = useLocation();
+  useLive();
 
   // A tags value the pills cannot represent can only have come from outside. It is dropped and
   // the URL rewritten, so the address bar never shows a filter that is not in effect.

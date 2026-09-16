@@ -128,6 +128,31 @@ means, and what the pills spell into the URL: tasks carrying every one of them, 
 It is set where the location is kept, not by whoever renders the list. A tab kept in step by
 the call sites that remember to is a tab that falls behind one of them.
 
+## An open tab keeps up on its own
+
+`GET /api/events` is a stream the browser holds open. When content changes the server sends one
+word, and the tab refetches what is on screen.
+
+**Server-sent events rather than a websocket.** What travels is one word in one direction, so
+half a socket would go unused; `EventSource` reconnects on its own with backoff, which is most
+of what a socket here would have needed hand-writing; and it is plain HTTP, so nothing in front
+of it has to be taught a second protocol and `go.mod` keeps its three dependencies. The
+alternatives the task listed — refetch on focus, refetch on a timer — are a guess about when
+something happened, and this is the answer.
+
+**The message carries nothing.** Not what changed, not whose. What changed is a question the
+caller already has endpoints for, and a payload here would be a second copy of the model to
+keep true.
+
+**Every watcher hears every change**, because the signal the store already keeps is a single
+counter of writes that changed content — the one the backup loop reads. On an instance with a
+handful of accounts, a write by one person costs everyone else's open tab a `GET`, and tells
+them a thing they could have learned by pressing reload. Routing per account would mean
+threading an account through twenty-one call sites to save that.
+
+It is a browser's channel, not an agent's: session-only, and absent from `/docs`. Something
+holding a token has the list endpoints and a schedule of its own.
+
 ## A dialog is the whole screen on a phone
 
 A centred card on a phone spends its margins on the page behind it, which nobody is reading,
