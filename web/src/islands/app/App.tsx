@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { getTags } from "@app/api/actions/tags";
 import {
@@ -106,9 +111,13 @@ function List({
     pinned: filters.view === "pinned" ? "true" : undefined,
     q: filters.q,
   };
+  // The answer to the last question stays on screen while the next one is fetched. Without
+  // this, lighting a tag empties the list for as long as the round trip takes — and an empty
+  // list is not "wait", it is "there is nothing", which is a different sentence.
   const list = useQuery({
     queryKey: qk.taskList(JSON.stringify(params)),
     queryFn: () => getTasks(params),
+    placeholderData: keepPreviousData,
   });
   const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
 
@@ -163,6 +172,10 @@ function List({
 
   const tasks = list.data?.tasks ?? [];
   const filtered = filters.tags.length > 0 || filters.q !== "";
+  // Showing one question's answer while another is in flight. A background refetch of the same
+  // question is not this: the rows do not change, and a bar that blinks on every one of those
+  // is noise rather than news.
+  const stale = list.isPlaceholderData || list.isLoading;
 
   return (
     <div className="flex flex-col md:min-h-0 md:flex-1">
@@ -257,12 +270,25 @@ function List({
         {error ? <p className="mt-2 text-sm text-accent">{error}</p> : null}
       </div>
 
+      {/* Its own row rather than an overlay: it is the same two pixels whatever is under it,
+          and it moves nothing on the way in or out. */}
+      <div className="h-0.5 shrink-0 overflow-hidden" aria-hidden="true">
+        {stale ? (
+          <div className="h-full w-full animate-pulse bg-brand" />
+        ) : null}
+      </div>
+
       <div
         ref={scroller}
         className="md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain"
       >
-        <div className="mx-auto w-full max-w-3xl px-3 pb-4 md:px-6">
-          {tasks.length === 0 && !list.isLoading ? (
+        <div
+          className={`mx-auto w-full max-w-3xl px-3 pb-4 md:px-6 ${
+            stale ? "opacity-60" : ""
+          }`}
+          aria-busy={stale}
+        >
+          {tasks.length === 0 && !stale ? (
             // Two states, because they mean two different things: one is about the account and is
             // true exactly once; the other is about the filter sitting above it.
             <p className="mt-8 text-center text-sm text-muted">

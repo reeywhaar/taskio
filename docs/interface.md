@@ -128,6 +128,19 @@ means, and what the pills spell into the URL: tasks carrying every one of them, 
 It is set where the location is kept, not by whoever renders the list. A tab kept in step by
 the call sites that remember to is a tab that falls behind one of them.
 
+## The last answer stays until the next one arrives
+
+Lighting a tag asks a different question, and a list that empties while the answer is in flight
+says "there is nothing", which is a different sentence from "wait". The rows from the last
+question stay on screen, dimmed, under a two-pixel bar, until the new ones replace them.
+
+The bar is drawn while another question's answer is on screen, not on every refetch. A
+background refresh of the same question puts the same rows back, and a bar that blinks on each
+one is noise rather than news.
+
+The empty state waits for that too, or the first thing a fresh filter says is that nothing
+matched — before anything has been asked.
+
 ## An open tab keeps up on its own
 
 `GET /api/events` is a stream the browser holds open. When content changes the server sends one
