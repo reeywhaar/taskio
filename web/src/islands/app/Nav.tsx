@@ -28,7 +28,7 @@ export function Nav({
   }, [open]);
 
   const items = (
-    <ul className="flex flex-col gap-0.5 p-2">
+    <ul className="flex flex-1 flex-col gap-0.5 p-2">
       <Item
         label="List"
         lit={location.route.name === "list" || location.route.name === "task"}
@@ -47,9 +47,13 @@ export function Nav({
       />
 
       {/* An ordinary link to a page the server renders, so it is the one entry here that
-          leaves the application. Last, and behind a rule, because that is what the rule says.
-          The page is the same text an agent reads, and one page cannot disagree with itself. */}
-      <li className="mt-1 border-t border-line pt-1">
+          leaves the application. The page is the same text an agent reads, and one page cannot
+          disagree with itself.
+
+          At the bottom rather than behind a rule: a rule in a list of three is a heavier mark
+          than the thing it separates, and the distance says the same thing without drawing
+          anything. */}
+      <li className="mt-auto">
         <a
           className="block rounded-md px-3 py-2 text-sm text-muted hover:bg-fill hover:text-fg"
           href="/docs"
@@ -72,11 +76,15 @@ export function Nav({
         >
           <BurgerIcon />
         </button>
+        <Mark />
         <span className="font-semibold">taskio</span>
       </div>
 
-      <nav className="hidden w-48 shrink-0 overflow-y-auto bg-surface shadow-rail md:block">
-        <div className="px-4 py-3 font-semibold">taskio</div>
+      <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex">
+        <div className="flex items-center gap-2 px-4 py-3 font-semibold">
+          <Mark />
+          taskio
+        </div>
         {items}
       </nav>
 
@@ -88,9 +96,12 @@ export function Nav({
             className="absolute inset-0 bg-black/50"
             onClick={() => setOpen(false)}
           />
-          <nav className="relative h-full w-56 bg-surface shadow-rail">
+          <nav className="relative flex h-full w-56 flex-col bg-surface shadow-rail">
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="font-semibold">taskio</span>
+              <span className="flex items-center gap-2 font-semibold">
+                <Mark />
+                taskio
+              </span>
               <button
                 type="button"
                 aria-label="Close menu"
@@ -106,6 +117,17 @@ export function Nav({
       ) : null}
     </>
   );
+}
+
+/**
+ * The mark from the browser tab, beside the name.
+ *
+ * The file the tab uses rather than a second copy of the same two rectangles: a mark drawn in
+ * two places is a mark that will be changed in one of them. It carries its own pale ground, so
+ * it is a tile at either theme and needs nothing from the palette around it.
+ */
+function Mark() {
+  return <img src="/favicon.svg" alt="" className="size-5 rounded-[3px]" />;
 }
 
 function Item({
