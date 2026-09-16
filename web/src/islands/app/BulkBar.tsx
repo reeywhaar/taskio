@@ -18,9 +18,9 @@ import { TextField } from "@app/components/TextField";
  * Delete asks for confirmation and nothing else does: the others are visible and reversible in
  * one tap, and delete is neither.
  *
- * The status and pin buttons follow the view, which fixes what every selected task already is,
- * so each is always the one that moves them: the pinned view unpins, every other one pins. See
- * docs/interface.md.
+ * The status button follows the view, which fixes the status every selected task has, so it is
+ * always the one that moves them — the pinned view is todos, so it finishes them. Pinning gets
+ * both buttons, because no view fixes that. See docs/interface.md.
  */
 export function BulkBar({
   ids,
@@ -110,13 +110,20 @@ export function BulkBar({
           >
             {view === "done" ? "Reopen" : "Finish"}
           </Button>
+          {/* Both, always. The view fixes the status every selected task has — a todo list is
+              all todos — but it fixes nothing about pinning: a todo list holds pinned and
+              unpinned tasks side by side, and a selection spanning both needs to say which. */}
           <Button
             disabled={busy || ids.length === 0}
-            onClick={() =>
-              run(() => postTasksBulkPinned(ids, view !== "pinned"))
-            }
+            onClick={() => run(() => postTasksBulkPinned(ids, true))}
           >
-            {view === "pinned" ? "Unpin" : "Pin"}
+            Pin
+          </Button>
+          <Button
+            disabled={busy || ids.length === 0}
+            onClick={() => run(() => postTasksBulkPinned(ids, false))}
+          >
+            Unpin
           </Button>
           <Button
             disabled={busy || ids.length === 0}

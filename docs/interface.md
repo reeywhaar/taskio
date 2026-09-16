@@ -100,11 +100,16 @@ columns of boxes meaning different things — one of them "this task is done", t
 task is picked" — a foot apart and identical. Splitting them by side means the left column
 appears only while selecting and the right one always does the same thing.
 
-## The bulk bar offers one status action
+## The bulk bar offers one status action and both pin actions
 
 The list is filtered to one status, so every task in a selection has it, and a button for the
 status they already have does nothing to any of them. The bar takes the filter and shows the
 one that moves them.
+
+**Pinning gets both buttons**, because no view fixes it the way a view fixes status. A todo
+list holds pinned and unpinned tasks side by side, so a selection can span both and has to say
+which way it is going — following the view there meant a selection could be pinned from the
+todo list and never unpinned from it.
 
 ## `line` strokes and `fill` fills
 
