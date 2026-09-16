@@ -130,6 +130,12 @@ ask for `/favicon.ico` by name, and without one that request reaches the SPA and
 with a redirect to the sign-in page — an HTML document where an icon was expected. It is
 generated from the same geometry by `npm run favicon`, so the two cannot drift.
 
+## A pin leads in a ranked list too
+
+Search ranks by relevance, and ranking by that alone put a pinned task below an unpinned one
+the moment somebody typed in the box — which reads as the pin having stopped working rather
+than as the list having changed its question. Pinned first, then the score.
+
 ## The tab is named after the filter
 
 `web and job :: taskio`, or just `taskio` with nothing lit.
@@ -148,8 +154,19 @@ Both are one bit, and a button that waits a round trip to show it is a button so
 twice. The row is changed in every cached list at once, the request goes out behind it, and a
 refusal puts the old pages back.
 
-Only what the row draws is changed there. Where the row then belongs is the server's answer,
-because the ordering has a tiebreak this side does not know.
+The list on screen is put in its new order at the same moment, so the row travels on the press
+rather than on the answer. That is reproducible here without guessing: a page arrives in the
+server's order, and a stable sort by pinned, priority and the clock leaves rows equal on all
+three where it found them — which is the internal sequence the server breaks ties with.
+
+The answer still arrives and still renders, because the server moves `updated_at`. But it
+arrives in the order already on screen, so that render moves nothing: one press, one
+rearrangement.
+
+**The view follows the row and the row says so.** A pinned task can travel a long way, and a
+scroll position that stays put while the rows shift under it leaves somebody looking at a
+different task than the one they were reading. The view goes to where it landed, and it flashes
+once on arrival, because a row that has moved looks like every other row when it gets there.
 
 ## The last answer stays until the next one arrives
 

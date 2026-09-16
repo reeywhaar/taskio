@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -100,6 +100,7 @@ function List({
 }) {
   const client = useQueryClient();
   const { filters, route } = location;
+  const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
@@ -169,8 +170,17 @@ function List({
   const togglePinned = useMutation({
     mutationFn: (task: Task) =>
       patchTasksById(task.id, { pinned: !task.pinned }),
-    onMutate: (task) =>
-      optimisticTask(client, task.id, (t) => ({ ...t, pinned: !t.pinned })),
+    onMutate: (task) => {
+      follow.current = { id: task.id, from: tasks.indexOf(task) };
+      // The list on screen is put in its new order here, so the row travels on the press
+      // rather than on the answer.
+      return optimisticTask(
+        client,
+        task.id,
+        (t) => ({ ...t, pinned: !t.pinned }),
+        view === "done" ? undefined : qk.taskList(JSON.stringify(params)),
+      );
+    },
     onError: (_err, _task, before) => before && restoreTasks(client, before),
     onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
   });
@@ -188,6 +198,36 @@ function List({
   // question is not this: the rows do not change, and a bar that blinks on every one of those
   // is noise rather than news.
   const stale = list.isPlaceholderData || list.isLoading;
+
+  /*
+   * A pinned task travels, and the view goes with it and says so.
+   *
+   * The row is already where it is going by the time this runs, because the press put it there
+   * rather than the answer — so there is one rearrangement to watch and one place to scroll to,
+   * on the render straight after the click.
+   */
+  const follow = useRef<{ id: string; from: number } | null>(null);
+  useLayoutEffect(() => {
+    const going = follow.current;
+    if (!going) return;
+    follow.current = null;
+
+    const now = tasks.findIndex((task) => task.id === going.id);
+    if (now === -1 || now === going.from) return;
+
+    const row = scroller.current?.querySelector(`[data-task="${going.id}"]`);
+    if (!(row instanceof HTMLElement)) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Legible rather than instant: the point is seeing where it went.
+    row.scrollIntoView({
+      block: "nearest",
+      behavior: still ? "auto" : "smooth",
+    });
+    // And a flash on arrival, because a row that has moved looks like every other row.
+    row.classList.remove("flash");
+    void row.offsetWidth; // restart it, if the same row is pinned twice
+    row.classList.add("flash");
+  }, [tasks]);
 
   return (
     <div className="flex flex-col md:min-h-0 md:flex-1">

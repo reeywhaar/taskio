@@ -178,24 +178,26 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 // and unioned in.
 func (s *Store) searchTasks(ctx context.Context, principalID, where string, args []any, term string, limit int) (*TaskPage, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT seq, title, description LIKE ? ESCAPE '\' FROM tasks WHERE `+where,
+		`SELECT seq, title, pinned, description LIKE ? ESCAPE '\' FROM tasks WHERE `+where,
 		append([]any{"%" + escapeLike(term) + "%"}, args...)...)
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
 
 	type candidate struct {
-		seq   int64
-		score int
+		seq    int64
+		score  int
+		pinned bool
 	}
 	var found []candidate
 	for rows.Next() {
 		var (
 			seq    int64
 			title  string
+			pinned bool
 			inNote bool
 		)
-		if err := rows.Scan(&seq, &title, &inNote); err != nil {
+		if err := rows.Scan(&seq, &title, &pinned, &inNote); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -204,7 +206,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 			score, ok = search.DescriptionScore, true
 		}
 		if ok {
-			found = append(found, candidate{seq, score})
+			found = append(found, candidate{seq, score, pinned})
 		}
 	}
 	rows.Close()
@@ -212,8 +214,16 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 		return nil, err
 	}
 
-	// Best first, and a stable tiebreak so equal scores do not shuffle between requests.
+	// Pinned first, then best first, then a stable tiebreak so equal scores do not shuffle
+	// between requests.
+	//
+	// Pinned leads here as it does everywhere else. Ranking by score alone put a pinned task
+	// below an unpinned one the moment somebody typed in the box, which reads as the pin having
+	// stopped working rather than as the list having changed its question.
 	sort.SliceStable(found, func(i, j int) bool {
+		if found[i].pinned != found[j].pinned {
+			return found[i].pinned
+		}
 		if found[i].score != found[j].score {
 			return found[i].score > found[j].score
 		}

@@ -181,3 +181,20 @@ func TestPagingHoldsAcrossPriorities(t *testing.T) {
 		t.Errorf("paged order = %v", seen)
 	}
 }
+
+// A pin leads everywhere, including a ranked list. Ranking by score alone put a pinned task
+// below an unpinned one the moment somebody typed, which reads as the pin having stopped
+// working rather than as the list having changed its question.
+func TestSearchKeepsPinnedFirst(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	// The unpinned one is the better match: an exact title against a prefix of one.
+	c.task(`{"title":"plumbing"}`)
+	c.task(`{"title":"plumbing and other jobs","pinned":true}`)
+
+	got := c.order("?q=plumbing")
+	if len(got) != 2 || got[0] != "plumbing and other jobs" {
+		t.Errorf("search order = %v, want the pinned one first", got)
+	}
+}

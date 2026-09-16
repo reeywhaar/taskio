@@ -258,3 +258,33 @@ input[type="checkbox"]:focus-visible {
   border-color: var(--color-brand);
   outline: none;
 }
+
+/*
+ * Where something went.
+ *
+ * A row that has travelled up a list looks like every other row when it arrives, so it says so
+ * once and then stops. It ends on the row's own ground rather than on nothing, or the card
+ * would lose its surface as the animation finished.
+ */
+@keyframes flash {
+  from {
+    background-color: color-mix(
+      in oklab,
+      var(--color-brand) 32%,
+      var(--color-surface)
+    );
+  }
+  to {
+    background-color: var(--color-surface);
+  }
+}
+
+.flash {
+  animation: flash 900ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+  }
+}

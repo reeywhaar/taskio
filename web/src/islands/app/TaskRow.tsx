@@ -56,6 +56,7 @@ export function TaskRow({
 
   return (
     <li
+      data-task={task.id}
       onClick={() => {
         // A click that ends a text selection is somebody reading, not somebody pressing.
         if (window.getSelection()?.toString()) return;
