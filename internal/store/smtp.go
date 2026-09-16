@@ -86,7 +86,7 @@ func (s *Store) SetRelay(ctx context.Context, r Relay) error {
 	if err != nil {
 		return fmt.Errorf("set relay: %w", err)
 	}
-	s.changed()
+	s.changedAll()
 	return nil
 }
 
@@ -95,6 +95,6 @@ func (s *Store) DeleteRelay(ctx context.Context) error {
 	if _, err := s.writer.ExecContext(ctx, `DELETE FROM smtp WHERE singleton = 1`); err != nil {
 		return err
 	}
-	s.changed()
+	s.changedAll()
 	return nil
 }

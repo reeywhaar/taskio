@@ -86,7 +86,7 @@ func (s *Store) CreatePrincipal(ctx context.Context, username, password, role st
 		}
 		return nil, fmt.Errorf("create principal: %w", err)
 	}
-	s.changed()
+	s.changedAll()
 	return p, nil
 }
 
@@ -235,7 +235,7 @@ func (s *Store) SetPassword(ctx context.Context, principalID, password string, k
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 

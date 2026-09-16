@@ -37,7 +37,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	changes, stop := s.store.Watch()
+	// Scoped to the account: nobody is told that somebody else is working.
+	changes, stop := s.store.Watch(principalOf(r).ID)
 	defer stop()
 
 	beat := time.NewTicker(ping)

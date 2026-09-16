@@ -146,7 +146,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	s.changed()
+	s.changed(principalID)
 	return task, nil
 }
 
@@ -250,7 +250,7 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 		return nil, err
 	}
 	if moved {
-		s.changed()
+		s.changed(principalID)
 	}
 	return task, nil
 }
@@ -287,7 +287,7 @@ func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) 
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	s.changed()
+	s.changed(principalID)
 
 	if done {
 		task.DoneAt = &now
@@ -308,7 +308,7 @@ func (s *Store) DeleteTask(ctx context.Context, principalID, id string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return NotFound("There is no task %s.", id)
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 

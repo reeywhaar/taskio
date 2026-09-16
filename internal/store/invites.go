@@ -50,7 +50,7 @@ func (s *Store) CreateInvite(ctx context.Context, createdBy, role string) (*Invi
 	if err != nil {
 		return nil, "", fmt.Errorf("create invite: %w", err)
 	}
-	s.changed()
+	s.changedAll()
 	return inv, token, nil
 }
 

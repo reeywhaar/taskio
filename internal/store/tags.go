@@ -152,7 +152,7 @@ func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter
 		return 0, err
 	}
 	if n > 0 {
-		s.changed()
+		s.changed(principalID)
 	}
 	return n, nil
 }
@@ -170,7 +170,7 @@ func (s *Store) RemoveTag(ctx context.Context, principalID string, scope *filter
 	}
 	n, _ := res.RowsAffected()
 	if n > 0 {
-		s.changed()
+		s.changed(principalID)
 	}
 	return n, nil
 }

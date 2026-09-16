@@ -148,7 +148,7 @@ func (s *Store) ConfirmRecovery(ctx context.Context, principalID, code string) e
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 
@@ -158,7 +158,7 @@ func (s *Store) ForgetRecovery(ctx context.Context, principalID string) error {
 		`DELETE FROM user_recovery WHERE principal_id = ?`, principalID); err != nil {
 		return err
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 

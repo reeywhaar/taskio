@@ -145,7 +145,7 @@ func (s *Store) PutAsset(ctx context.Context, principalID, declared string, body
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	s.changed()
+	s.changed(principalID)
 	return asset, nil
 }
 

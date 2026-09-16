@@ -33,7 +33,7 @@ func (s *Store) SweepDoneTasks(ctx context.Context) (int64, error) {
 	}
 	n, _ := res.RowsAffected()
 	if n > 0 {
-		s.changed()
+		s.changedAll()
 	}
 	return n, nil
 }
@@ -56,7 +56,7 @@ func (s *Store) SweepOrphanAssets(ctx context.Context) (int64, error) {
 	}
 	n, _ := res.RowsAffected()
 	if n > 0 {
-		s.changed()
+		s.changedAll()
 	}
 	return n, nil
 }

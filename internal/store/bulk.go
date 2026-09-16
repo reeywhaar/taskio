@@ -131,7 +131,7 @@ func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 

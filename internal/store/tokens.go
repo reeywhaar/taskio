@@ -109,7 +109,7 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 	if err != nil {
 		return nil, "", fmt.Errorf("create token: %w", err)
 	}
-	s.changed()
+	s.changed(principalID)
 	return tok, value, nil
 }
 
@@ -186,7 +186,7 @@ func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil, NotFound("There is no such token.")
 	}
-	s.changed()
+	s.changed(principalID)
 
 	// Read back rather than returned from what was sent: the stored spelling is the canonical
 	// one, and the rest of the row is what the caller is about to redraw.
@@ -217,7 +217,7 @@ func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return NotFound("There is no such token.")
 	}
-	s.changed()
+	s.changed(principalID)
 	return nil
 }
 

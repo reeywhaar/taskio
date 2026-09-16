@@ -144,11 +144,13 @@ something happened, and this is the answer.
 caller already has endpoints for, and a payload here would be a second copy of the model to
 keep true.
 
-**Every watcher hears every change**, because the signal the store already keeps is a single
-counter of writes that changed content — the one the backup loop reads. On an instance with a
-handful of accounts, a write by one person costs everyone else's open tab a `GET`, and tells
-them a thing they could have learned by pressing reload. Routing per account would mean
-threading an account through twenty-one call sites to save that.
+**A watcher hears its own account and nothing else.** Every write says whose it was, and the
+stream is scoped to the account holding it — a stream everybody hears is a fact about other
+people's afternoons, delivered to anyone with a tab open.
+
+What belongs to no one account is sent to everybody: the mail relay, the attachment limits, the
+roll of accounts, a sweep that reaches across all of them. Those are the instance's, and a tab
+showing them should not be the last to know.
 
 It is a browser's channel, not an agent's: session-only, and absent from `/docs`. Something
 holding a token has the list endpoints and a schedule of its own.

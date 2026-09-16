@@ -10,9 +10,12 @@ import (
 	"time"
 )
 
-// stream opens the event stream against a real listener, because httptest.NewRecorder buffers
-// and what is being tested is that something arrives before the handler returns.
-func stream(t *testing.T, s *Server, cookie *http.Cookie) *bufio.Reader {
+// stream opens the event stream and returns the events off it by name.
+//
+// One reader for the life of the stream, feeding a channel. Reading on demand instead would
+// mean a goroutine left blocked on every call that timed out, and the next event going to that
+// one rather than to the test waiting for it.
+func stream(t *testing.T, s *Server, cookie *http.Cookie) <-chan string {
 	t.Helper()
 	srv := httptest.NewServer(s)
 	t.Cleanup(srv.Close)
@@ -35,30 +38,34 @@ func stream(t *testing.T, s *Server, cookie *http.Cookie) *bufio.Reader {
 	if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/event-stream") {
 		t.Fatalf("content type = %q", got)
 	}
-	return bufio.NewReader(resp.Body)
-}
 
-// next reads until an event arrives, or says what it saw instead.
-func next(t *testing.T, r *bufio.Reader) string {
-	t.Helper()
-	done := make(chan string, 1)
+	events := make(chan string, 8)
 	go func() {
+		defer close(events)
+		r := bufio.NewReader(resp.Body)
 		for {
 			line, err := r.ReadString('\n')
 			if err != nil {
-				done <- "read failed: " + err.Error()
 				return
 			}
-			if strings.HasPrefix(line, "event: ") {
-				done <- strings.TrimSpace(strings.TrimPrefix(line, "event: "))
-				return
+			if name, ok := strings.CutPrefix(line, "event: "); ok {
+				events <- strings.TrimSpace(name)
 			}
 		}
 	}()
+	return events
+}
+
+// next is the next event, or what happened instead.
+func next(t *testing.T, events <-chan string) string {
+	t.Helper()
 	select {
-	case got := <-done:
+	case got, ok := <-events:
+		if !ok {
+			return "the stream closed"
+		}
 		return got
-	case <-time.After(3 * time.Second):
+	case <-time.After(2 * time.Second):
 		return "nothing arrived"
 	}
 }
@@ -66,11 +73,11 @@ func next(t *testing.T, r *bufio.Reader) string {
 func TestAWriteReachesAnOpenStream(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	r := stream(t, s, c.cookie)
+	events := stream(t, s, c.cookie)
 
 	c.task(`{"title":"Fix the tap"}`)
 
-	if got := next(t, r); got != "changed" {
+	if got := next(t, events); got != "changed" {
 		t.Errorf("the stream said %q", got)
 	}
 }
@@ -79,13 +86,13 @@ func TestAWriteReachesAnOpenStream(t *testing.T) {
 func TestAWriteFromElsewhereReachesTheStream(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	r := stream(t, s, c.cookie)
+	events := stream(t, s, c.cookie)
 
 	other := newClient(t, s)
 	other.cookie = c.cookie
 	other.task(`{"title":"Written in the other tab"}`)
 
-	if got := next(t, r); got != "changed" {
+	if got := next(t, events); got != "changed" {
 		t.Errorf("the stream said %q", got)
 	}
 }
@@ -95,13 +102,56 @@ func TestReadsDoNotReachTheStream(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 	c.task(`{"title":"Fix the tap"}`)
-	r := stream(t, s, c.cookie)
+	events := stream(t, s, c.cookie)
 
 	for range 3 {
 		c.list("")
 	}
-	if got := next(t, r); got != "nothing arrived" {
+	if got := next(t, events); got != "nothing arrived" {
 		t.Errorf("a read produced %q", got)
+	}
+}
+
+// Nobody is told that somebody else is working. A stream every account hears is a fact about
+// other people's afternoons, delivered to anyone with a tab open.
+func TestOneAccountsWritesDoNotReachAnother(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	mine := signIn(t, s, st)
+
+	// Both accounts exist before the stream opens: making one is an instance-wide change and
+	// would be the event under test rather than their writing.
+	account(t, st, "someone-else", "a good password")
+	theirs := newClient(t, s)
+	if resp := theirs.do("POST", "/api/auth/login",
+		`{"username":"someone-else","password":"a good password"}`); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("their login = %s", resp.Status)
+	}
+
+	events := stream(t, s, mine.cookie)
+	theirs.task(`{"title":"None of my business"}`)
+
+	if got := next(t, events); got != "nothing arrived" {
+		t.Errorf("their write reached my stream as %q", got)
+	}
+
+	// And mine still does, so the silence above is scoping rather than a stream that is dead.
+	mine.task(`{"title":"Mine"}`)
+	if got := next(t, events); got != "changed" {
+		t.Errorf("my own write said %q", got)
+	}
+}
+
+// The relay, the limits, the roll of accounts: nobody's in particular, so everybody hears it.
+func TestAnInstanceWideChangeReachesEverybody(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	events := stream(t, s, c.cookie)
+
+	if _, err := st.CreatePrincipal(context.Background(), "newcomer", "a good password", "user"); err != nil {
+		t.Fatal(err)
+	}
+	if got := next(t, events); got != "changed" {
+		t.Errorf("an account being made said %q", got)
 	}
 }
 

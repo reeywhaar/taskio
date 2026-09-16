@@ -57,6 +57,6 @@ func (s *Store) SetLimits(ctx context.Context, l Limits) error {
 	if err != nil {
 		return fmt.Errorf("set limits: %w", err)
 	}
-	s.changed()
+	s.changedAll()
 	return nil
 }

@@ -46,10 +46,11 @@ type Store struct {
 	// writing something down, so they do not bump it.
 	changes atomic.Uint64
 
-	// watchers are told when changes moves. A map because the only operations are add, remove
-	// and walk, and a connection removes itself by identity when its reader goes away.
+	// watchers are told when content they can see moves, keyed by the account watching. A map
+	// because the only operations are add, remove and walk, and a connection removes itself by
+	// identity when its reader goes away.
 	watchMu  sync.Mutex
-	watchers map[chan struct{}]struct{}
+	watchers map[chan struct{}]string
 }
 
 const readers = 4
@@ -84,7 +85,7 @@ func Open(dir string) (*Store, error) {
 		writer:   writer,
 		reader:   reader,
 		now:      time.Now,
-		watchers: map[chan struct{}]struct{}{},
+		watchers: map[chan struct{}]string{},
 	}
 	if err := migrations.Run(context.Background(), writer); err != nil {
 		s.Close()
@@ -179,33 +180,39 @@ func (s *Store) Close() error {
 	return first
 }
 
-// changed records that content moved. Callers bump it only on a write that changed something,
-// which for an update means a non-zero RowsAffected from a statement carrying its own
-// comparison.
-func (s *Store) changed() {
+// changed records that one account's content moved. Callers bump it only on a write that
+// changed something, which for an update means a non-zero RowsAffected from a statement
+// carrying its own comparison.
+func (s *Store) changed(principalID string) {
 	s.changes.Add(1)
-	s.notify()
+	s.notify(principalID)
+}
+
+// changedAll records a change that is nobody's in particular: the instance's settings, the
+// roll of accounts, a sweep that reaches across all of them.
+func (s *Store) changedAll() {
+	s.changes.Add(1)
+	s.notify("")
 }
 
 // Changes is the counter the backup loop compares against what the agent last accepted.
 func (s *Store) Changes() uint64 { return s.changes.Load() }
 
 /*
-Watchers are told when content moves, so a browser does not have to ask.
+Watch is told when content this account can see moves, so a browser does not have to ask.
 
 One buffered slot each and a send that gives up when it is full: a watcher that has not read
 its last signal already knows there is something to fetch, and a hundred writes in a second are
 one refetch. Dropping is the coalescing.
 
-A watcher is every open tab on this instance rather than every tab of one account. The signal
-carries nothing — not what changed, not whose — and what a reader learns from it is that the
-database moved, which on an instance with a handful of accounts buys a needless GET and tells
-them a thing they could have learned by pressing reload.
+Nobody hears about anybody else's writing. What a watcher is sent carries nothing — not what
+changed, only that something did — and the account it is scoped to is what keeps that from
+being a fact about somebody else's afternoon.
 */
-func (s *Store) Watch() (<-chan struct{}, func()) {
+func (s *Store) Watch(principalID string) (<-chan struct{}, func()) {
 	ch := make(chan struct{}, 1)
 	s.watchMu.Lock()
-	s.watchers[ch] = struct{}{}
+	s.watchers[ch] = principalID
 	s.watchMu.Unlock()
 
 	return ch, func() {
@@ -215,10 +222,14 @@ func (s *Store) Watch() (<-chan struct{}, func()) {
 	}
 }
 
-func (s *Store) notify() {
+// notify wakes the watchers of one account, or every watcher when principalID is empty.
+func (s *Store) notify(principalID string) {
 	s.watchMu.Lock()
 	defer s.watchMu.Unlock()
-	for ch := range s.watchers {
+	for ch, watching := range s.watchers {
+		if principalID != "" && watching != principalID {
+			continue
+		}
 		select {
 		case ch <- struct{}{}:
 		default:
