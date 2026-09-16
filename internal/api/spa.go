@@ -103,6 +103,12 @@ func (s *SPA) shellFor(p string) *shell {
 	if s.files[p] != nil {
 		return nil
 	}
+	// A path with an extension asked for a file, and there is not one. No route has an
+	// extension — an id is base32 and the rest are words — so this is a miss rather than a
+	// navigation, and ServeHTTP answers it with a 404.
+	if path.Ext(p) != "" {
+		return nil
+	}
 	for i := range s.shells {
 		sh := &s.shells[i]
 		if sh.prefix == "/" || p == sh.prefix || strings.HasPrefix(p, sh.prefix+"/") {
@@ -123,8 +129,12 @@ func (s *SPA) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			s.write(w, r, a)
 			return
 		}
+		// A navigation with no bundle behind it: the placeholder says which of the two
+		// problems this is.
+		s.placeholder(w)
+		return
 	}
-	s.placeholder(w)
+	http.NotFound(w, r)
 }
 
 func (s *SPA) write(w http.ResponseWriter, r *http.Request, a *asset) {

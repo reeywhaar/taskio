@@ -237,3 +237,36 @@ func TestSignedInTheSignInPageSendsYouToTheApplication(t *testing.T) {
 		t.Errorf("/invite signed in = %s, want the page", resp.Status)
 	}
 }
+
+// A missing file is a miss, not a navigation.
+//
+// The bug: web/public was absent from the image, so /favicon.svg fell through to the shell and
+// a browser asking for an icon was handed the task list — which looks like a rendering problem
+// rather than a build one.
+func TestAMissingFileIsNotTheShell(t *testing.T) {
+	s, st := newServerStore(t, fstest.MapFS{
+		"index.html":  &fstest.MapFile{Data: []byte("app")},
+		"login.html":  &fstest.MapFile{Data: []byte("login")},
+		"favicon.svg": &fstest.MapFile{Data: []byte("<svg/>")},
+	})
+	c := signIn(t, s, st)
+
+	if resp := c.do("GET", "/favicon.svg", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("the favicon that is there = %s", resp.Status)
+	}
+	for _, path := range []string{"/favicon.ico", "/assets/gone.css", "/apple-touch-icon.png"} {
+		resp := c.do("GET", path, "")
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("%s = %s, want 404", path, resp.Status)
+		}
+	}
+}
+
+// Nothing a browser asks for by name should need a session to be told it is not there.
+func TestAMissingFileIsNotSentToSignIn(t *testing.T) {
+	s := newServer(t, fstest.MapFS{"login.html": &fstest.MapFile{Data: []byte("login")}})
+	resp := do(t, s, "GET", "/favicon.ico", "", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("signed out = %s, want 404 rather than a redirect", resp.Status)
+	}
+}
