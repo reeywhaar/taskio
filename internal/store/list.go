@@ -173,13 +173,19 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 
 // searchTasks scores every matching title in Go.
 //
-// Titles only, and no descriptions or blobs are read: a title is a name somebody half-remembers
-// and a description is prose they want a phrase out of, so the second is matched exactly in SQL
-// and unioned in.
+// Only titles are scored, and no descriptions or blobs are read: a title is a name somebody
+// half-remembers and a description is prose they want a phrase out of, so the second is matched
+// exactly in SQL and unioned in. Tags go the same way — a slug contains the term or it does
+// not, and the box is the only place the word can be typed without knowing it is a tag.
 func (s *Store) searchTasks(ctx context.Context, principalID, where string, args []any, term string, limit int) (*TaskPage, error) {
+	like := "%" + escapeLike(term) + "%"
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT seq, title, pinned, description LIKE ? ESCAPE '\' FROM tasks WHERE `+where,
-		append([]any{"%" + escapeLike(term) + "%"}, args...)...)
+		`SELECT seq, title, pinned, description LIKE ? ESCAPE '\',
+		        EXISTS (SELECT 1 FROM task_tags
+		                 WHERE task_tags.task_seq = tasks.seq
+		                   AND task_tags.slug LIKE ? ESCAPE '\')
+		   FROM tasks WHERE `+where,
+		append([]any{like, like}, args...)...)
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
@@ -196,12 +202,16 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 			title  string
 			pinned bool
 			inNote bool
+			inTag  bool
 		)
-		if err := rows.Scan(&seq, &title, &pinned, &inNote); err != nil {
+		if err := rows.Scan(&seq, &title, &pinned, &inNote, &inTag); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		score, ok := search.Score(term, title)
+		if !ok && inTag {
+			score, ok = search.TagScore, true
+		}
 		if !ok && inNote {
 			score, ok = search.DescriptionScore, true
 		}

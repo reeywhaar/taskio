@@ -142,7 +142,7 @@ there. A task already at that value is not written: `updated_at` does not move f
 | parameter | default | meaning |
 | --- | --- | --- |
 | `tags` | — | A filter, above |
-| `q` | — | Search. Forgiving about the title, exact about the description |
+| `q` | — | Search. Forgiving about the title, exact about the tags and the description |
 | `status` | `todo` | `todo`, `done` or `all` |
 | `pinned` | — | `true` or `false`. Unset asks about neither |
 | `limit` | `1000` | 1 to 1000. The default is the maximum |

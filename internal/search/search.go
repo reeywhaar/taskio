@@ -17,6 +17,14 @@ const (
 	scoreSubsequence = 600
 	scoreTypo        = 500
 
+	// TagScore is what a match on one of the task's tags is worth.
+	//
+	// Below every title match and above a description: a tag is a word somebody chose and wrote
+	// on the task, where a description is prose that merely happens to contain it. Flat, like
+	// DescriptionScore — a tag is a slug of one or two words, so "how well" it matched is a
+	// distinction with nothing behind it.
+	TagScore = 300
+
 	// DescriptionScore is what a match in the description alone is worth: below every title
 	// match, because a title is what somebody is trying to remember.
 	DescriptionScore = 100

@@ -305,7 +305,7 @@ func TestTotalCountsMatchesRatherThanThePage(t *testing.T) {
 	}
 }
 
-// Forgiving about the title, exact about the description.
+// Forgiving about the title, exact about the tags and the description.
 func TestSearch(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
@@ -332,6 +332,38 @@ func TestSearch(t *testing.T) {
 	// A search turns pagination off: a score is not a stable sort key.
 	if _, ok := c.list("?q=the&limit=1")["next_cursor"]; ok {
 		t.Error("a search answered with a cursor")
+	}
+}
+
+// The box is the only place a word can be typed without knowing it is a tag.
+func TestSearchFindsATag(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.task(`{"title":"Call the plumber","tags":["home"]}`)
+	c.task(`{"title":"Order the part"}`)
+
+	got := titles(c.list("?q=home"))
+	if len(got) != 1 || got[0] != "Call the plumber" {
+		t.Errorf("home returned %v, want the tagged task alone", got)
+	}
+	// Part of a slug, because somebody typing into a box is halfway through a word.
+	if got := titles(c.list("?q=hom")); len(got) != 1 || got[0] != "Call the plumber" {
+		t.Errorf("hom returned %v", got)
+	}
+}
+
+// A tag is a word somebody wrote on the task; a description merely contains it.
+func TestATagOutranksADescriptionAndATitleOutranksBoth(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.task(`{"title":"Order the part","description":"Ask about the garden gate."}`)
+	c.task(`{"title":"Call the plumber","tags":["garden"]}`)
+	c.task(`{"title":"Garden waste collection"}`)
+
+	got := titles(c.list("?q=garden"))
+	want := []string{"Garden waste collection", "Call the plumber", "Order the part"}
+	if len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Errorf("garden returned %v, want %v", got, want)
 	}
 }
 
