@@ -16,16 +16,17 @@ import { TextField } from "@app/components/TextField";
  * Delete asks for confirmation and nothing else does: the others are visible and reversible in
  * one tap, and delete is neither.
  *
- * The status button follows the list's filter, which is the status every selected task has, so
- * it is always the one that moves them. See docs/interface.md.
+ * The status button follows the view, which fixes the status every selected task has, so it is
+ * always the one that moves them — the pinned view is todos, so it finishes them. See
+ * docs/interface.md.
  */
 export function BulkBar({
   ids,
-  status,
+  view,
   onDone,
 }: {
   ids: string[];
-  status: Filters["status"];
+  view: Filters["view"];
   onDone: () => void;
 }) {
   const [tagging, setTagging] = useState(false);
@@ -76,13 +77,13 @@ export function BulkBar({
             disabled={busy || ids.length === 0}
             onClick={() =>
               run(() =>
-                status === "done"
+                view === "done"
                   ? postTasksBulkTodo(ids)
                   : postTasksBulkDone(ids),
               )
             }
           >
-            {status === "done" ? "Reopen" : "Finish"}
+            {view === "done" ? "Reopen" : "Finish"}
           </Button>
           <Button
             disabled={busy || ids.length === 0}

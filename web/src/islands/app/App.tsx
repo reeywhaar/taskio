@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTags } from "@app/api/actions/tags";
 import {
   getTasks,
+  patchTasksById,
   postTasks,
   postTasksByIdDone,
   postTasksByIdTodo,
@@ -88,9 +89,12 @@ function List({
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
 
+  // The screen's three choices are two questions to the API: pinned is a property of a todo,
+  // so the pinned view is the todo list narrowed rather than a third status.
   const params = {
     tags: printAnd(filters.tags),
-    status: filters.status,
+    status: filters.view === "done" ? "done" : "todo",
+    pinned: filters.view === "pinned" ? "true" : undefined,
     q: filters.q,
   };
   const list = useQuery({
@@ -130,6 +134,12 @@ function List({
     onSuccess: () => client.invalidateQueries({ queryKey: qk.tasks }),
   });
 
+  const togglePinned = useMutation({
+    mutationFn: (task: Task) =>
+      patchTasksById(task.id, { pinned: !task.pinned }),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.tasks }),
+  });
+
   const toggleTag = (slug: string) => {
     const next = filters.tags.includes(slug)
       ? filters.tags.filter((s) => s !== slug)
@@ -166,16 +176,16 @@ function List({
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
-          {(["todo", "done"] as const).map((value) => (
+          {(["pinned", "todo", "done"] as const).map((value) => (
             <button
               key={value}
               type="button"
-              aria-pressed={filters.status === value}
+              aria-pressed={filters.view === value}
               onClick={() =>
-                onGo({ ...location, filters: { ...filters, status: value } })
+                onGo({ ...location, filters: { ...filters, view: value } })
               }
               className={`flex items-center px-3 capitalize ${
-                filters.status === value
+                filters.view === value
                   ? "bg-brand text-brand-ink"
                   : "text-muted hover:bg-surface"
               }`}
@@ -249,6 +259,7 @@ function List({
                 onGo({ ...location, route: { name: "task", id } })
               }
               onToggleDone={(t) => toggleDone.mutate(t)}
+              onTogglePinned={(t) => togglePinned.mutate(t)}
             />
           ))}
         </ul>
@@ -273,7 +284,7 @@ function List({
       {selection ? (
         <BulkBar
           ids={selection}
-          status={filters.status}
+          view={filters.view}
           onDone={() => {
             setSelection(null);
             client.invalidateQueries({ queryKey: qk.tasks });

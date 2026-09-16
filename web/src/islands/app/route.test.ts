@@ -30,19 +30,33 @@ describe("parseAnd", () => {
 });
 
 describe("href", () => {
-  const filters = { tags: [] as string[], status: "todo" as const, q: "" };
+  const filters = { tags: [] as string[], view: "todo" as const, q: "" };
 
   it("leaves defaults out of the URL", () => {
     expect(href({ route: { name: "list" }, filters })).toBe("/");
   });
 
-  it("carries the pills and the status", () => {
+  // Three choices on screen, and todo is the one the URL says nothing about.
+  it("names the view it is showing, unless it is the default", () => {
     expect(
       href({
         route: { name: "list" },
-        filters: { ...filters, tags: ["home", "chores"], status: "done" },
+        filters: { ...filters, view: "pinned" },
       }),
-    ).toBe("/?tags=and%28home%2Cchores%29&status=done");
+    ).toBe("/?view=pinned");
+    expect(
+      href({ route: { name: "list" }, filters: { ...filters, view: "done" } }),
+    ).toBe("/?view=done");
+    expect(href({ route: { name: "list" }, filters })).toBe("/");
+  });
+
+  it("carries the pills and the view", () => {
+    expect(
+      href({
+        route: { name: "list" },
+        filters: { ...filters, tags: ["home", "chores"], view: "done" },
+      }),
+    ).toBe("/?tags=and%28home%2Cchores%29&view=done");
   });
 
   it("writes the whole id into the path, never a prefix", () => {

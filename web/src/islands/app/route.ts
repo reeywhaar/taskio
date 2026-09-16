@@ -10,10 +10,19 @@ import { useEffect, useState } from "react";
 export type Route =
   { name: "list" } | { name: "task"; id: string } | { name: "settings" };
 
+/**
+ * Which list is on screen.
+ *
+ * Not the API's status, which is todo, done or all: pinned is a property a todo may have, so
+ * the screen's third choice is a view over the same list rather than a fourth state a task
+ * can be in.
+ */
+export type View = "pinned" | "todo" | "done";
+
 export type Filters = {
   /** A flat and() of slugs. Anything richer came from outside and is dropped. */
   tags: string[];
-  status: "todo" | "done";
+  view: View;
   q: string;
 };
 
@@ -38,9 +47,10 @@ function readRoute(path: string): Route {
 }
 
 function readFilters(params: URLSearchParams): Filters {
+  const view = params.get("view");
   return {
     tags: parseAnd(params.get("tags")),
-    status: params.get("status") === "done" ? "done" : "todo",
+    view: view === "done" || view === "pinned" ? view : "todo",
     q: params.get("q") ?? "",
   };
 }
@@ -81,8 +91,8 @@ export function href(location: Location): string {
   const params = new URLSearchParams();
   const tags = printAnd(location.filters.tags);
   if (tags) params.set("tags", tags);
-  if (location.filters.status !== "todo")
-    params.set("status", location.filters.status);
+  if (location.filters.view !== "todo")
+    params.set("view", location.filters.view);
   if (location.filters.q) params.set("q", location.filters.q);
 
   const search = params.toString();

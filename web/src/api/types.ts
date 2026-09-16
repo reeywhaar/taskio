@@ -8,6 +8,8 @@ export type Task = {
   description: string;
   tags: string[];
   status: Status;
+  priority: number;
+  pinned: boolean;
   created_at: number;
   updated_at: number;
   done_at: number | null;

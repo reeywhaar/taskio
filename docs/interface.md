@@ -57,6 +57,30 @@ no border beside it there, so nothing reads as a double frame, and it is drawn o
 clicking one does not leave it ringed. A text field matches either way, which is the reason the
 rule stops at the controls that do not.
 
+## The list's three choices are two questions
+
+The control reads **Pinned · Todo · Done**, and only two of those are statuses. Pinning is a
+property a todo may have, so the pinned view asks the API for `status=todo&pinned=true` rather
+than for a third state a task can be in. The URL says `?view=pinned`, which is a different word
+from the API's `status` on purpose: an agent copying one into the other gets a refusal rather
+than a surprise.
+
+A pinned task still appears under Todo. It is a marker, not a drawer.
+
+## Priority is a number and a pin is a place
+
+Both order the live list, pinned first and then by priority, and they stay separate because
+they answer different questions: a pin is where somebody put a task and a priority is how much
+it matters. Collapsed into one number, unpinning would mean lowering a score.
+
+The number is drawn only when it is not zero. A nought on every row is a column of noughts that
+says nothing, and the capsule is there to be noticed.
+
+Both sit in the left column, under the id, where the row is already as wide as eight
+characters and nothing else is using the room. The pin appears on hover when it is not set — it
+is a thing you do to a task in passing, and burying it in the editor would mean opening a task
+to say it matters.
+
 ## A row's two marks are on opposite sides
 
 Selection is on the left and finishing is on the right.

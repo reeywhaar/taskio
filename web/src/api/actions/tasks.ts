@@ -5,6 +5,8 @@ export type ListParams = {
   tags?: string;
   q?: string;
   status?: string;
+  /** Sent as a string, because query() drops an empty value and false is not one. */
+  pinned?: string;
   limit?: number;
   cursor?: string;
 };
@@ -19,11 +21,19 @@ export const postTasks = (body: {
   title: string;
   description?: string;
   tags?: string[];
+  priority?: number;
+  pinned?: boolean;
 }) => request<Task>("/api/tasks", { method: "POST", body });
 
 export const patchTasksById = (
   id: string,
-  body: { title?: string; description?: string; tags?: string[] },
+  body: {
+    title?: string;
+    description?: string;
+    tags?: string[];
+    priority?: number;
+    pinned?: boolean;
+  },
 ) => request<Task>(`/api/tasks/${id}`, { method: "PATCH", body });
 
 export const postTasksByIdDone = (id: string) =>

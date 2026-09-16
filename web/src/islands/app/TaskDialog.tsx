@@ -16,6 +16,7 @@ import { Button } from "@app/components/Button";
 import { TextField } from "@app/components/TextField";
 import { Dialog } from "@app/components/Dialog";
 import { Editor } from "@app/islands/app/Editor";
+import { Field } from "@app/components/Field";
 import { TagCloud } from "@app/islands/app/TagCloud";
 import { TaskId } from "@app/islands/app/TaskId";
 
@@ -43,6 +44,9 @@ export function TaskDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  // A string, not a number: a number input being cleared reads as NaN, and "" is what somebody
+  // typing -1 passes through on the way.
+  const [priority, setPriority] = useState("0");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -50,6 +54,7 @@ export function TaskDialog({
     setTitle(task.data.title);
     setDescription(task.data.description);
     setSelected(task.data.tags);
+    setPriority(String(task.data.priority));
   }, [task.data]);
 
   const invalidate = () => {
@@ -59,7 +64,12 @@ export function TaskDialog({
 
   const save = useMutation({
     mutationFn: () =>
-      patchTasksById(id, { title, description, tags: selected }),
+      patchTasksById(id, {
+        title,
+        description,
+        tags: selected,
+        priority: Number(priority) || 0,
+      }),
     onSuccess: () => {
       invalidate();
       onClose();
@@ -126,13 +136,29 @@ export function TaskDialog({
             {done ? <span className="text-xs text-muted">finished</span> : null}
           </div>
 
-          <TextField value={title} onChange={(e) => setTitle(e.target.value)} />
+          <TextField
+            className="w-full"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
 
           <Editor
             value={description}
             onChange={setDescription}
             limits={{ assetMax: 10 << 20 }}
           />
+
+          <Field
+            label="Priority"
+            hint="Higher sorts higher. A pin beats any number."
+          >
+            <TextField
+              type="number"
+              className="w-24"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            />
+          </Field>
 
           <TagCloud
             tags={tags.data?.tags ?? []}
