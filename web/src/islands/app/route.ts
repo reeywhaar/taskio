@@ -105,6 +105,30 @@ export function href(location: Location): string {
  * go pushes; replace does not. Typing into the search box replaces, so a five-letter query is
  * one entry to press back through rather than five.
  */
+/**
+ * The element the list scrolls inside, once it has one.
+ *
+ * Above the breakpoint the page does not scroll: the rail and the controls stay put and only
+ * the list moves, which means window.scrollY is always 0 and is no longer where somebody is.
+ * Below it the page scrolls as it always did, so both are read and whichever is not zero is
+ * the answer — there is only ever one of them scrolling.
+ */
+let scroller: HTMLElement | null = null;
+
+export function setScroller(el: HTMLElement | null) {
+  scroller = el;
+}
+
+function scrollOffset(): number {
+  return scroller?.scrollTop || window.scrollY;
+}
+
+/** Puts a list back where it was. Both, because which one moves depends on the width. */
+export function scrollToOffset(offset: number) {
+  scroller?.scrollTo(0, offset);
+  window.scrollTo(0, offset);
+}
+
 export function useLocation() {
   const [location, setLocation] = useState<Location>(read);
 
@@ -115,7 +139,7 @@ export function useLocation() {
   }, []);
 
   const go = (next: Location) => {
-    const scroll = window.scrollY;
+    const scroll = scrollOffset();
     // Written into the entry we are leaving, so coming back can restore it: the browser does
     // this for free on a real navigation and not at all for a pushState one.
     window.history.replaceState({ ...window.history.state, scroll }, "");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTags } from "@app/api/actions/tags";
@@ -23,6 +23,8 @@ import { BulkBar } from "@app/islands/app/BulkBar";
 import { Settings } from "@app/islands/app/Settings";
 import {
   printAnd,
+  scrollToOffset,
+  setScroller,
   storedScroll,
   useLocation,
   type Location,
@@ -64,10 +66,15 @@ function Shell({
   onGo: (next: Location) => void;
   children: React.ReactNode;
 }) {
+  // Two columns that scroll on their own above the breakpoint: the page itself does not move,
+  // so the rail stays beside whatever the list is doing. Below it the page scrolls as one, which
+  // is what a phone expects and what leaves room for a list at all.
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
+    <div className="flex min-h-dvh flex-col md:h-dvh md:min-h-0 md:flex-row md:overflow-hidden">
       <Nav location={location} onGo={onGo} />
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
+        {children}
+      </main>
     </div>
   );
 }
@@ -105,10 +112,15 @@ function List({
 
   // The browser restores scroll on a real navigation and not at all on a pushState one, so
   // closing a task on a long list would otherwise drop somebody at the top of it.
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setScroller(scroller.current);
+    return () => setScroller(null);
+  }, []);
   useEffect(() => {
     if (route.name === "list" && list.data) {
       const offset = storedScroll();
-      if (offset) window.scrollTo(0, offset);
+      if (offset) scrollToOffset(offset);
     }
   }, [route.name, list.data]);
 
@@ -151,135 +163,151 @@ function List({
   const filtered = filters.tags.length > 0 || filters.q !== "";
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 py-4 md:px-6">
-      {/* Search, status, tags, list: it narrows from the widest instrument to the narrowest,
-          so reading down the screen is reading the query that produced what is under it. */}
-      {/* The icon says what the box is for without spending the placeholder on it, and stays
+    <div className="flex flex-col md:min-h-0 md:flex-1">
+      {/*
+        What asks the question stays put and what answers it scrolls. The head is short and is
+        needed at any point in a long list — it is the query that produced what is under it.
+
+        Full width with the column inside, rather than a scrolling column, so the scrollbar is
+        at the edge of the window where a scrollbar belongs.
+      */}
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-3 py-4 md:px-6">
+        {/* Search, status, tags, list: it narrows from the widest instrument to the narrowest,
+            so reading down the screen is reading the query that produced what is under it. */}
+        {/* The icon says what the box is for without spending the placeholder on it, and stays
           there once somebody has typed and the placeholder is gone. */}
-      <span className="relative flex items-center">
-        <SearchIcon className="pointer-events-none absolute left-3 text-faint" />
-        <TextField
-          type="search"
-          placeholder="Search"
-          className="w-full pl-9"
-          value={filters.q}
-          // Replaces rather than pushes, so a five-letter query is one entry to press back
-          // through rather than five.
-          onChange={(e) =>
-            onReplace({
-              ...location,
-              filters: { ...filters, q: e.target.value },
-            })
-          }
-        />
-      </span>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
-          {(["pinned", "todo", "done"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filters.view === value}
-              onClick={() =>
-                onGo({ ...location, filters: { ...filters, view: value } })
-              }
-              className={`flex items-center px-3 capitalize ${
-                filters.view === value
-                  ? "bg-brand text-brand-ink"
-                  : "text-muted hover:bg-surface"
-              }`}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-
-        <Button
-          onClick={() => setSelection(selection ? null : [])}
-          aria-pressed={selection !== null}
-        >
-          {selection ? "Cancel" : "Select"}
-        </Button>
-      </div>
-
-      <div className="mt-3">
-        <TagCloud
-          tags={tags.data?.tags ?? []}
-          selected={filters.tags}
-          onToggle={toggleTag}
-        />
-      </div>
-
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (title.trim()) create.mutate(title);
-        }}
-      >
-        <TextField
-          placeholder="New task"
-          className="min-w-0 flex-1"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <Button
-          type="submit"
-          variant="solid"
-          disabled={create.isPending || !title.trim()}
-        >
-          Add
-        </Button>
-      </form>
-      {error ? <p className="mt-2 text-sm text-accent">{error}</p> : null}
-
-      {tasks.length === 0 && !list.isLoading ? (
-        // Two states, because they mean two different things: one is about the account and is
-        // true exactly once; the other is about the filter sitting above it.
-        <p className="mt-8 text-center text-sm text-muted">
-          {filtered ? "Nothing matched" : "No tasks yet"}
-        </p>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-2">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              selectable={selection !== null}
-              selected={selection?.includes(task.id) ?? false}
-              onSelect={(id) =>
-                setSelection((current) =>
-                  current?.includes(id)
-                    ? current.filter((x) => x !== id)
-                    : [...(current ?? []), id],
-                )
-              }
-              onOpen={(id) =>
-                onGo({ ...location, route: { name: "task", id } })
-              }
-              onToggleDone={(t) => toggleDone.mutate(t)}
-              onTogglePinned={(t) => togglePinned.mutate(t)}
-            />
-          ))}
-        </ul>
-      )}
-
-      {/* A search turns pagination off, so the button is not drawn while the box has
-          something in it. */}
-      {list.data?.next_cursor && !filters.q ? (
-        <div className="mt-4 flex justify-center">
-          <Button
-            onClick={() =>
-              getTasks({ ...params, cursor: list.data.next_cursor }).then(() =>
-                client.invalidateQueries({ queryKey: qk.tasks }),
-              )
+        <span className="relative flex items-center">
+          <SearchIcon className="pointer-events-none absolute left-3 text-faint" />
+          <TextField
+            type="search"
+            placeholder="Search"
+            className="w-full pl-9"
+            value={filters.q}
+            // Replaces rather than pushes, so a five-letter query is one entry to press back
+            // through rather than five.
+            onChange={(e) =>
+              onReplace({
+                ...location,
+                filters: { ...filters, q: e.target.value },
+              })
             }
+          />
+        </span>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
+            {(["pinned", "todo", "done"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={filters.view === value}
+                onClick={() =>
+                  onGo({ ...location, filters: { ...filters, view: value } })
+                }
+                className={`flex items-center px-3 capitalize ${
+                  filters.view === value
+                    ? "bg-brand text-brand-ink"
+                    : "text-muted hover:bg-surface"
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            onClick={() => setSelection(selection ? null : [])}
+            aria-pressed={selection !== null}
           >
-            Load more
+            {selection ? "Cancel" : "Select"}
           </Button>
         </div>
-      ) : null}
+
+        <div className="mt-3">
+          <TagCloud
+            tags={tags.data?.tags ?? []}
+            selected={filters.tags}
+            onToggle={toggleTag}
+          />
+        </div>
+
+        <form
+          className="mt-4 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (title.trim()) create.mutate(title);
+          }}
+        >
+          <TextField
+            placeholder="New task"
+            className="min-w-0 flex-1"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Button
+            type="submit"
+            variant="solid"
+            disabled={create.isPending || !title.trim()}
+          >
+            Add
+          </Button>
+        </form>
+        {error ? <p className="mt-2 text-sm text-accent">{error}</p> : null}
+      </div>
+
+      <div
+        ref={scroller}
+        className="md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain"
+      >
+        <div className="mx-auto w-full max-w-3xl px-3 pb-4 md:px-6">
+          {tasks.length === 0 && !list.isLoading ? (
+            // Two states, because they mean two different things: one is about the account and is
+            // true exactly once; the other is about the filter sitting above it.
+            <p className="mt-8 text-center text-sm text-muted">
+              {filtered ? "Nothing matched" : "No tasks yet"}
+            </p>
+          ) : (
+            <ul className="mt-4 flex flex-col gap-2">
+              {tasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  selectable={selection !== null}
+                  selected={selection?.includes(task.id) ?? false}
+                  onSelect={(id) =>
+                    setSelection((current) =>
+                      current?.includes(id)
+                        ? current.filter((x) => x !== id)
+                        : [...(current ?? []), id],
+                    )
+                  }
+                  onOpen={(id) =>
+                    onGo({ ...location, route: { name: "task", id } })
+                  }
+                  onToggleDone={(t) => toggleDone.mutate(t)}
+                  onTogglePinned={(t) => togglePinned.mutate(t)}
+                />
+              ))}
+            </ul>
+          )}
+
+          {/* A search turns pagination off, so the button is not drawn while the box has
+          something in it. */}
+          {list.data?.next_cursor && !filters.q ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                onClick={() =>
+                  getTasks({ ...params, cursor: list.data.next_cursor }).then(
+                    () => client.invalidateQueries({ queryKey: qk.tasks }),
+                  )
+                }
+              >
+                Load more
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {selection ? (
         <BulkBar

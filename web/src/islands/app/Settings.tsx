@@ -24,36 +24,38 @@ import { TokenScopeDialog } from "@app/islands/app/TokenScopeDialog";
 export function Settings() {
   const me = useQuery({ queryKey: qk.me, queryFn: getAuthMe });
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-3 py-4 md:px-6">
-      <section>
-        <Heading>Account</Heading>
-        <p className="text-sm text-muted">
-          Signed in as{" "}
-          <span className="text-fg">{me.data?.username ?? "…"}</span>
-          {me.data?.role === "admin" ? (
-            <>
-              {" · "}
-              <a className="underline" href="/admin">
-                Admin
-              </a>
-            </>
-          ) : null}
-        </p>
-        <Button
-          className="mt-3"
-          onClick={() =>
-            postAuthLogout().then(() => window.location.assign("/"))
-          }
-        >
-          Sign out
-        </Button>
-      </section>
+    <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-3 py-4 md:px-6">
+        <section>
+          <Heading>Account</Heading>
+          <p className="text-sm text-muted">
+            Signed in as{" "}
+            <span className="text-fg">{me.data?.username ?? "…"}</span>
+            {me.data?.role === "admin" ? (
+              <>
+                {" · "}
+                <a className="underline" href="/admin">
+                  Admin
+                </a>
+              </>
+            ) : null}
+          </p>
+          <Button
+            className="mt-3"
+            onClick={() =>
+              postAuthLogout().then(() => window.location.assign("/"))
+            }
+          >
+            Sign out
+          </Button>
+        </section>
 
-      <Password />
-      <Recovery />
-      <Storage />
-      <Tokens />
-      <Sessions />
+        <Password />
+        <Recovery />
+        <Storage />
+        <Tokens />
+        <Sessions />
+      </div>
     </div>
   );
 }

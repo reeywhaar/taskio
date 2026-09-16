@@ -75,7 +75,7 @@ export function Nav({
         <span className="font-semibold">taskio</span>
       </div>
 
-      <nav className="hidden w-48 shrink-0 bg-surface shadow-rail md:block">
+      <nav className="hidden w-48 shrink-0 overflow-y-auto bg-surface shadow-rail md:block">
         <div className="px-4 py-3 font-semibold">taskio</div>
         {items}
       </nav>

@@ -115,6 +115,24 @@ ask for `/favicon.ico` by name, and without one that request reaches the SPA and
 with a redirect to the sign-in page — an HTML document where an icon was expected. It is
 generated from the same geometry by `npm run favicon`, so the two cannot drift.
 
+## Only the list scrolls
+
+Above the breakpoint the page itself does not move. The rail is its own column, the search box
+and the filters stay put, and the list scrolls inside them — so the controls that produced what
+you are looking at are still there when you are a hundred rows into it.
+
+Below the breakpoint the page scrolls as one. A fixed head on a phone spends a third of the
+screen on controls, and what is left is not a list.
+
+The head sits in a full-width block with the column centred inside it, rather than the column
+itself scrolling, so the scrollbar is at the edge of the window where a scrollbar belongs.
+
+**Returning to a list puts it back where it was**, which the browser does for a real navigation
+and never for a `pushState` one. The offset is written into the history entry being left. What
+is read for it depends on the width — above the breakpoint the list's own container scrolls and
+`window.scrollY` is always zero, below it the reverse — so both are read and the one that is
+not zero is the answer. There is only ever one of them scrolling.
+
 ## A card is clicked, not its title
 
 The whole card opens the task. The title is still a real button, so the keyboard and a screen
