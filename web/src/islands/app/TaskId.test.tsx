@@ -47,12 +47,63 @@ describe("TaskId", () => {
     expect(button.className).toContain("w-[8ch]");
   });
 
-  // Selecting it still works, which is why the copy is an enhancement rather than the way.
-  it("does not fall over where there is no clipboard", async () => {
+  /**
+   * A press that worked should leave nothing highlighted. The control used to carry
+   * user-select:all so a failed copy left something to press ⌘C on, which meant every
+   * successful copy also left eight characters selected.
+   */
+  it("copies without selecting the id", async () => {
+    render(<TaskId id="8qw4tz9k" />);
+    const button = screen.getByRole("button");
+    expect(button.className).not.toContain("select-all");
+
+    fireEvent.click(button);
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(window.getSelection()?.toString()).toBe("");
+  });
+
+  /**
+   * navigator.clipboard is not there outside a secure context, which is any instance reached
+   * over plain http at something other than localhost. The press still has to copy.
+   */
+  it("copies through execCommand where there is no clipboard", async () => {
     Object.defineProperty(navigator, "clipboard", {
       value: undefined,
       configurable: true,
     });
+    let copied: string | undefined;
+    const exec = vi.fn((command: string) => {
+      if (command === "copy")
+        copied =
+          document.querySelector<HTMLTextAreaElement>("body > textarea")?.value;
+      return true;
+    });
+    Object.defineProperty(document, "execCommand", {
+      value: exec,
+      configurable: true,
+    });
+
+    render(<TaskId id="8qw4tz9k" />);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+
+    await waitFor(() => expect(button.textContent).toBe("copied"));
+    expect(exec).toHaveBeenCalledWith("copy");
+    expect(copied).toBe("8qw4tz9k");
+    // The box it copies out of is gone, and so is any selection it made.
+    expect(document.querySelector("body > textarea")).toBeNull();
+  });
+
+  it("says nothing where it could not copy at all", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(document, "execCommand", {
+      value: () => false,
+      configurable: true,
+    });
+
     render(<TaskId id="8qw4tz9k" />);
     const button = screen.getByRole("button");
     fireEvent.click(button);
