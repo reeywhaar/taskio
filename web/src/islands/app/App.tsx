@@ -258,7 +258,7 @@ function List({
           doing something to it. Side by side they read as four of a kind. */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex min-h-11 overflow-hidden rounded-md border-[1.5px] border-line text-sm">
+            <div className="inline-flex min-h-9 overflow-hidden rounded-md border-[1.5px] border-line text-sm pointer-coarse:min-h-11">
               {(["pinned", "todo", "done"] as const).map((value) => (
                 <button
                   key={value}
@@ -279,6 +279,7 @@ function List({
             </div>
 
             <Button
+              size="bar"
               onClick={() => setSelection(selection ? null : [])}
               aria-pressed={selection !== null}
             >
@@ -286,7 +287,7 @@ function List({
             </Button>
           </div>
 
-          <Button variant="solid" onClick={() => setWriting(true)}>
+          <Button variant="solid" size="bar" onClick={() => setWriting(true)}>
             New task
           </Button>
         </div>

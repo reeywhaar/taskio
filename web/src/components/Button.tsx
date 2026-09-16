@@ -14,6 +14,20 @@ import type { ButtonHTMLAttributes } from "react";
  */
 type Variant = "solid" | "quiet" | "link" | "danger";
 
+/**
+ * How tall, which is a question about what the button is standing next to.
+ *
+ * field is beside an input and matches it: 44px, which is also about the width of a fingertip.
+ * bar is a row of controls with no field in it, where 44px reads as a stack of slabs — and
+ * where a finger is still a finger, so the height comes back below a pointer that is not one.
+ */
+type Size = "field" | "bar";
+
+const heights: Record<Size, string> = {
+  field: "min-h-11",
+  bar: "min-h-9 pointer-coarse:min-h-11",
+};
+
 const styles: Record<Variant, string> = {
   solid: "bg-brand text-brand-ink hover:opacity-90",
   quiet: "bg-surface text-fg hover:bg-fill",
@@ -23,13 +37,17 @@ const styles: Record<Variant, string> = {
 
 export function Button({
   variant = "quiet",
+  size = "field",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+}) {
   const shape =
     variant === "link"
       ? ""
-      : "min-h-11 min-w-20 justify-center rounded-md px-3 py-1.5";
+      : `${heights[size]} min-w-20 justify-center rounded-md px-3 py-1.5`;
   return (
     <button
       type="button"
