@@ -80,6 +80,24 @@ export function printAnd(tags: string[]): string {
   return tags.length === 1 ? `and(${tags[0]})` : `and(${tags.join(",")})`;
 }
 
+/** What the tab is called with nothing lit. */
+const NAME = "taskio";
+
+/**
+ * What the tab says.
+ *
+ * The lit tags and nothing else. A tab is worth naming when it is one of several, and what
+ * makes one of these different from another is the filter — the view and the search box are
+ * things somebody is doing right now rather than a place they have parked.
+ *
+ * "and" between them because that is what the filter means, and what the pills spell into the
+ * URL: these are tasks carrying every one of them, not any.
+ */
+export function title(location: Location): string {
+  const { tags } = location.filters;
+  return tags.length > 0 ? `${tags.join(" and ")} :: ${NAME}` : NAME;
+}
+
 export function href(location: Location): string {
   const path =
     location.route.name === "task"
@@ -137,6 +155,12 @@ export function useLocation() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  // Here rather than at a call site: the tab is a view of the location like the address bar is,
+  // and one kept in step by whoever remembers to is one that falls behind.
+  useEffect(() => {
+    document.title = title(location);
+  }, [location]);
 
   const go = (next: Location) => {
     const scroll = scrollOffset();

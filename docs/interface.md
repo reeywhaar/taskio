@@ -116,6 +116,18 @@ ask for `/favicon.ico` by name, and without one that request reaches the SPA and
 with a redirect to the sign-in page — an HTML document where an icon was expected. It is
 generated from the same geometry by `npm run favicon`, so the two cannot drift.
 
+## The tab is named after the filter
+
+`web and job :: taskio`, or just `taskio` with nothing lit.
+
+A tab is worth naming when it is one of several, and what makes one of these different from
+another is which tags are lit — the view and the search box are things somebody is doing right
+now rather than a place they have parked. "and" between them because that is what the filter
+means, and what the pills spell into the URL: tasks carrying every one of them, not any.
+
+It is set where the location is kept, not by whoever renders the list. A tab kept in step by
+the call sites that remember to is a tab that falls behind one of them.
+
 ## Only the list scrolls
 
 Above the breakpoint the page itself does not move. The rail is its own column, the search box

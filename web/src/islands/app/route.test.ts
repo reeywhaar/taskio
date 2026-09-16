@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { href, parseAnd, printAnd } from "@app/islands/app/route";
+import { href, parseAnd, printAnd, title } from "@app/islands/app/route";
 
 /**
  * The app's parser only has to recognise one shape. Everything else is "not drawable", which is
@@ -66,5 +66,31 @@ describe("href", () => {
 
   it("round-trips the canonical filter spelling", () => {
     expect(parseAnd(printAnd(["home", "chores"]))).toEqual(["home", "chores"]);
+  });
+});
+
+/** The tab for a list with these tags lit and nothing else going on. */
+const at = (tags: string[]) =>
+  title({ route: { name: "list" }, filters: { tags, view: "todo", q: "" } });
+
+describe("title", () => {
+  it("is the name alone when nothing is lit", () => {
+    expect(at([])).toBe("taskio");
+  });
+
+  /** "and" because that is what the filter means: every one of them, not any. */
+  it("names the lit tags", () => {
+    expect(at(["web"])).toBe("web :: taskio");
+    expect(at(["web", "job"])).toBe("web and job :: taskio");
+  });
+
+  // The view and the search box are what somebody is doing, not where they have parked.
+  it("says nothing about the view or the search", () => {
+    expect(
+      title({
+        route: { name: "list" },
+        filters: { tags: ["web"], view: "done", q: "plumb" },
+      }),
+    ).toBe("web :: taskio");
   });
 });
