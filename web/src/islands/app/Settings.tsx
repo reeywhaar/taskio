@@ -8,7 +8,11 @@ import {
   deleteSessionsById,
   getSessions,
 } from "@app/api/actions/sessions";
-import { deleteTokensById, getTokens } from "@app/api/actions/tokens";
+import {
+  deleteTokensById,
+  deleteTokensRevoked,
+  getTokens,
+} from "@app/api/actions/tokens";
 import type { Token } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Boundary } from "@app/components/Boundary";
@@ -276,6 +280,16 @@ function Tokens() {
     onSuccess: () => client.invalidateQueries({ queryKey: qk.tokens }),
   });
 
+  const forget = useMutation({
+    mutationFn: () => deleteTokensRevoked(),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.tokens }),
+  });
+
+  // The button is not there when there is nothing to press it about, which is most of the time.
+  const revoked = (tokens.data?.tokens ?? []).filter(
+    (t) => t.revoked_at,
+  ).length;
+
   return (
     <Panel
       title="Tokens"
@@ -296,7 +310,17 @@ function Tokens() {
         .
       </p>
 
-      <Button onClick={() => setMinting(true)}>Mint a token</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => setMinting(true)}>Mint a token</Button>
+        {/* A revoked token is kept so one that turns up in a log afterwards can still be
+            named. That is worth something for a week and nothing for a year, and until then
+            it is a line in the only list of the live ones. */}
+        {revoked > 0 ? (
+          <Button onClick={() => forget.mutate()} disabled={forget.isPending}>
+            Forget {revoked} revoked
+          </Button>
+        ) : null}
+      </div>
 
       <ul className="mt-3 flex flex-col">
         {(tokens.data?.tokens ?? []).map((token) => (

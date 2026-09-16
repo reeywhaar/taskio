@@ -406,3 +406,67 @@ func TestATokenCannotEditItsOwnScope(t *testing.T) {
 		t.Errorf("a token widened itself: %s", resp.Status)
 	}
 }
+
+// Revoking keeps the row so the token can still be named; forgetting is how that stops.
+func TestForgettingRevokedTokensLeavesTheLiveOnes(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	mintToken(t, s, c, "old", "")
+	mintToken(t, s, c, "current", "")
+
+	list := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
+	if len(list) != 2 {
+		t.Fatalf("minted %d tokens, want 2", len(list))
+	}
+	var old string
+	for _, row := range list {
+		if row.(map[string]any)["label"] == "old" {
+			old = row.(map[string]any)["id"].(string)
+		}
+	}
+	if resp := c.do("DELETE", "/api/tokens/"+old, ""); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("revoke = %s", resp.Status)
+	}
+
+	resp := c.do("DELETE", "/api/tokens/revoked", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("forget = %s", resp.Status)
+	}
+	if n := c.json(resp)["forgotten"]; n != float64(1) {
+		t.Errorf("forgotten = %v, want 1", n)
+	}
+
+	left := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
+	if len(left) != 1 {
+		t.Fatalf("%d tokens left, want 1", len(left))
+	}
+	if label := left[0].(map[string]any)["label"]; label != "current" {
+		t.Errorf("the token left is %v, want current", label)
+	}
+}
+
+// Nothing to forget is not a failure, and the button that asks is drawn from the same listing.
+func TestForgettingNothingIsFine(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	mintToken(t, s, c, "current", "")
+
+	resp := c.do("DELETE", "/api/tokens/revoked", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("forget = %s", resp.Status)
+	}
+	if n := c.json(resp)["forgotten"]; n != float64(0) {
+		t.Errorf("forgotten = %v, want 0", n)
+	}
+}
+
+// A credential must not manage credentials, and that includes losing the record of one.
+func TestATokenCannotForgetRevokedTokens(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	a := mintToken(t, s, c, "claude", "")
+
+	if resp := a.do("DELETE", "/api/tokens/revoked", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a token forgetting revoked tokens = %s, want 401", resp.Status)
+	}
+}

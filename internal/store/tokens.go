@@ -141,8 +141,6 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 	return out, rows.Err()
 }
 
-// RevokeToken marks one revoked rather than deleting it, so a token that turns up in a log
-// afterwards can still be named.
 // canonicalScope validates a scope and returns the spelling it is stored under.
 //
 // Stored canonically rather than as whatever was typed, so a listing shows one shape and two
@@ -207,6 +205,8 @@ func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string
 	return tok, nil
 }
 
+// RevokeToken marks one revoked rather than deleting it, so a token that turns up in a log
+// afterwards can still be named.
 func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
 	res, err := s.writer.ExecContext(ctx,
 		`UPDATE tokens SET revoked_at = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL`,
@@ -219,6 +219,27 @@ func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
 	}
 	s.changed(principalID)
 	return nil
+}
+
+// ForgetRevokedTokens deletes the revoked ones and reports how many went.
+//
+// Revoking keeps the row so a token that turns up in a log afterwards can still be named, which
+// is worth something for a week and nothing for a year — and until then every revoked token is
+// a line in the only list of the live ones. Deliberate rather than swept: what a name is still
+// worth is not a question this can answer on somebody's behalf.
+//
+// Nothing else in the database points at a token, so there is nothing to orphan.
+func (s *Store) ForgetRevokedTokens(ctx context.Context, principalID string) (int64, error) {
+	res, err := s.writer.ExecContext(ctx,
+		`DELETE FROM tokens WHERE principal_id = ? AND revoked_at IS NOT NULL`, principalID)
+	if err != nil {
+		return 0, fmt.Errorf("forget revoked tokens: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		s.changed(principalID)
+	}
+	return n, nil
 }
 
 // AuthenticateToken resolves a presented value, raw or nonced.

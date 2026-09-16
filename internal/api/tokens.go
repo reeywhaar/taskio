@@ -112,6 +112,21 @@ func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// forgetRevokedTokens clears the revoked rows out of the listing.
+//
+// A route of its own rather than a flag on the listing: it is the one thing here that loses
+// something, and DELETE /api/tokens/{id} could never mean it — an id is twelve hex characters,
+// so nothing can be named "revoked".
+func (s *Server) forgetRevokedTokens(w http.ResponseWriter, r *http.Request) {
+	n, err := s.store.ForgetRevokedTokens(r.Context(), principalOf(r).ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	s.log.Info("revoked tokens forgotten", "principal", principalOf(r).ID, "count", n)
+	writeJSON(w, http.StatusOK, map[string]any{"forgotten": n})
+}
+
 // bearer is the presented credential, from the header or from ?token= for a nonced value.
 //
 // A raw token is header-only; a nonced one is also accepted in the URL, and that asymmetry is

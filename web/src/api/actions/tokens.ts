@@ -20,3 +20,7 @@ export const patchTokensById = (id: string, body: { scope: string }) =>
 
 export const deleteTokensById = (id: string) =>
   request<void>(`/api/tokens/${id}`, { method: "DELETE" });
+
+/** Drops the revoked rows out of the listing, and says how many went. */
+export const deleteTokensRevoked = () =>
+  request<{ forgotten: number }>("/api/tokens/revoked", { method: "DELETE" });
