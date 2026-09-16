@@ -9,6 +9,7 @@
     "lint": "oxlint src",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
+    "favicon": "node scripts/favicon.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

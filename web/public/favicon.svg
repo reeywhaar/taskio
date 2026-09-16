@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="taskio">
+  <!--
+    Two rectangles rather than a <text> T: a favicon that names a font is a favicon drawn
+    differently on every machine, and at 16px the difference is the whole mark.
+  -->
+  <rect width="32" height="32" rx="7" fill="#fff7f0"/>
+  <g fill="#ef6500">
+    <rect x="6" y="7" width="20" height="6" rx="1"/>
+    <rect x="13" y="7" width="6" height="18" rx="1"/>
+  </g>
+</svg>

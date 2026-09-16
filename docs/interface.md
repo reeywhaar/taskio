@@ -104,6 +104,17 @@ for the plate makes the border invisible. They are read at two weights — 1.5px
 and 1px for a structural hairline — and the colour is pitched for the thicker one, which is
 what somebody types into.
 
+## The mark is two rectangles, not a letter
+
+The favicon is a brand-coloured T on a pale tile, drawn as two rectangles rather than as
+`<text>`. A favicon that names a font is a favicon drawn differently on every machine, and at
+16px the difference is the whole mark.
+
+`favicon.svg` is what browsers use. `favicon.ico` is there because Safari and anything older
+ask for `/favicon.ico` by name, and without one that request reaches the SPA and is answered
+with a redirect to the sign-in page — an HTML document where an icon was expected. It is
+generated from the same geometry by `npm run favicon`, so the two cannot drift.
+
 ## A card is clicked, not its title
 
 The whole card opens the task. The title is still a real button, so the keyboard and a screen

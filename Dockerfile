@@ -10,6 +10,7 @@ RUN npm ci
 COPY web/tsconfig.json web/vite.config.ts web/vitest.config.ts ./
 # Each entry named: an allowlist cannot accidentally admit web/node_modules or a local data/.
 COPY web/index.html web/login.html web/admin.html ./
+COPY web/public ./public
 COPY web/src ./src
 COPY web/scripts ./scripts
 # docs/ is a build input, because the page an agent reads is rendered from it.
@@ -18,7 +19,8 @@ RUN npm run build
 # An empty bundle is otherwise invisible until somebody loads the page and gets the
 # placeholder, which looks like a server problem rather than a build one.
 RUN test -s dist/index.html && test -s dist/login.html && test -s dist/admin.html \
- && test -s dist/docs.html && test -s dist/docs.md
+ && test -s dist/docs.html && test -s dist/docs.md \
+ && test -s dist/favicon.svg && test -s dist/favicon.ico
 
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 WORKDIR /src
