@@ -66,7 +66,7 @@ func TestOnlyMeaningfulWritesCountAsChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := st.CreateTask(ctx, p.ID, nil, "Fix the tap", "It drips.", nil)
+	task, err := st.CreateTask(ctx, p.ID, nil, store.TaskNew{Title: "Fix the tap", Description: "It drips."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestTheArchiveIsAConsistentDatabase(t *testing.T) {
 	}
 	ctx := context.Background()
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", store.RoleUser)
-	st.CreateTask(ctx, p.ID, nil, "Fix the tap", "", nil)
+	st.CreateTask(ctx, p.ID, nil, store.TaskNew{Title: "Fix the tap", Description: ""})
 
 	restored := t.TempDir()
 	if err := st.SnapshotTo(ctx, restored+"/"+store.FileName); err != nil {

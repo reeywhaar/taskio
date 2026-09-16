@@ -18,15 +18,15 @@ func TestSweepsKeepWhatIsStillWanted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recent, err := st.CreateTask(ctx, p.ID, nil, "Done yesterday", "", nil)
+	recent, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Done yesterday", Description: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
-	old, err := st.CreateTask(ctx, p.ID, nil, "Done long ago", "", nil)
+	old, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Done long ago", Description: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
-	open, err := st.CreateTask(ctx, p.ID, nil, "Still open", "", nil)
+	open, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Still open", Description: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestATaskJustInsideTheWindowSurvives(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
-	task, _ := st.CreateTask(ctx, p.ID, nil, "Done recently", "", nil)
+	task, _ := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Done recently", Description: ""})
 	st.SetDone(ctx, p.ID, task.ID, true)
 
 	now = now.Add(DoneRetention - time.Hour)
@@ -81,7 +81,7 @@ func TestReopeningATaskSavesItFromTheSweep(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
-	task, _ := st.CreateTask(ctx, p.ID, nil, "Finished then not", "", nil)
+	task, _ := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Finished then not", Description: ""})
 	st.SetDone(ctx, p.ID, task.ID, true)
 
 	now = now.Add(DoneRetention + time.Hour)
@@ -153,10 +153,10 @@ func TestDryRunCountsWhatASweepWouldTake(t *testing.T) {
 
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
 	for i := 0; i < 3; i++ {
-		task, _ := st.CreateTask(ctx, p.ID, nil, "Finished", "", nil)
+		task, _ := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Finished", Description: ""})
 		st.SetDone(ctx, p.ID, task.ID, true)
 	}
-	st.CreateTask(ctx, p.ID, nil, "Still open", "", nil)
+	st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Still open", Description: ""})
 	now = now.Add(DoneRetention + time.Hour)
 
 	counts, err := st.WouldSweep(ctx)

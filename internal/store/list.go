@@ -27,15 +27,22 @@ const (
 // It carries which ordering it belongs to, so one taken from the done list and replayed against
 // the live one is refused rather than walking the wrong sequence. The tiebreak is seq — the
 // internal key — because it is monotonic where the public id is not.
+//
+// Keys is one value per sort column, in the order they sort. The live list sorts on three and
+// the done list on one, and an ordering's name is what says how many to expect.
 type Cursor struct {
 	Order string
-	Key   int64
+	Keys  []int64
 	Seq   int64
 }
 
 func (c *Cursor) String() string {
-	return base64.RawURLEncoding.EncodeToString(
-		[]byte(c.Order + "." + strconv.FormatInt(c.Key, 10) + "." + strconv.FormatInt(c.Seq, 10)))
+	parts := []string{c.Order}
+	for _, k := range c.Keys {
+		parts = append(parts, strconv.FormatInt(k, 10))
+	}
+	parts = append(parts, strconv.FormatInt(c.Seq, 10))
+	return base64.RawURLEncoding.EncodeToString([]byte(strings.Join(parts, ".")))
 }
 
 // ParseCursor reads one back. Opaque by contract, so anything that does not decode is refused.
@@ -45,15 +52,20 @@ func ParseCursor(s string) (*Cursor, error) {
 		return nil, Invalid("That cursor is not one this gave out.")
 	}
 	parts := strings.Split(string(raw), ".")
-	if len(parts) != 3 {
+	if len(parts) < 3 {
 		return nil, Invalid("That cursor is not one this gave out.")
 	}
-	key, err1 := strconv.ParseInt(parts[1], 10, 64)
-	seq, err2 := strconv.ParseInt(parts[2], 10, 64)
-	if err1 != nil || err2 != nil {
-		return nil, Invalid("That cursor is not one this gave out.")
+	out := &Cursor{Order: parts[0]}
+	for _, raw := range parts[1:] {
+		n, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil, Invalid("That cursor is not one this gave out.")
+		}
+		out.Keys = append(out.Keys, n)
 	}
-	return &Cursor{Order: parts[0], Key: key, Seq: seq}, nil
+	out.Seq = out.Keys[len(out.Keys)-1]
+	out.Keys = out.Keys[:len(out.Keys)-1]
+	return out, nil
 }
 
 // TaskPage is what a list answers with.
@@ -63,15 +75,17 @@ type TaskPage struct {
 	Next  *Cursor
 }
 
-// orderOf is which key a status sorts by.
+// orderOf is which keys a status sorts by, outermost first.
 //
 // A finished list is a record of what happened, so the useful order is the order things were
-// finished: a task written in March and done yesterday belongs at the top.
-func orderOf(status string) (column, name string) {
+// finished: a task written in March and done yesterday belongs at the top. Pinning and priority
+// are about what to do next, which a finished task no longer has an answer to — so they order
+// the live list and leave the record alone.
+func orderOf(status string) (columns []string, name string) {
 	if status == StatusDone {
-		return "done_at", "done"
+		return []string{"done_at"}, "done"
 	}
-	return "created_at", "live"
+	return []string{"pinned", "priority", "created_at"}, "live"
 }
 
 // ListTasks answers a query.
@@ -95,6 +109,10 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 	default:
 		return nil, Invalid("status is todo, done or all.")
 	}
+	if q.Pinned != nil {
+		where += " AND tasks.pinned = ?"
+		args = append(args, boolInt(*q.Pinned))
+	}
 
 	limit := q.Limit
 	if limit <= 0 {
@@ -108,13 +126,19 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 		return s.searchTasks(ctx, principalID, where, args, term, limit)
 	}
 
-	column, order := orderOf(q.Status)
+	columns, order := orderOf(q.Status)
 	if q.Cursor != nil {
-		if q.Cursor.Order != order {
+		if q.Cursor.Order != order || len(q.Cursor.Keys) != len(columns) {
 			return nil, Invalid("That cursor belongs to a different ordering. Start the list again.")
 		}
-		where += fmt.Sprintf(" AND (tasks.%s, tasks.seq) < (?, ?)", column)
-		args = append(args, q.Cursor.Key, q.Cursor.Seq)
+		// One row-value comparison rather than the unfolded OR chain, which is where an
+		// off-by-one in the tiebreak hides.
+		where += " AND (tasks." + strings.Join(columns, ", tasks.") + ", tasks.seq) < (" +
+			strings.Repeat("?, ", len(columns)) + "?)"
+		for _, k := range q.Cursor.Keys {
+			args = append(args, k)
+		}
+		args = append(args, q.Cursor.Seq)
 	}
 
 	page := &TaskPage{}
@@ -123,10 +147,13 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 		return nil, err
 	}
 
+	orderBy := ""
+	for _, c := range columns {
+		orderBy += "tasks." + c + " DESC, "
+	}
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT seq, id, principal_id, title, description, created_at, updated_at, done_at
-		   FROM tasks WHERE `+where+
-			fmt.Sprintf(` ORDER BY tasks.%s DESC, tasks.seq DESC LIMIT ?`, column),
+		`SELECT `+taskColumns+` FROM tasks WHERE `+where+
+			` ORDER BY `+orderBy+`tasks.seq DESC LIMIT ?`,
 		append(args, limit+1)...)
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
@@ -139,11 +166,7 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 	if len(page.Tasks) > limit {
 		last := page.Tasks[limit-1]
 		page.Tasks = page.Tasks[:limit]
-		key := last.CreatedAt
-		if order == "done" && last.DoneAt != nil {
-			key = *last.DoneAt
-		}
-		page.Next = &Cursor{Order: order, Key: unix(key), Seq: last.Seq}
+		page.Next = &Cursor{Order: order, Keys: cursorKeys(columns, last), Seq: last.Seq}
 	}
 	return page, nil
 }
@@ -214,6 +237,38 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 }
 
 // scanTasks reads rows and attaches each task's tags.
+// taskColumns is the row every read of a task selects, in the order scanTasks reads it.
+const taskColumns = "seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at"
+
+// cursorKeys reads the sort values off the last row of a page, in the order they sort.
+func cursorKeys(columns []string, t *Task) []int64 {
+	keys := make([]int64, 0, len(columns))
+	for _, c := range columns {
+		switch c {
+		case "pinned":
+			keys = append(keys, boolInt(t.Pinned))
+		case "priority":
+			keys = append(keys, int64(t.Priority))
+		case "created_at":
+			keys = append(keys, unix(t.CreatedAt))
+		case "done_at":
+			if t.DoneAt != nil {
+				keys = append(keys, unix(*t.DoneAt))
+			} else {
+				keys = append(keys, 0)
+			}
+		}
+	}
+	return keys
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) {
 	defer rows.Close()
 	out := []*Task{}
@@ -224,7 +279,7 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 			done             sql.NullInt64
 		)
 		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&created, &updated, &done); err != nil {
+			&t.Priority, &t.Pinned, &created, &updated, &done); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
 		t.CreatedAt = time.Unix(created, 0).UTC()
@@ -264,9 +319,10 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 		done             any
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, created_at, updated_at, done_at
+		`SELECT seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at
 		   FROM tasks WHERE seq = ?`, seq).
-		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description, &created, &updated, &done)
+		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
+			&t.Priority, &t.Pinned, &created, &updated, &done)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)
 	}

@@ -16,6 +16,8 @@ type taskBody struct {
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
 	Status      string   `json:"status"`
+	Priority    int      `json:"priority"`
+	Pinned      bool     `json:"pinned"`
 	CreatedAt   int64    `json:"created_at"`
 	UpdatedAt   int64    `json:"updated_at"`
 	DoneAt      *int64   `json:"done_at"`
@@ -28,6 +30,8 @@ func renderTask(t *store.Task) taskBody {
 		Description: t.Description,
 		Tags:        t.Tags,
 		Status:      t.Status(),
+		Priority:    t.Priority,
+		Pinned:      t.Pinned,
 		CreatedAt:   t.CreatedAt.Unix(),
 		UpdatedAt:   t.UpdatedAt.Unix(),
 	}
@@ -66,6 +70,16 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := store.TaskQuery{Filter: parsed, Status: q.Get("status")}
+	// A property rather than a status: a pinned task is still a todo, and the two questions
+	// compose — pinned=true&status=done is the pinned things already finished.
+	if raw := q.Get("pinned"); raw != "" {
+		want, err := strconv.ParseBool(raw)
+		if err != nil {
+			refuse(w, http.StatusBadRequest, CodeInvalid, "pinned is true or false.")
+			return
+		}
+		query.Pinned = &want
+	}
 	if raw := q.Get("limit"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 1 {
@@ -108,6 +122,8 @@ type createTaskRequest struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
+	Priority    int      `json:"priority"`
+	Pinned      bool     `json:"pinned"`
 }
 
 // createTask writes one. An unknown slug is accepted: writing a word onto a task is how a tag
@@ -121,7 +137,13 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	// tags at all still comes back tagged and cannot fail on scope.
 	tags := append(scopeTags(r), req.Tags...)
 
-	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, scopeTags(r), req.Title, req.Description, tags)
+	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, scopeTags(r), store.TaskNew{
+		Title:       req.Title,
+		Description: req.Description,
+		Tags:        tags,
+		Priority:    req.Priority,
+		Pinned:      req.Pinned,
+	})
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -182,6 +204,8 @@ type patchTaskRequest struct {
 	Title       *string   `json:"title"`
 	Description *string   `json:"description"`
 	Tags        *[]string `json:"tags"`
+	Priority    *int      `json:"priority"`
+	Pinned      *bool     `json:"pinned"`
 }
 
 // patchTask changes wording and tags. Absent leaves a field alone and empty clears it.
@@ -206,6 +230,8 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 		Title:       req.Title,
 		Description: req.Description,
 		Tags:        req.Tags,
+		Priority:    req.Priority,
+		Pinned:      req.Pinned,
 	})
 	if err != nil {
 		s.fail(w, r, err)

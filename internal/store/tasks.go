@@ -37,6 +37,8 @@ type Task struct {
 	Title       string
 	Description string
 	Tags        []string
+	Priority    int
+	Pinned      bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DoneAt      *time.Time
@@ -55,12 +57,28 @@ func (t *Task) Status() string {
 type TaskQuery struct {
 	Filter *filter.Node
 	Status string
+	// Pinned narrows to pinned or unpinned when set; unset asks about neither.
+	Pinned *bool
 	Limit  int
 	Cursor *Cursor
 }
 
 // CreateTask writes one, with its tags, in one transaction.
-func (s *Store) CreateTask(ctx context.Context, principalID string, scope []string, title, description string, tags []string) (*Task, error) {
+// TaskNew is what a task is written with.
+//
+// A struct rather than a row of arguments: the fields are all optional but the title, and
+// named at the call site they cannot be handed over in the wrong order or read as a bare
+// literal that means nothing until you open this file.
+type TaskNew struct {
+	Title       string
+	Description string
+	Tags        []string
+	Priority    int
+	Pinned      bool
+}
+
+func (s *Store) CreateTask(ctx context.Context, principalID string, scope []string, in TaskNew) (*Task, error) {
+	title, description, tags := in.Title, in.Description, in.Tags
 	title, err := validTitle(title)
 	if err != nil {
 		return nil, err
@@ -90,6 +108,8 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 		Title:       title,
 		Description: description,
 		Tags:        tags,
+		Priority:    in.Priority,
+		Pinned:      in.Pinned,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -105,9 +125,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, title, description, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, title, description, unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, title, description, priority, pinned, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, title, description, in.Priority, in.Pinned, unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -136,6 +156,8 @@ type TaskPatch struct {
 	Title       *string
 	Description *string
 	Tags        *[]string
+	Priority    *int
+	Pinned      *bool
 }
 
 // UpdateTask applies a patch and reports the task as it now stands.
@@ -177,18 +199,27 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 		description = s.normalizeMentions(ctx, principalID, scope, description)
 	}
 
+	priority := task.Priority
+	if patch.Priority != nil {
+		priority = *patch.Priority
+	}
+	pinned := task.Pinned
+	if patch.Pinned != nil {
+		pinned = *patch.Pinned
+	}
+
 	moved := false
 	now := s.Now()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE tasks SET title = ?, description = ?, updated_at = ?
-		  WHERE seq = ? AND (title <> ? OR description <> ?)`,
-		title, description, unix(now), task.Seq, title, description)
+		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?, updated_at = ?
+		  WHERE seq = ? AND (title <> ? OR description <> ? OR priority <> ? OR pinned <> ?)`,
+		title, description, priority, pinned, unix(now), task.Seq, title, description, priority, pinned)
 	if err != nil {
 		return nil, fmt.Errorf("update task: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		moved = true
-		task.Title, task.Description, task.UpdatedAt = title, description, now
+		task.Title, task.Description, task.Priority, task.Pinned, task.UpdatedAt = title, description, priority, pinned, now
 		// Both joins are rebuilt from the saved text, so neither can drift from the words.
 		if err := syncContent(ctx, tx, task.Seq, principalID, scope, title, description); err != nil {
 			return nil, err
@@ -340,9 +371,10 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 		done             sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, created_at, updated_at, done_at
+		`SELECT seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at
 		   FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
-		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description, &created, &updated, &done)
+		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
+			&t.Priority, &t.Pinned, &created, &updated, &done)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not
 		// the caller's business either way.

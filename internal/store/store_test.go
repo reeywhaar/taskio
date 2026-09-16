@@ -246,7 +246,7 @@ func TestCloseEmptiesTheWriteAheadLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 50; i++ {
-		if _, err := st.CreateTask(ctx, p.ID, nil, "Fix the tap", strings.Repeat("x", 4096), nil); err != nil {
+		if _, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Fix the tap", Description: strings.Repeat("x", 4096)}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -139,6 +139,7 @@ than applying eleven of twelve changes. At most 500 ids.
 | `tags` | — | A filter, above |
 | `q` | — | Search. Forgiving about the title, exact about the description |
 | `status` | `todo` | `todo`, `done` or `all` |
+| `pinned` | — | `true` or `false`. Unset asks about neither |
 | `limit` | `1000` | 1 to 1000. The default is the maximum |
 | `cursor` | — | From a previous response's `next_cursor` |
 
@@ -146,6 +147,7 @@ than applying eleven of twelve changes. At most 500 ids.
 {
   "tasks": [ { "id": "8qw4tz9k", "title": "Fix the tap", "description": "It drips.",
                "tags": ["home","repair"], "status": "todo",
+               "priority": 0, "pinned": false,
                "created_at": 1789343452, "updated_at": 1789343452, "done_at": null } ],
   "total": 1
 }
@@ -157,13 +159,37 @@ summarise the wrong list.
 `total` is how many match the filter, before `limit`. `next_cursor` is present only when there
 is another page — a search never has one, because results are ranked.
 
-The done list is ordered by when things were finished; every other list by when they were
-written.
+The done list is ordered by when things were finished. Every other list is ordered **pinned
+first, then by `priority` descending, then by when they were written** — so a list read top to
+bottom is a list in the order somebody meant to work through it.
+
+### Priority and pinning
+
+Both say what to do next, and they are separate on purpose: a pin is where somebody put a task
+and a priority is how much it matters, so lowering a number does not unpin anything.
+
+| field | | |
+| --- | --- | --- |
+| `priority` | any integer, `0` by default | Higher sorts higher. Negative sorts below the unset ones |
+| `pinned` | `true` or `false` | Sorts above every unpinned task, whatever their priority |
+
+**Pinning is a property, not a status.** A pinned task is still a todo and still comes back from
+`status=todo`; `?pinned=true` narrows to them, and the two compose — `?pinned=true&status=done`
+is the pinned things already finished.
+
+Neither orders the done list. They are about what to do next, which a finished task no longer
+has an answer to, so the record of what happened stays in the order it happened.
 
 ### Writing
 
-`POST` needs only a title. `PATCH` takes pointers: **an absent field is left alone, an empty one
-is cleared**, and `tags` replaces the whole set.
+`POST` needs only a title, and takes `description`, `tags`, `priority` and `pinned` in the same
+call. `PATCH` takes pointers: **an absent field is left alone, an empty one is cleared**, and
+`tags` replaces the whole set.
+
+```sh
+curl -X PATCH -H "Authorization: Bearer tk_…" -H "Content-Type: application/json" \
+  -d '{"priority": 5, "pinned": true}' "$TASKIO/api/tasks/8qw4tz9k"
+```
 
 Marking a task done twice is a success and does not move `done_at`.
 
