@@ -77,7 +77,8 @@ The number is drawn only when it is not zero. A nought on every row is a column 
 says nothing, and the capsule is there to be noticed.
 
 Both sit in the left column, under the id, where the row is already as wide as eight
-characters and nothing else is using the room. The pin appears on hover when it is not set — it
+characters and nothing else is using the room. The number comes first: an unpinned row still
+spends the pin's width, so behind it the number would sit off the left edge the id sets. The pin appears on hover when it is not set — it
 is a thing you do to a task in passing, and burying it in the editor would mean opening a task
 to say it matters.
 

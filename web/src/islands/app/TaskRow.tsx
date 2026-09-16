@@ -70,8 +70,20 @@ export function TaskRow({
         </span>
 
         {/* Under the id, where the column is already as wide as eight characters and nothing
-            else is using the room. */}
+            else is using the room. The number leads: an unpinned row still spends the pin's
+            width, and behind it the number would sit off the left edge the id sets. */}
         <span className="flex items-center gap-1">
+          {/* Only when it has one. A zero on every row is a column of noughts that says
+              nothing, and the number is here to be noticed. */}
+          {task.priority !== 0 ? (
+            <span
+              className="rounded-full bg-brand px-1.5 py-0.5 text-xs font-medium tabular-nums text-brand-ink"
+              title={`Priority ${task.priority}`}
+            >
+              {task.priority}
+            </span>
+          ) : null}
+
           <button
             type="button"
             aria-label={
@@ -87,17 +99,6 @@ export function TaskRow({
           >
             <PinIcon />
           </button>
-
-          {/* Only when it has one. A zero on every row is a column of noughts that says
-              nothing, and the number is here to be noticed. */}
-          {task.priority !== 0 ? (
-            <span
-              className="rounded-full bg-brand px-1.5 py-0.5 text-xs font-medium tabular-nums text-brand-ink"
-              title={`Priority ${task.priority}`}
-            >
-              {task.priority}
-            </span>
-          ) : null}
         </span>
       </span>
 
