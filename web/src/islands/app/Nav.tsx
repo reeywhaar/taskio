@@ -156,7 +156,7 @@ export function Nav({
         <span className="font-semibold">taskio</span>
       </div>
 
-      <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex">
+      <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex lg:w-60 xl:w-72">
         <div className="flex items-center gap-2 px-4 py-3 font-semibold">
           <Mark colour={colour} />
           taskio
