@@ -49,7 +49,7 @@ export function Swatches({
   const custom = value !== "" && !COLOURS.includes(value);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       {none ? (
         <button
           type="button"
@@ -57,7 +57,7 @@ export function Swatches({
           title={none}
           aria-pressed={value === ""}
           onClick={() => onChange("")}
-          className={`size-7 rounded-md border-[1.5px] border-dashed border-line ring-offset-2 ring-offset-surface ${
+          className={`size-5 rounded border-[1.5px] border-dashed border-line ring-offset-2 ring-offset-surface ${
             value === "" ? "ring-2 ring-fg" : ""
           }`}
         />
@@ -75,7 +75,7 @@ export function Swatches({
             aria-label={!none && swatch === BRAND ? "The brand colour" : swatch}
             aria-pressed={on}
             onClick={() => onChange(held)}
-            className={`size-7 rounded-md ring-offset-2 ring-offset-surface ${
+            className={`size-5 rounded ring-offset-2 ring-offset-surface ${
               on ? "ring-2 ring-fg" : ""
             }`}
             style={{ background: swatch }}
@@ -87,12 +87,12 @@ export function Swatches({
           than wearing a wheel that is a picture of the idea of colour. Two swatches of the same
           colour would otherwise be ambiguous — the icon is what tells them apart. */}
       <label
-        className={`relative flex size-7 cursor-pointer items-center justify-center rounded-md ring-offset-2 ring-offset-surface ${
+        className={`relative flex size-5 cursor-pointer items-center justify-center rounded ring-offset-2 ring-offset-surface ${
           value ? "" : "border-[1.5px] border-line"
         } ${custom ? "ring-2 ring-fg" : ""}`}
         style={value ? { background: value, color: ink(value) } : undefined}
       >
-        <DropperIcon className="pointer-events-none text-base" />
+        <DropperIcon className="pointer-events-none text-xs" />
         <input
           type="color"
           aria-label="Another colour"
