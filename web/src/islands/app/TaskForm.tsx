@@ -67,7 +67,7 @@ export function TaskForm({
       {/* Side by side, because the space beside a 24-wide number field was empty and a row of
           swatches is the shape that fits it. They are unrelated: one orders the list and the
           other means whatever the person who set it decided. */}
-      <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <Field
           label="Priority"
           hint="Higher sorts higher. A pin beats any number."
@@ -88,12 +88,6 @@ export function TaskForm({
             value={draft.color}
             onChange={(color) => set({ color })}
             none="No color"
-            preview={(picked) => (
-              <span
-                className="flex h-9 w-28 items-center rounded-lg border-l-4 bg-fill"
-                style={{ borderLeftColor: picked }}
-              />
-            )}
           />
         </Caption>
       </div>

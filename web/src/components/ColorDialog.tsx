@@ -1,14 +1,10 @@
-import {
-  useEffect,
-  useState,
-  type PointerEvent as Press,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type PointerEvent as Press } from "react";
 
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { TextField } from "@app/components/TextField";
 import { hexToHsv, hsvToHex, readHex } from "@app/components/color";
+import { markURI } from "@app/mark";
 
 /** The spectrum, as a strip. Six stops is the whole wheel; the browser fills the rest. */
 const HUES =
@@ -34,14 +30,11 @@ export function ColorDialog({
   open,
   value,
   onClose,
-  preview,
 }: {
   open: boolean;
   /** #rrggbb, or empty for a starting point rather than a choice. */
   value: string;
   onClose: (color?: string) => void;
-  /** Where the caller shows what wearing it looks like. */
-  preview?: (color: string) => ReactNode;
 }) {
   const [hsv, setHsv] = useState(() => hexToHsv(value || "#ef6500"));
   const [typed, setTyped] = useState("");
@@ -83,7 +76,9 @@ export function ColorDialog({
       title="Pick a color"
       footer={
         <>
-          {preview ? preview(hex) : null}
+          {/* The mark wearing it, which is a thing rather than a square: a color is easier to
+              judge on something with edges and a ground than on its own. */}
+          <img src={markURI(hex)} alt="" className="size-9 rounded-[5px]" />
           <span className="flex-1" />
           <Button variant="solid" onClick={() => onClose(hex)}>
             Save

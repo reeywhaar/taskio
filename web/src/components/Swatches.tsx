@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { ColorDialog } from "@app/components/ColorDialog";
 import { DropperIcon } from "@app/components/icons/Icon";
@@ -42,15 +42,12 @@ export function Swatches({
   value,
   onChange,
   none,
-  preview,
 }: {
   /** #rrggbb, or empty. */
   value: string;
   onChange: (color: string) => void;
   /** What an empty value is called, where it is a choice rather than the brand. */
   none?: string;
-  /** What wearing it looks like, drawn in the picker while somebody is choosing. */
-  preview?: (color: string) => ReactNode;
 }) {
   const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
@@ -109,7 +106,6 @@ export function Swatches({
       <ColorDialog
         open={picking}
         value={value || BRAND}
-        preview={preview}
         onClose={(picked) => {
           setPicking(false);
           if (picked) onChange(picked);
