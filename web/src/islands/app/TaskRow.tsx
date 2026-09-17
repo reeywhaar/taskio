@@ -111,7 +111,7 @@ export function TaskRow({
           <span
             className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
               task.priority === 0
-                ? "bg-line text-muted opacity-0 group-hover:opacity-100"
+                ? "bg-line text-muted opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
                 : "bg-brand text-brand-ink"
             }`}
             title={`Priority ${task.priority}`}
@@ -129,7 +129,7 @@ export function TaskRow({
             className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
               task.pinned
                 ? "text-brand"
-                : "text-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                : "text-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
             }`}
           >
             <PinIcon />
@@ -202,7 +202,11 @@ export function TaskRow({
           e.stopPropagation();
           onToggleDone?.(task);
         }}
-        className={`flex h-6 shrink-0 items-center rounded-md px-1.5 text-lg hover:bg-line ${
+        // Drawn on the row that is being pointed at rather than on all ninety of them: a
+        // column of marks down a list is a column of marks. A finger has no hover to wait for,
+        // so under one it is simply there — which is the same rule as the pin above, read from
+        // the other end.
+        className={`flex h-6 shrink-0 items-center rounded-md px-1.5 text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line ${
           done ? "text-brand" : "text-muted hover:text-fg"
         }`}
       >

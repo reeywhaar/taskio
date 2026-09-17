@@ -112,6 +112,19 @@ The arrangement belongs to the account and is stored per slug, so a tag that goe
 comes back is where it was left. Tags nobody has dragged sort after the ones somebody has, so a
 new tag arrives at the end rather than in the middle of an arrangement.
 
+## A control that waits for a pointer is a control a finger does not have
+
+The pin on a row waited for hover, which on a phone never comes: the only way to pin was to open
+the task. The mark for finishing one did the opposite — it was drawn on every row of the list,
+which is a column of marks down the page.
+
+So both follow one rule, read from opposite ends. Where there is a pointer, a row's controls
+appear on the row being pointed at. Where there is no pointer, they are simply there. The same
+`pointer-coarse` test the rail's pencil and the code blocks' copy button already used.
+
+What is not a control follows it too: the nought a task of priority zero carries is a value
+nobody needs a column of, and it appears on the same terms.
+
 ## A colour means whatever the person who set it decided
 
 A task can carry one, and nothing in taskio reads it: nothing sorts, filters or groups by it, and
