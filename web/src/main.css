@@ -141,44 +141,27 @@
 }
 
 /*
- * The brand as a wash rather than a fill.
+ * The brand, worn plainly.
  *
- * A solid block of it on every lit thing — the segment, the pills, the one solid button — makes
- * a screen that is mostly shouting. A radial wash says the same thing at a tenth of the volume:
- * almost nothing under the label, gathering toward the rim so the shape has an edge.
+ * This was a radial wash of the brand for a while, pale in the middle and gathering to a rim,
+ * on the argument that a block of full-strength color on everything lit is a screen shouting.
+ * Having lived with both, the wash is the one that lost: at a strength low enough to be a wash
+ * it is a smudge, and at a strength high enough to be a color it is a fill with extra steps.
+ * So a lit thing wears the brand, and the ink on it is the ink named for the job.
  *
- * No sheen under it, which every other raised thing gets: the wash is half brand at its
- * strongest and an eighth of it in the middle, so a pale gradient beneath shows through and takes
- * the color out of the one element on the screen whose whole job is to carry it.
+ * The honest number: white on this orange measures 3.22:1, and 4.5 is the bar for text at the
+ * size these labels are. It is the trade this makes — the brand is the one thing on a screen of
+ * greys that says which application this is, and these are short labels on controls that are
+ * also shaped, positioned and lit. Dark has no such problem, where near-black on the pale indigo
+ * measures 6.32.
  *
- * Three stops rather than two. Two ramp fastest at the end, so the color arrives all at once at
- * the boundary and reads as a ring drawn around a pale hole; a middle stop spends most of the
- * radius getting there, and what is left at the edge is a rim rather than a line.
- *
- * The two percentages are radii, one per axis, and that is the whole reason this looked washed
- * out at strengths that should have been plenty: at 118% the ellipse reached well past the box,
- * the corners sat at six tenths of the ramp and the last stop was never drawn at all. At 70% the
- * corner is the rim exactly — the ellipse touches it — and everything up to it is the ramp.
- *
- * The label is ordinary text. White would be sitting on ground, since the middle of this is
- * mostly ground; the brand itself cannot be read on a wash of the brand at any strength worth
- * having — measured, it tops out near 4:1 against a pale orange, and 4.5 is the bar for text
- * this size. So the wash carries the color and the word stays legible, which is the trade the
- * whole idea was asking for.
- *
- * Half is where the rim stops, and the ink is what stops it. Dark is the tighter of the two
- * themes, because its brand is a pale indigo rising toward its pale text rather than away from
- * it: the foreground reads 5.1:1 on a rim of 50% and 4.2:1 on one of 62%, so the strength that
- * still looks like a color in light is also the last one that can be read in dark.
+ * No background-image here, so a raised thing keeps the sheen it already had and the color
+ * shades along with every other surface. Something wearing this and nothing else — the priority
+ * capsule — is flat, which is right: it is a label, not a control.
  */
 .wash {
-  background-image: radial-gradient(
-    70% 70% at 50% 50%,
-    color-mix(in oklab, var(--color-brand) 12%, transparent) 0%,
-    color-mix(in oklab, var(--color-brand) 28%, transparent) 55%,
-    color-mix(in oklab, var(--color-brand) 50%, transparent) 100%
-  );
-  color: var(--color-fg);
+  background-color: var(--color-brand);
+  color: var(--color-brand-ink);
 }
 
 :root {

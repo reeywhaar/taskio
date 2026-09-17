@@ -271,19 +271,20 @@ only thing dividing them now that the rail draws no line. A thing standing on th
 page's ground; a chip inside a card takes `fill`, because it cannot be the color of the thing it
 sits on.
 
-**The brand is a wash, not a fill.** A block of it on everything lit is a screen shouting, so what
-a lit thing wears is a radial wash of the brand — an eighth of it in the middle, half at the rim,
-three stops because two arrive at full strength exactly at the boundary and draw a ring around a
-pale hole. It is `color-mix` on the one `--color-brand`, so that value still controls all of it.
-The label on it is ordinary text: the brand cannot be read on a wash of the brand, which measured
-4.03 against a 4.5 bar at its best, where plain foreground is 6.70 at the strongest point of the
-wash as it now stands, and 5.63 on the same point in dark.
+**A lit thing wears the brand, plainly.** `wash` is the class, and it is a fill: the brand as its
+own color, with `brand-ink` on top. It was a radial gradient of the brand for a while — pale in
+the middle, gathering to a rim — on the argument that a block of full-strength color on
+everything lit is a screen shouting. Having lived with both, the gradient is the one that lost:
+weak enough to be a wash, it is a smudge; strong enough to be a color, it is a fill with extra
+steps.
 
-The two percentages in the gradient are radii, one per axis, and reading them as a size is how
-this came to look washed out at strengths that should have been plenty: the ellipse was drawn
-well past the box, so the corners sat at six tenths of the ramp and the last stop was never
-painted. The rim strength is only the strength somebody sees if the ellipse ends where the shape
-does.
+The honest number: white on the orange measures 3.22:1, against a 4.5 bar for text this size.
+That is the trade, made knowingly — the brand is the one thing on a screen of greys that says
+which application this is, and these are short labels on controls that are also shaped,
+positioned and lit. Dark does not have the problem: near-black on the pale indigo is 6.32. The
+class sets no `background-image`, so a raised thing keeps its sheen and the color shades with
+every other surface, and a flat one — the priority capsule — stays flat, which is right for a
+label that is not a control.
 
 **One rounding.** 6px for a control or a field, including the segmented control and the segment
 inside it; 8px for a card; 12px for a modal. A corner that depends on which pass restyled it is
