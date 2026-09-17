@@ -81,8 +81,8 @@ export function TaskRow({
       {task.color ? (
         <span
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-1"
-          style={{ background: task.color }}
+          className="absolute inset-y-0 left-0 w-1 bg-[image:var(--sheen)]"
+          style={{ backgroundColor: task.color }}
         />
       ) : null}
 
@@ -122,7 +122,7 @@ export function TaskRow({
             className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
               task.priority === 0
                 ? "bg-line text-muted opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
-                : "bg-brand text-brand-ink"
+                : "wash"
             }`}
             title={`Priority ${task.priority}`}
           >

@@ -253,6 +253,12 @@ of one color per side, so a theme has two values to change rather than twelve. T
 short: a long one reads as furniture hovering over the page instead of a page with things pressed
 into it.
 
+**A sheen across every raised thing**, running against the light: a little paler along the bottom
+and a breath of dark along the top. With the light rather than against it, the gradient and the
+shadow say the same thing twice and the shape flattens instead. It is `background-image`, so the
+color the element chose stays under it — and it is left off the brand wash, which is at most a
+third brand and would have the color washed out of it by a pale gradient beneath.
+
 **Two grounds, a hair apart.** The page is the lighter and the rail is the darker, and that is the
 only thing dividing them now that the rail draws no line. A thing standing on the page takes the
 page's ground; a chip inside a card takes `fill`, because it cannot be the color of the thing it

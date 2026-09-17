@@ -64,33 +64,6 @@
 }
 
 /*
- * The brand as a wash rather than a fill.
- *
- * A solid block of it on every lit thing — the segment, the pills, the one solid button — makes
- * a screen that is mostly shouting. A radial wash says the same thing at a tenth of the volume:
- * almost nothing under the label, gathering toward the rim so the shape has an edge.
- *
- * Three stops rather than two. Two ramp fastest at the end, so the color arrives all at once at
- * the boundary and reads as a ring drawn around a pale hole; a middle stop spends most of the
- * radius getting there, and what is left at the edge is a rim rather than a line.
- *
- * The label is ordinary text. White would be sitting on ground, since the middle of this is
- * mostly ground; the brand itself cannot be read on a wash of the brand at any strength worth
- * having — measured, it tops out near 4:1 against a pale orange, and 4.5 is the bar for text
- * this size. So the wash carries the color and the word stays legible, which is the trade the
- * whole idea was asking for.
- */
-.wash {
-  background: radial-gradient(
-    118% 118% at 50% 50%,
-    color-mix(in oklab, var(--color-brand) 5%, transparent) 0%,
-    color-mix(in oklab, var(--color-brand) 15%, transparent) 55%,
-    color-mix(in oklab, var(--color-brand) 30%, transparent) 100%
-  );
-  color: var(--color-fg);
-}
-
-/*
  * The two states a surface can be in, and the whole of the style.
  *
  * raised is lit from the top left and casts to the bottom right; sunken is the same light from
@@ -109,6 +82,15 @@
  * one color per side so a theme still has two values to change and not twelve.
  */
 .raised {
+  /*
+   * A sheen over whatever color the thing already has: paler along the bottom, a breath of dark
+   * along the top. Running against the light rather than with it is what separates a raised
+   * surface from the ground it matches — with it, the gradient and the shadow say the same thing
+   * twice and the shape flattens instead.
+   *
+   * background-image rather than background, so the color the element chose stays underneath.
+   */
+  background-image: var(--sheen);
   box-shadow:
     -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
     -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
@@ -149,9 +131,41 @@
     inset 2px 3px 6px color-mix(in srgb, var(--cast) 28%, transparent);
 }
 
+/*
+ * The brand as a wash rather than a fill.
+ *
+ * A solid block of it on every lit thing — the segment, the pills, the one solid button — makes
+ * a screen that is mostly shouting. A radial wash says the same thing at a tenth of the volume:
+ * almost nothing under the label, gathering toward the rim so the shape has an edge.
+ *
+ * No sheen under it, which every other raised thing gets: the wash is at most a third brand, so
+ * a pale gradient beneath shows through the other two thirds and takes the color out of the one
+ * element on the screen whose whole job is to carry it.
+ *
+ * Three stops rather than two. Two ramp fastest at the end, so the color arrives all at once at
+ * the boundary and reads as a ring drawn around a pale hole; a middle stop spends most of the
+ * radius getting there, and what is left at the edge is a rim rather than a line.
+ *
+ * The label is ordinary text. White would be sitting on ground, since the middle of this is
+ * mostly ground; the brand itself cannot be read on a wash of the brand at any strength worth
+ * having — measured, it tops out near 4:1 against a pale orange, and 4.5 is the bar for text
+ * this size. So the wash carries the color and the word stays legible, which is the trade the
+ * whole idea was asking for.
+ */
+.wash {
+  background-image: radial-gradient(
+    118% 118% at 50% 50%,
+    color-mix(in oklab, var(--color-brand) 5%, transparent) 0%,
+    color-mix(in oklab, var(--color-brand) 15%, transparent) 55%,
+    color-mix(in oklab, var(--color-brand) 30%, transparent) 100%
+  );
+  color: var(--color-fg);
+}
+
 :root {
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
+  --sheen: linear-gradient(0deg, rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02));
   /* Named once, because focus draws it again with a line on top. */
   --well:
     inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
@@ -168,6 +182,9 @@
        highlight is nearly gone and the shadow does most of the speaking. */
     --lit: rgb(255 255 255 / 0.03);
     --cast: rgb(0 0 0 / 0.38);
+    /* A dark ground has nothing to bounce, so the pale end is a hint and the dark end does the
+       separating. */
+    --sheen: linear-gradient(0deg, rgb(255 255 255 / 0.05), rgb(0 0 0 / 0.12));
   }
 }
 
