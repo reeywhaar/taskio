@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"taskio/internal/filter"
+	"taskio/internal/ids"
 	"taskio/internal/search"
 )
 
@@ -177,10 +178,20 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 // half-remembers and a description is prose they want a phrase out of, so the second is matched
 // exactly in SQL and unioned in. Tags go the same way — a slug contains the term or it does
 // not, and the box is the only place the word can be typed without knowing it is a tag.
+//
+// An id beats all of it. A search box is where a pasted id ends up — out of a transcript, a
+// commit message, a chat — and somebody who has typed eight characters of base32 is not looking
+// for a word that sounds like it. A prefix of four counts, as it does everywhere else an id is
+// accepted.
 func (s *Store) searchTasks(ctx context.Context, principalID, where string, args []any, term string, limit int) (*TaskPage, error) {
+	// A prefix of four or more, folded the way every other id is: pasted out of prose, an id
+	// arrives with its case and its punctuation. Anything that is not one leaves this empty,
+	// and nothing has an empty prefix.
+	named, _ := ids.NormalizeTask(strings.TrimSpace(term))
+
 	like := "%" + escapeLike(term) + "%"
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT seq, title, pinned, description LIKE ? ESCAPE '\',
+		`SELECT seq, id, title, pinned, description LIKE ? ESCAPE '\',
 		        EXISTS (SELECT 1 FROM task_tags
 		                 WHERE task_tags.task_seq = tasks.seq
 		                   AND task_tags.slug LIKE ? ESCAPE '\')
@@ -199,16 +210,20 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 	for rows.Next() {
 		var (
 			seq    int64
+			id     string
 			title  string
 			pinned bool
 			inNote bool
 			inTag  bool
 		)
-		if err := rows.Scan(&seq, &title, &pinned, &inNote, &inTag); err != nil {
+		if err := rows.Scan(&seq, &id, &title, &pinned, &inNote, &inTag); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		score, ok := search.Score(term, title)
+		if named != "" && strings.HasPrefix(id, named) {
+			score, ok = search.IDScore, true
+		}
 		if !ok && inTag {
 			score, ok = search.TagScore, true
 		}

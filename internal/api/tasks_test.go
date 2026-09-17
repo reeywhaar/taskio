@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -458,5 +460,46 @@ func TestRemovingATagLeavesTheTasks(t *testing.T) {
 	}
 	if got := len(c.list("?tags=repair")["tasks"].([]any)); got != 1 {
 		t.Error("removing one tag took the other")
+	}
+}
+
+// A search box is where a pasted id ends up — out of a transcript, a commit message, a chat.
+func TestSearchFindsATaskByItsId(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	c.task(`{"title":"Order the part"}`)
+
+	for _, query := range []string{id, id[:4], strings.ToUpper(id), id[:4] + "-" + id[4:]} {
+		got := titles(c.list("?q=" + url.QueryEscape(query)))
+		if len(got) != 1 || got[0] != "Fix the tap" {
+			t.Errorf("%q returned %v, want the task it names", query, got)
+		}
+	}
+}
+
+// Above every kind of word match: an id was not half-remembered, it was pasted.
+func TestAnIdBeatsATitle(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	// A title that contains the id as text, so both match and the ranking is what decides.
+	c.task(`{"title":"Ticket ` + id + ` from the old tracker"}`)
+
+	got := titles(c.list("?q=" + id))
+	if len(got) != 2 || got[0] != "Fix the tap" {
+		t.Errorf("searching an id returned %v, want the task it names first", got)
+	}
+}
+
+// Four characters is the shortest thing that names a task anywhere else, and a word shorter than
+// that is a word.
+func TestAShortWordIsNotAnIdPrefix(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+
+	if got := titles(c.list("?q=" + id[:3])); len(got) != 0 {
+		t.Errorf("three characters of an id returned %v, want nothing", got)
 	}
 }

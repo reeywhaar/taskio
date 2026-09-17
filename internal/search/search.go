@@ -17,6 +17,10 @@ const (
 	scoreSubsequence = 600
 	scoreTypo        = 500
 
+	// IDScore is what a match on the task's own id is worth: above everything, because an id is
+	// not a word somebody half-remembers. It was pasted, and it names one task.
+	IDScore = 2000
+
 	// TagScore is what a match on one of the task's tags is worth.
 	//
 	// Below every title match and above a description: a tag is a word somebody chose and wrote
