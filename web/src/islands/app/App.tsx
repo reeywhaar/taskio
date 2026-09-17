@@ -18,7 +18,7 @@ import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
 import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
-import { SearchIcon } from "@app/components/icons/Icon";
+import { CrossIcon, SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
 import { Nav } from "@app/islands/app/Nav";
 import { TagCloud } from "@app/islands/app/TagCloud";
@@ -33,6 +33,7 @@ import {
   setScroller,
   storedScroll,
   useLocation,
+  type Filters,
   type Location,
 } from "@app/islands/app/route";
 
@@ -199,7 +200,10 @@ function List({
   };
 
   const tasks = list.data?.tasks ?? [];
-  const filtered = filters.tags.length > 0 || filters.q !== "";
+  // Replaces rather than pushes, like the typing that filled it: clearing a five-letter query
+  // should not be a sixth entry to press back through.
+  const clearSearch = () =>
+    onReplace({ ...location, filters: { ...filters, q: "" } });
   // Showing one question's answer while another is in flight. A background refetch of the same
   // question is not this: the rows do not change, and a bar that blinks on every one of those
   // is noise rather than news.
@@ -263,7 +267,9 @@ function List({
           <TextField
             type="search"
             placeholder="Search"
-            className="w-full pl-9"
+            // The browser draws its own clear button inside a search field, in its own place and
+            // at its own size, and only on some of them. One of ours, everywhere.
+            className="w-full pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden"
             value={filters.q}
             // Replaces rather than pushes, so a five-letter query is one entry to press back
             // through rather than five.
@@ -273,7 +279,21 @@ function List({
                 filters: { ...filters, q: e.target.value },
               })
             }
+            // Escape is what a search field does everywhere, and half the browsers that draw
+            // their own clear button wire it up. It is a keystroke away from the caret, which
+            // is where the hand already is.
+            onKeyDown={(e) => e.key === "Escape" && clearSearch()}
           />
+          {filters.q ? (
+            <button
+              type="button"
+              aria-label="Clear the search"
+              onClick={clearSearch}
+              className="absolute right-2 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
+            >
+              <CrossIcon />
+            </button>
+          ) : null}
         </span>
 
         {/* Apart rather than adjacent: the segments choose which list this is, and Select begins
@@ -344,11 +364,10 @@ function List({
           aria-busy={stale}
         >
           {tasks.length === 0 && !stale ? (
-            // Two states, because they mean two different things: one is about the account and is
-            // true exactly once; the other is about the filter sitting above it.
-            <p className="mt-8 text-center text-sm text-muted">
-              {filtered ? "Nothing matched" : "No tasks yet"}
-            </p>
+            <Empty
+              filters={filters}
+              onClear={(next) => onGo({ ...location, filters: next })}
+            />
           ) : (
             <ul className="mt-4 flex flex-col gap-2">
               {tasks.map((task, i) => (
@@ -422,6 +441,62 @@ function List({
           onOpen={(id) => onGo({ ...location, route: { name: "task", id } })}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * An empty list, and why.
+ *
+ * "No tasks yet" under a filter is a sentence that is not true, and somebody reading it has to
+ * look back up at the bar to work out what they did — so the emptiness names what is narrowing
+ * the list and offers to undo exactly that, rather than a general reset that might clear
+ * something they meant to keep.
+ *
+ * Four of them, because they mean four different things: the account is empty, which is true
+ * once; the search matched nothing; the tags match nothing; or a view of the same list happens
+ * to have nothing in it, which is not a filter to clear.
+ */
+function Empty({
+  filters,
+  onClear,
+}: {
+  filters: Filters;
+  onClear: (next: Filters) => void;
+}) {
+  const searching = filters.q !== "";
+  const tagged = filters.tags.length > 0;
+
+  if (!searching && !tagged) {
+    return (
+      <p className="mt-8 text-center text-sm text-muted">
+        {filters.view === "pinned"
+          ? "Nothing is pinned."
+          : filters.view === "done"
+            ? "Nothing finished yet."
+            : "No tasks yet."}
+      </p>
+    );
+  }
+
+  // The label says what pressing it takes away, so nobody has to press it to find out.
+  const what = searching
+    ? tagged
+      ? "the search and the tags"
+      : "the search"
+    : "the tags";
+
+  return (
+    <div className="mt-8 flex flex-col items-center gap-3">
+      <p className="text-sm text-muted">
+        Nothing matched{" "}
+        {searching ? <b className="text-fg">{filters.q}</b> : null}
+        {searching && tagged ? " under " : null}
+        {tagged ? <b className="text-fg">{filters.tags.join(", ")}</b> : null}.
+      </p>
+      <Button onClick={() => onClear({ ...filters, q: "", tags: [] })}>
+        Clear {what}
+      </Button>
     </div>
   );
 }
