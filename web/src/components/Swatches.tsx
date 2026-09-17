@@ -100,7 +100,7 @@ export function Swatches({
         } ${custom ? "ring-2 ring-fg" : ""}`}
         style={value ? { background: value, color: ink(value) } : undefined}
       >
-        <DropperIcon className="text-xs" />
+        <DropperIcon className="text-sm" />
       </button>
 
       <ColorDialog

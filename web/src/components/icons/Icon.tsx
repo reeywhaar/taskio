@@ -72,11 +72,17 @@ export const PencilIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+/**
+ * Two closed shapes rather than three open strokes: this is read at 14px inside a 20px square,
+ * where three separate lines at a 2px stroke are three separate lines and not a pipette.
+ *
+ * The gap between the shaft and the bulb is what says which way round it is, and what keeps it
+ * from reading as a pencil.
+ */
 export const DropperIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
-    <path d="M4 20h3l9-9" />
-    <path d="M4 20v-3l9-9" />
-    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L17 9l-3-3 2.5-2.5Z" />
+    <path d="M3 21v-3l9-9 3 3-9 9H3Z" />
+    <circle cx="18" cy="6" r="3.5" />
   </Icon>
 );
 
