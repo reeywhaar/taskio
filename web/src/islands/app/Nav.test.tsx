@@ -28,9 +28,10 @@ const at = (tags: string[]): Location => ({
   filters: { tags, view: "todo", q: "" },
 });
 
+const rail = () => screen.getAllByRole("navigation")[0]!;
+
 const lit = () =>
-  screen
-    .getAllByRole("button")
+  [...rail().querySelectorAll("button")]
     .filter((b) => b.getAttribute("aria-current") === "page")
     .map((b) => b.textContent);
 

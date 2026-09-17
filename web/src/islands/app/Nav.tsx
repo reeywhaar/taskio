@@ -143,15 +143,30 @@ export function Nav({
         {items}
       </nav>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setOpen(false)}
-          />
-          <nav className="relative flex h-full w-56 flex-col bg-surface shadow-rail">
+      {/* Mounted whether or not it is open, because a sheet that is unmounted when shut has
+          nothing to animate on the way out — it would slide in and then vanish.
+
+          inert while shut rather than merely invisible: it is still in the page, and a rail
+          nobody can see is not a rail anybody should be able to tab into. */}
+      <div
+        className={`fixed inset-0 z-50 md:hidden ${open ? "" : "pointer-events-none"}`}
+        inert={!open}
+      >
+        <button
+          type="button"
+          aria-label="Close menu"
+          tabIndex={open ? 0 : -1}
+          className={`absolute inset-0 bg-black/50 transition-opacity duration-200 motion-reduce:transition-none ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setOpen(false)}
+        />
+        <div
+          className={`relative h-full w-56 transition-transform duration-200 ease-out motion-reduce:transition-none ${
+            open ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <nav className="flex h-full w-full flex-col bg-surface shadow-rail">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="flex items-center gap-2 font-semibold">
                 <Mark />
@@ -169,7 +184,7 @@ export function Nav({
             {items}
           </nav>
         </div>
-      ) : null}
+      </div>
 
       <GroupDialog editing={editing} onClose={() => setEditing(null)} />
     </>
