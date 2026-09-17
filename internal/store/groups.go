@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,13 +24,20 @@ type Group struct {
 	PrincipalID string
 	Name        string
 	Tags        []string
-	CreatedAt   time.Time
+	// Color is #rrggbb, or empty for the brand colour. What the tab wears while the group is
+	// the one being looked at, so two windows are two colours rather than two of the same icon.
+	Color     string
+	CreatedAt time.Time
 }
+
+// A colour is six hex digits and nothing else: it reaches a stylesheet and an SVG, and the
+// shortest way to be sure neither can be escaped out of is to accept one shape.
+var colorRE = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 // Groups lists an account's, oldest first, so adding one does not move the others.
 func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT id, name, created_at FROM groups
+		`SELECT id, name, color, created_at FROM groups
 		  WHERE principal_id = ? ORDER BY created_at, id`, principalID)
 	if err != nil {
 		return nil, fmt.Errorf("list groups: %w", err)
@@ -41,7 +49,7 @@ func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error
 	for rows.Next() {
 		g := &Group{PrincipalID: principalID, Tags: []string{}}
 		var created int64
-		if err := rows.Scan(&g.ID, &g.Name, &created); err != nil {
+		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &created); err != nil {
 			return nil, err
 		}
 		g.CreatedAt = time.Unix(created, 0).UTC()
@@ -78,8 +86,8 @@ func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error
 }
 
 // CreateGroup writes one, with its tags, in one transaction.
-func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags []string) (*Group, error) {
-	name, slugs, err := validGroup(name, tags)
+func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags []string, color string) (*Group, error) {
+	name, slugs, color, err := validGroup(name, tags, color)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +97,7 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 		PrincipalID: principalID,
 		Name:        name,
 		Tags:        slugs,
+		Color:       color,
 		CreatedAt:   s.Now(),
 	}
 	tx, err := s.writer.BeginTx(ctx, nil)
@@ -98,8 +107,8 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 	defer tx.Rollback()
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO groups (id, principal_id, name, created_at) VALUES (?, ?, ?, ?)`,
-		g.ID, principalID, g.Name, unix(g.CreatedAt)); err != nil {
+		`INSERT INTO groups (id, principal_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)`,
+		g.ID, principalID, g.Name, g.Color, unix(g.CreatedAt)); err != nil {
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 	if err := writeGroupTags(ctx, tx, g.ID, g.Tags); err != nil {
@@ -116,8 +125,8 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 //
 // Both at once because the dialog that edits one edits both, and a group whose name says work
 // and whose tags say home is a group somebody half-saved.
-func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, tags []string) (*Group, error) {
-	name, slugs, err := validGroup(name, tags)
+func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, tags []string, color string) (*Group, error) {
+	name, slugs, color, err := validGroup(name, tags, color)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +137,10 @@ func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, t
 	}
 	defer tx.Rollback()
 
-	g := &Group{ID: id, PrincipalID: principalID, Name: name, Tags: slugs}
+	g := &Group{ID: id, PrincipalID: principalID, Name: name, Tags: slugs, Color: color}
 	res, err := tx.ExecContext(ctx,
-		`UPDATE groups SET name = ? WHERE principal_id = ? AND id = ?`, name, principalID, id)
+		`UPDATE groups SET name = ?, color = ? WHERE principal_id = ? AND id = ?`,
+		name, color, principalID, id)
 	if err != nil {
 		return nil, fmt.Errorf("update group: %w", err)
 	}
@@ -185,24 +195,28 @@ func writeGroupTags(ctx context.Context, tx *sql.Tx, id string, slugs []string) 
 //
 // A group with no tags is refused: it would be the All group, which is not stored and cannot be
 // deleted, and a second one of those is a row that does nothing.
-func validGroup(name string, tags []string) (string, []string, error) {
+func validGroup(name string, tags []string, color string) (string, []string, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", nil, Invalid("A group needs a name.")
+		return "", nil, "", Invalid("A group needs a name.")
 	}
 	if len([]rune(name)) > GroupNameMax {
-		return "", nil, Invalid("That name is longer than %d characters.", GroupNameMax)
+		return "", nil, "", Invalid("That name is longer than %d characters.", GroupNameMax)
 	}
 	// Checked here as well as in validTags, which counts what fits on a task.
 	if len(tags) > TagsMax {
-		return "", nil, Invalid("That is more than %d tags in one group.", TagsMax)
+		return "", nil, "", Invalid("That is more than %d tags in one group.", TagsMax)
 	}
 	slugs, err := validTags(tags)
 	if err != nil {
-		return "", nil, err
+		return "", nil, "", err
 	}
 	if len(slugs) == 0 {
-		return "", nil, Invalid("A group needs at least one tag. Everything is already a group.")
+		return "", nil, "", Invalid("A group needs at least one tag. Everything is already a group.")
 	}
-	return name, slugs, nil
+	color = strings.ToLower(strings.TrimSpace(color))
+	if color != "" && !colorRE.MatchString(color) {
+		return "", nil, "", Invalid("A colour is six hex digits after a hash, like #ef6500.")
+	}
+	return name, slugs, color, nil
 }

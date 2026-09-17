@@ -7,10 +7,12 @@ import (
 )
 
 type groupBody struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Tags      []string `json:"tags"`
-	CreatedAt int64    `json:"created_at"`
+	ID   string   `json:"id"`
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
+	// Empty for the brand colour, which is what a group without one wears.
+	Color     string `json:"color"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 func renderGroup(g *store.Group) groupBody {
@@ -18,6 +20,7 @@ func renderGroup(g *store.Group) groupBody {
 		ID:        g.ID,
 		Name:      g.Name,
 		Tags:      g.Tags,
+		Color:     g.Color,
 		CreatedAt: g.CreatedAt.Unix(),
 	}
 }
@@ -41,8 +44,9 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 type groupRequest struct {
-	Name string   `json:"name"`
-	Tags []string `json:"tags"`
+	Name  string   `json:"name"`
+	Tags  []string `json:"tags"`
+	Color string   `json:"color"`
 }
 
 func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +54,7 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	g, err := s.store.CreateGroup(r.Context(), principalOf(r).ID, req.Name, req.Tags)
+	g, err := s.store.CreateGroup(r.Context(), principalOf(r).ID, req.Name, req.Tags, req.Color)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -64,7 +68,7 @@ func (s *Server) patchGroup(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	g, err := s.store.UpdateGroup(r.Context(), principalOf(r).ID, r.PathValue("id"), req.Name, req.Tags)
+	g, err := s.store.UpdateGroup(r.Context(), principalOf(r).ID, r.PathValue("id"), req.Name, req.Tags, req.Color)
 	if err != nil {
 		s.fail(w, r, err)
 		return

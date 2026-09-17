@@ -36,6 +36,8 @@ export type Group = {
   id: string;
   name: string;
   tags: string[];
+  /** #rrggbb, or empty for the brand colour. */
+  color: string;
   created_at: number;
 };
 

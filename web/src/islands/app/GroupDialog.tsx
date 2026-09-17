@@ -15,6 +15,25 @@ import { Dialog } from "@app/components/Dialog";
 import { Group as Caption } from "@app/components/Field";
 import { TextField } from "@app/components/TextField";
 import { TagCloud } from "@app/islands/app/TagCloud";
+import { BRAND, markURI } from "@app/mark";
+
+/**
+ * What a group may wear.
+ *
+ * A short list rather than a picker: the colour is worn by a 16px tile in a browser tab, where
+ * what matters is telling one window from another at a glance — eight that are obviously
+ * different do that, and sixteen million do not.
+ */
+const COLOURS = [
+  BRAND,
+  "#e11d48",
+  "#d97706",
+  "#15803d",
+  "#0d9488",
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+];
 
 /** Open on a group to change it, on "new" to write one, shut on null. */
 export type Editing = Group | "new" | null;
@@ -39,6 +58,7 @@ export function GroupDialog({
 
   const [name, setName] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
+  const [colour, setColour] = useState("");
   const [error, setError] = useState("");
 
   // Filled when it opens, not cleared when it closes: a dialog emptied on the way out shows the
@@ -47,6 +67,7 @@ export function GroupDialog({
     if (!editing) return;
     setName(group?.name ?? "");
     setChosen(group?.tags ?? []);
+    setColour(group?.color ?? "");
     setError("");
   }, [editing, group]);
 
@@ -59,7 +80,7 @@ export function GroupDialog({
 
   const save = useMutation({
     mutationFn: () => {
-      const body = { name: name.trim(), tags: chosen };
+      const body = { name: name.trim(), tags: chosen, color: colour };
       return group ? patchGroupsById(group.id, body) : postGroups(body);
     },
     onSuccess: done,
@@ -129,6 +150,38 @@ export function GroupDialog({
               )
             }
           />
+        </Caption>
+
+        <Caption
+          label="Colour"
+          hint="What the tab wears while this group is the one on screen."
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {COLOURS.map((swatch) => {
+              // The brand is stored as no colour at all, so a group that was never given one
+              // and a group given the brand are the same group.
+              const value = swatch === BRAND ? "" : swatch;
+              const on = colour === value;
+              return (
+                <button
+                  key={swatch}
+                  type="button"
+                  aria-label={swatch === BRAND ? "The brand colour" : swatch}
+                  aria-pressed={on}
+                  onClick={() => setColour(value)}
+                  className={`size-7 rounded-md ring-offset-2 ring-offset-surface ${
+                    on ? "ring-2 ring-fg" : ""
+                  }`}
+                  style={{ background: swatch }}
+                />
+              );
+            })}
+            <img
+              src={markURI(colour)}
+              alt=""
+              className="ml-1 size-7 rounded-[4px]"
+            />
+          </div>
         </Caption>
 
         {error ? <p className="text-sm text-accent">{error}</p> : null}

@@ -23,6 +23,7 @@ var all = []Migration{
 	initialSchema,
 	taskPriority,
 	groups,
+	groupColor,
 }
 
 // exec runs a statement block as one migration.

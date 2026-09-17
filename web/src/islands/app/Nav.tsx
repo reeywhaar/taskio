@@ -10,6 +10,7 @@ import {
   PlusIcon,
 } from "@app/components/icons/Icon";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
+import { markURI } from "@app/mark";
 import type { Location } from "@app/islands/app/route";
 
 /**
@@ -43,6 +44,26 @@ export function Nav({
   /** Lit by what the list is filtered by rather than by what was last pressed: the tags are
    *  the state, and they can also be changed a pill at a time. */
   const litBy = (tags: string[]) => onList && same(location.filters.tags, tags);
+
+  /**
+   * The group being looked at, which is a question about the tags rather than about what was
+   * last pressed — so it survives a reload, a link from somebody else, and the pills.
+   */
+  const current = (groups.data?.groups ?? []).find((g) => litBy(g.tags));
+  const colour = current?.color ?? "";
+
+  // The tab wears it, which is the whole point of a group having one: two windows open on two
+  // groups are two icons rather than two of the same icon.
+  useEffect(() => {
+    const links =
+      document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]');
+    for (const link of links) {
+      // The .ico is for browsers that will not read an svg, and they will not read a data URI
+      // of one either: it is left alone and stays the brand.
+      if (link.type !== "image/svg+xml") continue;
+      link.href = colour ? markURI(colour) : "/favicon.svg";
+    }
+  }, [colour]);
 
   const show = (tags: string[]) => {
     setOpen(false);
@@ -131,13 +152,13 @@ export function Nav({
         >
           <BurgerIcon />
         </button>
-        <Mark />
+        <Mark colour={colour} />
         <span className="font-semibold">taskio</span>
       </div>
 
       <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex">
         <div className="flex items-center gap-2 px-4 py-3 font-semibold">
-          <Mark />
+          <Mark colour={colour} />
           taskio
         </div>
         {items}
@@ -169,7 +190,7 @@ export function Nav({
           <nav className="flex h-full w-full flex-col bg-surface shadow-rail">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="flex items-center gap-2 font-semibold">
-                <Mark />
+                <Mark colour={colour} />
                 taskio
               </span>
               <button
@@ -199,14 +220,21 @@ function same(a: string[], b: string[]): boolean {
 }
 
 /**
- * The mark from the browser tab, beside the name.
+ * The mark from the browser tab, beside the name, wearing whatever the tab is wearing.
  *
- * The file the tab uses rather than a second copy of the same two rectangles: a mark drawn in
- * two places is a mark that will be changed in one of them. It carries its own pale ground, so
- * it is a tile at either theme and needs nothing from the palette around it.
+ * Drawn from the same geometry as the tab's icon rather than a second copy of the two
+ * rectangles — a mark drawn in two places is a mark that will be changed in one of them. It
+ * carries its own pale ground, so it is a tile at either theme and needs nothing from the
+ * palette around it.
  */
-function Mark() {
-  return <img src="/favicon.svg" alt="" className="size-5 rounded-[3px]" />;
+function Mark({ colour }: { colour: string }) {
+  return (
+    <img
+      src={colour ? markURI(colour) : "/favicon.svg"}
+      alt=""
+      className="size-5 rounded-[3px]"
+    />
+  );
 }
 
 /**

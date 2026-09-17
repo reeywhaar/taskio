@@ -72,6 +72,12 @@ down before anything has it. That is deliberate: naming the group is often the m
 decides the tag exists, and the tasks follow. The cloud on the list cannot do this, because
 inventing a tag there narrows the list to nothing.
 
+A group may also carry a colour, and what wears it is the tab: the favicon's letter takes it, and
+so does the mark beside the name in the rail. Nothing else on the page changes. The colour is for
+telling one window from another at a glance, which is a job for a 16px tile rather than for
+repainting every button — and it comes from a short list rather than a picker, because eight
+obviously different colours do that job and sixteen million do not.
+
 Groups are session-only in the API. Not because a program could not use one, but because a
 scoped token must not learn tag names its scope does not reach, and a group is a list of tag
 names.

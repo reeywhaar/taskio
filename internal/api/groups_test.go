@@ -122,3 +122,30 @@ func TestATokenCannotReachGroups(t *testing.T) {
 		t.Errorf("a token listing groups = %s, want 401", resp.Status)
 	}
 }
+
+// The colour is what the tab wears, so it reaches a stylesheet and an SVG: one shape only.
+func TestAGroupsColourIsSixHexDigitsOrNothing(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	resp := c.do("POST", "/api/groups", `{"name":"Work","tags":["work"],"color":"#2563EB"}`)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create = %s", resp.Status)
+	}
+	if got := c.json(resp)["color"]; got != "#2563eb" {
+		t.Errorf("colour = %v, want it lowercased", got)
+	}
+
+	for _, bad := range []string{`"red"`, `"#fff"`, `"#12345g"`, `"#ef6500; --x: y"`} {
+		resp := c.do("POST", "/api/groups", `{"name":"X","tags":["work"],"color":`+bad+`}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("colour %s = %s, want 400", bad, resp.Status)
+		}
+	}
+
+	// And none at all is a group that wears the brand, not a group with a broken colour.
+	resp = c.do("POST", "/api/groups", `{"name":"Plain","tags":["home"]}`)
+	if resp.StatusCode != http.StatusCreated || c.json(resp)["color"] != "" {
+		t.Errorf("a group with no colour = %s", resp.Status)
+	}
+}
