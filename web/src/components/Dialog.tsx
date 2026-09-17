@@ -116,7 +116,13 @@ export function Dialog({
       // m-auto is load-bearing above that: a modal dialog is centred with inset:0; margin:auto,
       // and Tailwind's preflight resets margin to 0, which leaves only the inset and drops it
       // in the corner.
-      className={`hidden h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-surface p-0 text-fg backdrop:bg-black/50 focus:outline-none open:flex sm:m-auto sm:h-auto sm:max-h-[85dvh] sm:rounded-xl sm:border-[1.5px] sm:border-line ${
+      //
+      // And h-fit rather than h-auto, for the other half of the same rule: a modal dialog is
+      // laid out with both block insets at 0, and an absolutely positioned box with auto height
+      // between two insets is stretched to fill them. Every card here was 85dvh tall whatever
+      // was inside it — fit-content is a height, so the box is its contents and the margins go
+      // back to centring it.
+      className={`hidden h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-surface p-0 text-fg backdrop:bg-black/50 focus:outline-none open:flex sm:m-auto sm:h-fit sm:max-h-[85dvh] sm:rounded-xl sm:border-[1.5px] sm:border-line ${
         wide
           ? "sm:w-[min(42rem,calc(100vw-2rem))]"
           : "sm:w-[min(28rem,calc(100vw-2rem))]"

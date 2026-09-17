@@ -66,6 +66,12 @@ export const CopyIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+export const PencilIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 20h4L19.5 8.5a2 2 0 0 0-3-3L5 17l-1 3Z" />
+  </Icon>
+);
+
 export const ChevronDownIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <path d="M6 9.5 12 15.5 18 9.5" />

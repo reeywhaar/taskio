@@ -29,6 +29,8 @@ const (
 	Token     = "k_"
 	Session   = "s_"
 	Tag       = "g_"
+	// Group takes two letters because a tag already has the one it would want.
+	Group = "gr_"
 )
 
 // How long each kind is.

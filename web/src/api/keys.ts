@@ -9,6 +9,7 @@ export const qk = {
   taskList: (search: string) => ["tasks", "list", search] as const,
   task: (id: string) => ["tasks", "one", id] as const,
   tags: ["tags"] as const,
+  groups: ["groups"] as const,
   sessions: ["sessions"] as const,
   tokens: ["tokens"] as const,
   account: ["account"] as const,

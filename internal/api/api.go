@@ -124,6 +124,11 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 
 	// Tokens are session-only: a credential must not mint or manage credentials, and a stolen
 	// one that could read this could see where somebody signs in from.
+	s.handle("GET /api/groups", s.requireSession(s.listGroups))
+	s.handle("POST /api/groups", s.requireSession(s.createGroup))
+	s.handle("PATCH /api/groups/{id}", s.requireSession(s.patchGroup))
+	s.handle("DELETE /api/groups/{id}", s.requireSession(s.deleteGroup))
+
 	s.handle("GET /api/tokens", s.requireSession(s.listTokens))
 	s.handle("POST /api/tokens", s.requireSession(s.createToken))
 	s.handle("PATCH /api/tokens/{id}", s.requireSession(s.patchToken))

@@ -31,6 +31,14 @@ export type TaskPage = {
 
 export type Tag = { id: string; slug: string };
 
+/** A named set of tags. Its tags need not be tags anything carries. */
+export type Group = {
+  id: string;
+  name: string;
+  tags: string[];
+  created_at: number;
+};
+
 export type Me = {
   id: string;
   username: string;

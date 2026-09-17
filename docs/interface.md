@@ -57,6 +57,25 @@ no border beside it there, so nothing reads as a double frame, and it is drawn o
 clicking one does not leave it ringed. A text field matches either way, which is the reason the
 rule stops at the controls that do not.
 
+## A group is a saved filter, and the tags are still the state
+
+The rail lists groups rather than one List entry, and pressing one lights its tags. What it does
+not do is put the screen into a mode: there is no group in the URL, only `?tags=`, and a group is
+drawn as current when the lit tags are its tags — lit by pressing it, by pressing the pills one
+at a time, or by opening somebody else's link.
+
+**All** is not stored. It is the list with nothing lit, which is where everybody starts, so there
+is no row to delete and no empty group to explain.
+
+A group may name a tag no task carries, which is the one place in taskio where a tag is written
+down before anything has it. That is deliberate: naming the group is often the moment somebody
+decides the tag exists, and the tasks follow. The cloud on the list cannot do this, because
+inventing a tag there narrows the list to nothing.
+
+Groups are session-only in the API. Not because a program could not use one, but because a
+scoped token must not learn tag names its scope does not reach, and a group is a list of tag
+names.
+
 ## The list's three choices are two questions
 
 The control reads **Pinned · Todo · Done**, and only two of those are statuses. Pinning is a

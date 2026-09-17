@@ -22,6 +22,7 @@ type Migration struct {
 var all = []Migration{
 	initialSchema,
 	taskPriority,
+	groups,
 }
 
 // exec runs a statement block as one migration.
