@@ -72,6 +72,14 @@ export const PencilIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+export const DropperIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 20h3l9-9" />
+    <path d="M4 20v-3l9-9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L17 9l-3-3 2.5-2.5Z" />
+  </Icon>
+);
+
 export const ChevronDownIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <path d="M6 9.5 12 15.5 18 9.5" />

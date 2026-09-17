@@ -1,3 +1,4 @@
+import { DropperIcon } from "@app/components/icons/Icon";
 import { BRAND } from "@app/mark";
 
 /**
@@ -82,15 +83,16 @@ export function Swatches({
         );
       })}
 
+      {/* The spot wears whatever is chosen and says what it is for with the dropper, rather
+          than wearing a wheel that is a picture of the idea of colour. Two swatches of the same
+          colour would otherwise be ambiguous — the icon is what tells them apart. */}
       <label
-        className={`relative size-7 cursor-pointer overflow-hidden rounded-md ring-offset-2 ring-offset-surface ${
-          custom ? "ring-2 ring-fg" : ""
-        }`}
-        style={{
-          background:
-            "conic-gradient(#dc2626, #eab308, #16a34a, #0d9488, #2563eb, #7c3aed, #c026d3, #dc2626)",
-        }}
+        className={`relative flex size-7 cursor-pointer items-center justify-center rounded-md ring-offset-2 ring-offset-surface ${
+          value ? "" : "border-[1.5px] border-line"
+        } ${custom ? "ring-2 ring-fg" : ""}`}
+        style={value ? { background: value, color: ink(value) } : undefined}
       >
+        <DropperIcon className="pointer-events-none text-base" />
         <input
           type="color"
           aria-label="Another colour"
@@ -101,4 +103,21 @@ export function Swatches({
       </label>
     </div>
   );
+}
+
+/**
+ * Black or white, whichever can be seen on that colour.
+ *
+ * The dropper sits on a colour somebody chose, so there is no palette to pick its own from: the
+ * WCAG relative luminance of the ground decides, at the threshold where black and white swap
+ * places against mid-grey.
+ */
+function ink(colour: string): string {
+  const channel = (at: number) => {
+    const value = parseInt(colour.slice(at, at + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+  return luminance > 0.18 ? "#111113" : "#ffffff";
 }
