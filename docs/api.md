@@ -67,6 +67,10 @@ month. Every response carries the full one.
 
 A tag is a slug written on a task: lowercase letters, digits, `-` and `_`.
 
+`GET /api/tags` answers with the ones in use, in whatever order the account has arranged them —
+it is a list to show somebody, not a set to compare. Nothing about it is stable enough to key
+on; the slug is the identity.
+
 **There is no tag to create first.** Putting a word in `tags` is what makes it a tag, and taking
 it off every task is what makes it stop existing. `and`, `or` and `not` are reserved.
 
@@ -128,6 +132,10 @@ DELETE /api/tags/{slug}
 POST   /api/assets             the bytes
 GET    /api/assets/{id}
 ```
+
+**Routes not listed here belong to the browser** — groups, the tag arrangement, sessions,
+tokens, the event stream. They exist, and they answer a token with `401`: a credential does not
+manage credentials, and a saved filter is not part of working the list.
 
 ### The bulk routes
 

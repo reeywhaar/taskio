@@ -2,6 +2,7 @@ package api
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -81,6 +82,75 @@ func TestEveryCodeTheAPICanEmitIsDocumented(t *testing.T) {
 	} {
 		if !strings.Contains(text, code) {
 			t.Errorf("code %q is not in docs/api.md", code)
+		}
+	}
+}
+
+/**
+ * The other direction, which is the one that went wrong: prefix_ambiguous sat in the table for
+ * months while an ambiguous id came back as already_used, because nothing checked that a
+ * documented code is a code the server can actually produce.
+ *
+ * A code a caller matches on and never sees is worse than one nobody was told about: the branch
+ * looks handled.
+ */
+func TestEveryDocumentedCodeIsOneTheAPICanEmit(t *testing.T) {
+	source, err := os.ReadFile("../../docs/api.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The rows of the Errors table and no other table: a parameter is also a backticked word in
+	// a first column.
+	text := string(source)
+	at := strings.Index(text, "## Errors")
+	if at < 0 {
+		t.Fatal("docs/api.md has no Errors section")
+	}
+	rows := regexp.MustCompile("(?m)^\\| `([a-z_]+)` \\|").
+		FindAllStringSubmatch(text[at:], -1)
+	if len(rows) < 5 {
+		t.Fatalf("found %d documented codes, which cannot be right", len(rows))
+	}
+
+	// Where the constants are declared does not count as emitting one.
+	emitted := map[string]bool{}
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		if file == "errors.go" || strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range regexp.MustCompile(`\bCode[A-Za-z]+\b`).FindAllString(string(body), -1) {
+			emitted[name] = true
+		}
+	}
+
+	names := map[string]string{}
+	declarations, err := os.ReadFile("errors.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pair := range regexp.MustCompile(`(Code[A-Za-z]+)\s+=\s+"([a-z_]+)"`).
+		FindAllStringSubmatch(string(declarations), -1) {
+		names[pair[2]] = pair[1]
+	}
+
+	for _, row := range rows {
+		code := row[1]
+		name, known := names[code]
+		if !known {
+			t.Errorf("docs/api.md documents %q, which is not a code this package declares", code)
+			continue
+		}
+		if !emitted[name] {
+			t.Errorf("docs/api.md documents %q, which nothing outside errors.go ever sends", code)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -275,5 +276,39 @@ func TestCloseEmptiesTheWriteAheadLog(t *testing.T) {
 	}
 	if page.Total != 50 {
 		t.Errorf("reopened with %d tasks, want 50", page.Total)
+	}
+}
+
+// A prefix that names two tasks is its own kind of refusal: the caller's next move is to send
+// more characters, not to choose a different value, so it cannot be the same error as a name
+// already taken.
+func TestAPrefixNamingTwoTasksIsAmbiguousRatherThanAConflict(t *testing.T) {
+	st := openStore(t)
+	mustExec(t, st, `INSERT INTO principals (id, username, password_hash, role, created_at)
+	                 VALUES ('p_1','misha','x','admin',1)`)
+	// Ids are minted at random, so two that share a prefix are written here rather than waited
+	// for: 32⁴ apart, the wait is the point of the test being flaky instead.
+	for _, id := range []string{"abcd1111", "abcd2222", "wxyz0000"} {
+		mustExec(t, st, `INSERT INTO tasks (id, principal_id, title, description, created_at, updated_at)
+		                 VALUES ('`+id+`','p_1','A task','',1,1)`)
+	}
+
+	_, err := st.Task(t.Context(), "p_1", "abcd")
+	if !errors.Is(err, ErrAmbiguous) {
+		t.Fatalf("resolving an ambiguous prefix gave %v, want ErrAmbiguous", err)
+	}
+	if errors.Is(err, ErrNotFound) {
+		t.Error("an ambiguous prefix reads as a missing task")
+	}
+	for _, want := range []string{"abcd1111", "abcd2222"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %s: %q", want, err)
+		}
+	}
+
+	// And one that names a single task still resolves.
+	task, err := st.Task(t.Context(), "p_1", "wxyz")
+	if err != nil || task.ID != "wxyz0000" {
+		t.Errorf("an unambiguous prefix gave %v, %v", task, err)
 	}
 }

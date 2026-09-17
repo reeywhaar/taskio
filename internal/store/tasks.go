@@ -360,7 +360,7 @@ func (s *Store) ResolveTask(ctx context.Context, principalID, ref string) (strin
 	}
 	// Well formed, and does not name one thing: a conflict among what exists rather than a
 	// mistake in what was sent. The candidates are all the caller's own.
-	return "", Conflict("%s names more than one task: %s. Give another character or two.",
+	return "", Ambiguous("%s names more than one task: %s. Give another character or two.",
 		normal, strings.Join(found, ", "))
 }
 

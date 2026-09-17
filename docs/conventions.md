@@ -115,7 +115,7 @@ Three kinds, and the rule that decides between them:
 
 | kind | shape | used by |
 | --- | --- | --- |
-| ULID | prefix plus 26 Crockford characters over 16 bytes | `p_` principal, `i_` invite, `a_` asset |
+| ULID | prefix plus 26 Crockford characters over 16 bytes | `p_` principal, `i_` invite, `a_` asset, `gr_` group |
 | random | 26 Crockford characters, no prefix, prefix-addressable | tasks |
 | derived | hash of the thing it names | tokens, tags |
 

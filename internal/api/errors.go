@@ -16,7 +16,6 @@ const (
 	CodeNotFound             = "not_found"
 	CodeConflict             = "already_used"
 	CodeForbidden            = "token_forbidden"
-	CodeMethodNotAllowed     = "method_not_allowed"
 	CodeUnsupportedMediaType = "unsupported_media_type"
 	CodeAssetTooLarge        = "asset_too_large"
 	CodeAssetCountExceeded   = "asset_count_exceeded"

@@ -284,6 +284,10 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 			"This token is scoped to "+scopeSentence(r)+", and that task is outside it.")
 	case errors.Is(err, store.ErrNotFound):
 		refuse(w, http.StatusNotFound, CodeNotFound, sentence(err, "There is no such thing."))
+	case errors.Is(err, store.ErrAmbiguous):
+		// A 409 like a name already taken, and a different code: the next move is to send more
+		// characters rather than to choose a different value.
+		refuse(w, http.StatusConflict, CodePrefixAmbiguous, sentence(err, "That names more than one thing."))
 	case errors.Is(err, store.ErrConflict):
 		refuse(w, http.StatusConflict, CodeConflict, sentence(err, "That already exists."))
 	case errors.Is(err, store.ErrTooLarge):
