@@ -257,7 +257,7 @@ function List({
         Full width with the column inside, rather than a scrolling column, so the scrollbar is
         at the edge of the window where a scrollbar belongs.
       */}
-      <div className="mx-auto w-full max-w-3xl shrink-0 px-3 py-4 md:px-6">
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-3 py-3 md:px-6 md:py-4">
         {/* Search, status, tags, list: it narrows from the widest instrument to the narrowest,
             so reading down the screen is reading the query that produced what is under it. */}
         {/* The icon says what the box is for without spending the placeholder on it, and stays
@@ -298,9 +298,9 @@ function List({
 
         {/* Apart rather than adjacent: the segments choose which list this is, and Select begins
           doing something to it. Side by side they read as four of a kind. */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex min-h-9 overflow-hidden rounded-md border-[1.5px] border-line text-sm pointer-coarse:min-h-11">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="inline-flex min-h-9 overflow-hidden rounded-md border-[1.5px] border-line text-sm pointer-coarse:min-h-10">
               {(["pinned", "todo", "done"] as const).map((value) => (
                 <button
                   key={value}
@@ -309,7 +309,7 @@ function List({
                   onClick={() =>
                     onGo({ ...location, filters: { ...filters, view: value } })
                   }
-                  className={`flex items-center px-3 capitalize ${
+                  className={`flex items-center px-2 capitalize sm:px-3 ${
                     filters.view === value
                       ? "bg-brand text-brand-ink"
                       : "text-muted hover:bg-surface"

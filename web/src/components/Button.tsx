@@ -17,15 +17,19 @@ type Variant = "solid" | "quiet" | "link" | "danger";
 /**
  * How tall, which is a question about what the button is standing next to.
  *
- * field is beside an input and matches it: 44px, which is also about the width of a fingertip.
+ * field is beside an input and matches it, so both shrink together on a phone: 44px where there
+ * is room, 40 where there is not.
+ *
  * bar is a row of controls with no field in it, where 44px reads as a stack of slabs — and
  * where a finger is still a finger, so the height comes back below a pointer that is not one.
+ * It carries no minimum width either: four controls on one line is worth more on a phone than
+ * a square Select, and the row wrapped at every width below 390px because of it.
  */
 type Size = "field" | "bar";
 
-const heights: Record<Size, string> = {
-  field: "min-h-11",
-  bar: "min-h-9 pointer-coarse:min-h-11",
+const shapes: Record<Size, string> = {
+  field: "min-h-10 min-w-20 sm:min-h-11",
+  bar: "min-h-9 pointer-coarse:min-h-10",
 };
 
 const styles: Record<Variant, string> = {
@@ -47,7 +51,7 @@ export function Button({
   const shape =
     variant === "link"
       ? ""
-      : `${heights[size]} min-w-20 justify-center rounded-md px-3 py-1.5`;
+      : `${shapes[size]} justify-center rounded-md px-3 py-1.5`;
   return (
     <button
       type="button"

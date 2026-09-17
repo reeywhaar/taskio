@@ -29,6 +29,18 @@ Above `40rem` — wider than the phones that zoom — the description editor dro
 14px. Only the editor: the other fields are single lines where 16px costs nothing, and the
 editor is a paragraph of text where it costs a size.
 
+## Two control heights, and both shrink on a phone
+
+A field is 44px and a control beside one matches it; the bar over the list is 36px, because
+three 44px controls under a 44px field is four bars of the same weight stacked down the screen
+and the segmented control is the only one of them that is a place rather than an action.
+
+On a phone both come down — the field to 40px, the bar to 40 under a finger — and the bar's
+controls lose their minimum width. Four controls on one line is worth more there than a square
+Select: the row wrapped onto two at every width below 390px, which cost more vertical space than
+the taller controls ever bought. The type size does not shrink with them, because that is what
+makes iOS zoom.
+
 ## `TextField` states no width and no text size
 
 The caller owns both. A width in the component collides with one passed by a caller — two
