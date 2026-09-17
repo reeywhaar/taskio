@@ -16,13 +16,19 @@
  * className in the application, half of which somebody eventually forgets.
  */
 @theme {
-  --color-bg: #ffffff;
-  --color-surface: #f7f7f8;
-  --color-fg: #18181b;
-  --color-muted: #52525b;
-  --color-faint: #a1a1aa;
-  --color-line: #c9c9d0;
-  --color-fill: #e0e0e5;
+  /*
+   * Two grounds, a hair apart. Soft UI does not tint the things standing on a ground — it lights
+   * them, and a card is the same color as whatever it sits on. What the two values separate is
+   * the regions: the page is the lighter one and the rail is the darker, which is the only thing
+   * dividing them now that the rail draws no line.
+   */
+  --color-bg: #edeff3;
+  --color-surface: #e4e7ed;
+  --color-fg: #2f3540;
+  --color-muted: #616a7a;
+  --color-faint: #98a1b0;
+  --color-line: #d3d8e0;
+  --color-fill: #dfe3ea;
   /*
    * The rail's edge. A shadow rather than a rule: the rail is a surface in front of the page,
    * and the one it casts says so without drawing a line nobody asked for.
@@ -41,19 +47,108 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #111113;
-    --color-surface: #18181b;
-    --color-fg: #f4f4f5;
-    --color-muted: #a1a1aa;
-    --color-faint: #71717a;
-    --color-line: #46464f;
-    --color-fill: #2c2c31;
+    --color-bg: #2a2d33;
+    --color-surface: #24262b;
+    --color-fg: #e7e9ee;
+    --color-muted: #a2a8b4;
+    --color-faint: #767d8a;
+    --color-line: #34373e;
+    --color-fill: #33373f;
     /* Darker, because a shadow on a dark ground has almost nothing to darken. */
     --shadow-rail: 4px 0 14px -6px rgb(0 0 0 / 0.7);
     --color-brand: #818cf8;
     --color-brand-ink: #111113;
     --color-accent: #f87171;
     --color-warn: #f59e0b;
+  }
+}
+
+/*
+ * The brand as a wash rather than a fill.
+ *
+ * A solid block of it on every lit thing — the segment, the pills, the one solid button — makes
+ * a screen that is mostly shouting. A radial wash says the same thing at a tenth of the volume:
+ * almost nothing under the label, gathering toward the rim so the shape has an edge.
+ *
+ * Three stops rather than two. Two ramp fastest at the end, so the color arrives all at once at
+ * the boundary and reads as a ring drawn around a pale hole; a middle stop spends most of the
+ * radius getting there, and what is left at the edge is a rim rather than a line.
+ *
+ * The label is ordinary text. White would be sitting on ground, since the middle of this is
+ * mostly ground; the brand itself cannot be read on a wash of the brand at any strength worth
+ * having — measured, it tops out near 4:1 against a pale orange, and 4.5 is the bar for text
+ * this size. So the wash carries the color and the word stays legible, which is the trade the
+ * whole idea was asking for.
+ */
+.wash {
+  background: radial-gradient(
+    118% 118% at 50% 50%,
+    color-mix(in oklab, var(--color-brand) 5%, transparent) 0%,
+    color-mix(in oklab, var(--color-brand) 15%, transparent) 55%,
+    color-mix(in oklab, var(--color-brand) 30%, transparent) 100%
+  );
+  color: var(--color-fg);
+}
+
+/*
+ * The two states a surface can be in, and the whole of the style.
+ *
+ * raised is lit from the top left and casts to the bottom right; sunken is the same light from
+ * the same place, on the inside. Nothing here has a border: the edge of a thing is where the
+ * light stops.
+ *
+ * The pair is asymmetric on purpose — the highlight is softer and shorter than the shadow,
+ * because a surface a few millimetres above a sheet of paper does not cast an even glow. And it
+ * is a few millimetres: a longer throw reads as furniture hovering over the page rather than as
+ * a page with things pressed into it.
+ *
+ * Three layers a side rather than one. A single box-shadow is one blur with an even falloff,
+ * and an even falloff is the thing that looks like a sticker with a grey smudge behind it: real
+ * penumbra is dense right under the edge and gives up quickly. Stacking a short dense layer, a
+ * middle one and a wide faint one approximates that curve, and the alphas are fractions of the
+ * one color per side so a theme still has two values to change and not twelve.
+ */
+.raised {
+  box-shadow:
+    -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
+    -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
+    -4px -4px 9px color-mix(in srgb, var(--lit) 16%, transparent),
+    1px 1px 1.5px color-mix(in srgb, var(--cast) 55%, transparent),
+    2px 3px 5px color-mix(in srgb, var(--cast) 32%, transparent),
+    4px 6px 11px color-mix(in srgb, var(--cast) 16%, transparent);
+}
+
+.sunken {
+  box-shadow:
+    inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
+    inset -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
+    inset -4px -4px 8px color-mix(in srgb, var(--lit) 16%, transparent),
+    inset 1px 1px 1.5px color-mix(in srgb, var(--cast) 55%, transparent),
+    inset 2px 2px 4px color-mix(in srgb, var(--cast) 32%, transparent),
+    inset 3px 4px 9px color-mix(in srgb, var(--cast) 16%, transparent);
+}
+
+/* Pressed is raised turned inside out, which is what a finger on a real button does. */
+.raised:active:not(:disabled),
+.raised[aria-pressed="true"] {
+  box-shadow:
+    inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 50%, transparent),
+    inset -2px -2px 3px color-mix(in srgb, var(--lit) 28%, transparent),
+    inset 1px 1px 1.5px color-mix(in srgb, var(--cast) 50%, transparent),
+    inset 2px 3px 6px color-mix(in srgb, var(--cast) 28%, transparent);
+}
+
+:root {
+  --lit: rgb(255 255 255 / 0.7);
+  --cast: rgb(158 172 193 / 0.36);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* A dark ground has almost nothing to darken and nothing to bounce, so both move: the
+       highlight is nearly gone and the shadow does most of the speaking. */
+    --lit: rgb(255 255 255 / 0.03);
+    --cast: rgb(0 0 0 / 0.38);
   }
 }
 

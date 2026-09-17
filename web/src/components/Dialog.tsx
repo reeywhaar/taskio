@@ -127,7 +127,7 @@ export function Dialog({
       // between two insets is stretched to fill them. Every card here was 85dvh tall whatever
       // was inside it — fit-content is a height, so the box is its contents and the margins go
       // back to centring it.
-      className={`hidden h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-surface p-0 text-fg backdrop:bg-black/50 focus:outline-none open:flex sm:m-auto sm:h-fit sm:max-h-[85dvh] sm:rounded-xl sm:border-[1.5px] sm:border-line ${
+      className={`hidden h-dvh max-h-dvh w-dvw max-w-none flex-col overflow-hidden border-0 bg-bg p-0 text-fg backdrop:bg-black/50 focus:outline-none open:flex sm:raised sm:m-auto sm:h-fit sm:max-h-[85dvh] sm:rounded-xl ${
         wide
           ? "sm:w-[min(42rem,calc(100vw-2rem))]"
           : "sm:w-[min(28rem,calc(100vw-2rem))]"

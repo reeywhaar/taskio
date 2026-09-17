@@ -33,10 +33,10 @@ const shapes: Record<Size, string> = {
 };
 
 const styles: Record<Variant, string> = {
-  solid: "bg-brand text-brand-ink hover:opacity-90",
-  quiet: "bg-surface text-fg hover:bg-fill",
+  solid: "raised wash",
+  quiet: "raised bg-bg text-muted hover:text-fg",
   link: "text-muted underline-offset-2 hover:text-fg hover:underline",
-  danger: "bg-surface text-accent hover:bg-fill",
+  danger: "raised bg-bg text-accent",
 };
 
 export function Button({

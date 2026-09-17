@@ -106,7 +106,7 @@ function Pill({
         mark ? MARKER : ""
       } ${mark === "before" ? "before:-left-1" : ""} ${
         mark === "after" ? "before:-right-1" : ""
-      } ${on ? "bg-brand text-brand-ink" : "bg-fill text-muted hover:text-fg"}`}
+      } raised ${on ? "wash" : "bg-bg text-muted hover:text-fg"}`}
     >
       {slug}
     </button>
@@ -229,7 +229,7 @@ export function TagCloud({
               setAdding(false);
               setDraft("");
             }}
-            className="w-28 rounded-full border-[1.5px] border-line bg-bg px-2.5 py-1 text-xs"
+            className="sunken w-28 rounded-full border-0 bg-bg px-2.5 py-1 text-xs focus:outline-none"
           />
         ) : (
           <button

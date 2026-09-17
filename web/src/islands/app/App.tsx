@@ -348,7 +348,7 @@ function List({
           doing something to it. Side by side they read as four of a kind. */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <div className="inline-flex min-h-9 overflow-hidden rounded-md border-[1.5px] border-line text-sm pointer-coarse:min-h-10">
+            <div className="sunken inline-flex min-h-9 gap-1 rounded-md p-1 text-sm pointer-coarse:min-h-10">
               {(["pinned", "todo", "done"] as const).map((value) => (
                 <button
                   key={value}
@@ -357,10 +357,10 @@ function List({
                   onClick={() =>
                     onGo({ ...location, filters: { ...filters, view: value } })
                   }
-                  className={`flex items-center px-2 capitalize sm:px-3 ${
+                  className={`flex items-center rounded-md px-2 capitalize sm:px-3 ${
                     filters.view === value
-                      ? "bg-brand text-brand-ink"
-                      : "text-muted hover:bg-surface"
+                      ? "raised wash"
+                      : "text-muted hover:text-fg"
                   }`}
                 >
                   {value}

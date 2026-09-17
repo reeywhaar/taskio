@@ -68,7 +68,7 @@ export function TaskRow({
         if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
-      className={`group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-lg bg-surface py-2.5 pr-3 pl-3 hover:bg-fill ${
+      className={`raised group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-lg bg-bg py-2.5 pr-3 pl-3 ${
         apart ? "mt-4" : ""
       }`}
     >
@@ -193,7 +193,7 @@ export function TaskRow({
             {task.tags.map((slug) => (
               <span
                 key={slug}
-                className="rounded-full bg-bg px-2 py-0.5 text-xs text-muted"
+                className="rounded-full bg-fill px-2 py-0.5 text-xs text-muted"
               >
                 {slug}
               </span>

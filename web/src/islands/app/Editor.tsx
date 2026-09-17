@@ -162,7 +162,7 @@ export function Editor({
             e.preventDefault();
             void upload(files);
           }}
-          className="w-full min-h-40 flex-1 rounded-md border-[1.5px] border-line bg-bg p-3 text-fg focus:border-brand focus:outline-none"
+          className="sunken w-full min-h-40 flex-1 rounded-md border-0 bg-bg p-3 text-fg focus:outline-none"
           placeholder="Markdown. Paste a file, or @ a task."
         />
       ) : (
@@ -170,7 +170,7 @@ export function Editor({
         // like", not "what did I save".
         <div
           ref={preview}
-          className="prose min-h-40 flex-1 overflow-y-auto rounded-md border-[1.5px] border-line bg-bg p-3 text-sm"
+          className="prose sunken min-h-40 flex-1 overflow-y-auto rounded-md bg-bg p-3 text-sm"
           dangerouslySetInnerHTML={{ __html: render(value) }}
         />
       )}

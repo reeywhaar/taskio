@@ -49,7 +49,7 @@ export function BulkBar({
   };
 
   return (
-    <div className="mx-auto mb-4 flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-2 rounded-lg bg-surface px-3 py-2 md:px-6">
+    <div className="mx-auto mb-4 flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-2 raised rounded-lg bg-bg px-3 py-2 md:px-6">
       {/* It counts what is in front of somebody, which is a different thing from a workload
           number pinned to a tab. */}
       <span className="text-sm text-muted">{ids.length} selected</span>
