@@ -80,9 +80,6 @@ export function RelayDialog({
       wide
       footer={
         <>
-          <Button onClick={() => onClose()} disabled={save.isPending}>
-            Cancel
-          </Button>
           <Button
             type="submit"
             form="relay"

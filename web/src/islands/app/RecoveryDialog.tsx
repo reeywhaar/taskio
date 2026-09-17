@@ -71,12 +71,16 @@ export function RecoveryDialog({
       title={waiting ? "Enter the code" : "Recovery address"}
       footer={
         <>
-          <Button
-            onClick={() => (waiting ? setWaiting(false) : onClose())}
-            disabled={start.isPending || confirm.isPending}
-          >
-            {waiting ? "Start again" : "Cancel"}
-          </Button>
+          {waiting ? (
+            // Not a way out — the cross is that. This goes back to the address field, which is
+            // a step inside the dialog rather than a way to leave it.
+            <Button
+              onClick={() => setWaiting(false)}
+              disabled={start.isPending || confirm.isPending}
+            >
+              Start again
+            </Button>
+          ) : null}
           <Button
             type="submit"
             form="recovery"

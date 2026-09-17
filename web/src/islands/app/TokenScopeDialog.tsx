@@ -56,9 +56,6 @@ export function TokenScopeDialog({
       title="What this token reaches"
       footer={
         <>
-          <Button onClick={() => onClose()} disabled={save.isPending}>
-            Cancel
-          </Button>
           <Button
             variant="solid"
             onClick={() => save.mutate()}

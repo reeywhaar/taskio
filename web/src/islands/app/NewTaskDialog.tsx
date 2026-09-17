@@ -72,9 +72,6 @@ export function NewTaskDialog({
       wide
       footer={
         <>
-          <Button onClick={onClose} disabled={create.isPending}>
-            Cancel
-          </Button>
           <Button
             variant="solid"
             disabled={!usable}

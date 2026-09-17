@@ -65,9 +65,6 @@ export function TokenDialog({
           </Button>
         ) : (
           <>
-            <Button onClick={onClose} disabled={mint.isPending}>
-              Cancel
-            </Button>
             <Button
               type="submit"
               form="mint-token"

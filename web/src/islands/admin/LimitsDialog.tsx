@@ -63,9 +63,6 @@ export function LimitsDialog({
       title="Attachment limits"
       footer={
         <>
-          <Button onClick={() => onClose()} disabled={save.isPending}>
-            Cancel
-          </Button>
           <Button
             type="submit"
             form="limits"

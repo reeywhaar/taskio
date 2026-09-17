@@ -77,9 +77,6 @@ export function PasswordDialog({
       title="Change your password"
       footer={
         <>
-          <Button onClick={() => onClose()} disabled={change.isPending}>
-            Cancel
-          </Button>
           <Button
             type="submit"
             form="change-password"

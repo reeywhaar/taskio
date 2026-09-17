@@ -97,7 +97,6 @@ export function GroupDialog({
             </Button>
           ) : null}
           <span className="flex-1" />
-          <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="solid"
             disabled={!usable}
