@@ -103,9 +103,14 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          # The sha tag is what makes a rollback possible at all, since latest has moved.
+          # Three names for one image, and each answers a different question. latest is what
+          # a `docker run` with no tag gets, and is a pin to nothing. v1 is this line of the
+          # software, fixes included — what a deployment pins to, and what a v2 would leave
+          # alone the day something breaks compatibility. The sha is what makes a rollback
+          # possible at all, since the other two have moved.
           tags: |
             ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:v1
             ${{ env.IMAGE }}:${{ github.sha }}
           build-args: VERSION=${{ github.sha }}
           # Keeps the package listing to one real platform instead of an unknown/unknown
