@@ -82,6 +82,25 @@ Multi-stage, and the stages do not depend on each other.
 - **`HEALTHCHECK` runs `taskio healthcheck`**, a second process asking the first, so the image
   needs no HTTP client and a wedged server fails it.
 
+## Tags
+
+A publish moves three tags onto one image:
+
+| tag | what it means |
+| --- | --- |
+| `:latest` | whatever was published last. Fine for a first look, and a pin to nothing |
+| `:v1` | this line of the software, fixes included. What most deployments want |
+| `:v1.0.0` | this build and no other. The only one that never moves |
+
+The number lives in `VERSION` at the root of the repository, one line, and `private/deploy.sh`
+reads it. The major part of it is where `:v1` comes from, so a release of `1.4.0` moves `:latest`
+and `:v1` and creates `:v1.4.0`.
+
+It is also stamped into the binary through `-ldflags`, which is what `taskio version` prints and
+what the startup line logs. A tree with uncommitted changes in it stamps `1.0.0+dirty`: the image
+is still tagged, because the tags are how it reaches the host, but the thing running says what it
+actually is rather than claiming to be the release.
+
 ## The bundle is read from disk, not embedded
 
 `serve` hands the static server an `os.DirFS` over `/srv/web`, walked once at startup.
