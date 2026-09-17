@@ -89,6 +89,10 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 	}
 
 	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+		// Once for the whole set rather than once per task: the arrangement is the account's.
+		if err := noteTags(ctx, tx, principalID, add); err != nil {
+			return err
+		}
 		for _, seq := range seqs {
 			for _, slug := range add {
 				if _, err := tx.ExecContext(ctx,

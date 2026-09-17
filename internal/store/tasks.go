@@ -143,6 +143,11 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 		}
 	}
 
+	// Before the tags are written, so a slug nobody has used before joins the arrangement at
+	// the end rather than wherever its first letter would put it.
+	if err := noteTags(ctx, tx, principalID, tags); err != nil {
+		return nil, err
+	}
 	if err := writeTags(ctx, tx, task.Seq, tags); err != nil {
 		return nil, err
 	}
@@ -245,6 +250,9 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 	if patch.Tags != nil {
 		tags, err := validTags(*patch.Tags)
 		if err != nil {
+			return nil, err
+		}
+		if err := noteTags(ctx, tx, principalID, tags); err != nil {
 			return nil, err
 		}
 		changed, err := replaceTags(ctx, tx, task.Seq, task.Tags, tags)

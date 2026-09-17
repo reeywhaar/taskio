@@ -111,8 +111,16 @@ rearranging under the finger, loses the pointer capture the moment the carried e
 in the DOM: the drag ends halfway through and nobody has let go of anything.
 
 The arrangement belongs to the account and is stored per slug, so a tag that goes out of use and
-comes back is where it was left. Tags nobody has dragged sort after the ones somebody has, so a
-new tag arrives at the end rather than in the middle of an arrangement.
+comes back is where it was left. It names every tag, not only the ones somebody has dragged:
+writing a slug it does not know rewrites it as the order the cloud is already showing, with the
+new slug on the end. That last part is what was wrong — only dragged tags had a place and the
+rest sorted by name, so a tag invented today filed itself alphabetically into the middle of a
+list somebody thought they had settled. A tag that has just been made is the newest thing on the
+account, and last is where it goes.
+
+A task's own chips come back in that same order, because the chips on a row and the pills above
+it are the same tags: sorted two different ways they read as two different sets, and the eye goes
+looking for the difference.
 
 ## A control that waits for a pointer is a control a finger does not have
 

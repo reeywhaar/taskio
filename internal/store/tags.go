@@ -52,9 +52,9 @@ func NormalizeSlug(raw string) string {
 // exists elsewhere on the account is not something a confined credential learns for free.
 func (s *Store) Tags(ctx context.Context, principalID string, scope *filter.Node) ([]Tag, error) {
 	where, args := scopeClause(principalID, scope)
-	// Where they were dragged to first, then the rest alphabetically. A tag nobody has moved
-	// has no row in tag_order, and sorts after every tag that does — new tags arrive at the end
-	// rather than in the middle of an arrangement somebody made.
+	// The arrangement first, then anything it does not name, alphabetically. Writing a tag
+	// puts it in the arrangement (see noteTags), so the fallback is for tags that predate that
+	// and for the ones past the cap — both of which still sort after everything placed.
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT task_tags.slug, MIN(COALESCE(tag_order.position, `+unplaced+`)) AS place
 		   FROM task_tags
@@ -120,21 +120,135 @@ func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []str
 	}
 	defer tx.Rollback()
 
+	if err := writeTagOrder(ctx, tx, principalID, clean); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("set tag order: %w", err)
+	}
+	s.changed(principalID)
+	return nil
+}
+
+// noteTags puts any slug the arrangement does not already name on the end of it.
+//
+// The arrangement used to hold only the tags somebody had dragged, and everything else sorted
+// after them alphabetically. That is fine until a tag is made: "bug" arrives, sorts ahead of
+// "feature" among the undragged, and lands in the middle of a list somebody thought they had
+// settled. A tag that has just been invented is the newest thing on the account, and last is
+// where it belongs.
+//
+// So the arrangement names every tag rather than only the moved ones. The first write after a
+// new slug appears writes down the order the cloud is already showing and puts the slug after
+// it, which is why this rewrites rather than appends: until then, most tags have no row and
+// appending to the rows that exist would file the new one ahead of them.
+//
+// Writes that carry only tags already named — nearly all of them — ask one indexed question a
+// slug and write nothing.
+//
+// New means the account has not got this tag, not merely that the arrangement has not named it:
+// before this, no arrangement named anything nobody had dragged, and treating those as new would
+// send a tag somebody has used for months to the end the next time they wrote it. So it runs
+// before the tags themselves are written, and what the account already has is the answer.
+func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []string) error {
+	unnamed := []string{}
+	asked := map[string]bool{}
+	for _, slug := range slugs {
+		if asked[slug] {
+			continue
+		}
+		asked[slug] = true
+		var named int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*) FROM tag_order WHERE principal_id = ? AND slug = ?`,
+			principalID, slug).Scan(&named); err != nil {
+			return fmt.Errorf("note tags: %w", err)
+		}
+		if named == 0 {
+			unnamed = append(unnamed, slug)
+		}
+	}
+	if len(unnamed) == 0 {
+		return nil
+	}
+
+	order, err := tagOrder(ctx, tx, principalID)
+	if err != nil {
+		return err
+	}
+	has := map[string]bool{}
+	for _, slug := range order {
+		has[slug] = true
+	}
+	fresh := []string{}
+	for _, slug := range unnamed {
+		if !has[slug] {
+			fresh = append(fresh, slug)
+		}
+	}
+	if len(fresh) == 0 {
+		return nil
+	}
+	return writeTagOrder(ctx, tx, principalID, append(order, fresh...))
+}
+
+// tagOrder is the order an account's cloud is in: what it has arranged, then what it has not.
+//
+// Both what the tasks carry and what the arrangement names, because a slug nothing carries any
+// more keeps its place — dragging the tag back into use finds it where it was left, and a
+// rewrite that dropped it would take that away.
+func tagOrder(ctx context.Context, q querier, principalID string) ([]string, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT slug, MIN(place) FROM (
+		          SELECT task_tags.slug AS slug,
+		                 COALESCE(tag_order.position, `+unplaced+`) AS place
+		            FROM task_tags
+		            JOIN tasks ON tasks.seq = task_tags.task_seq
+		            LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		                               AND tag_order.slug = task_tags.slug
+		           WHERE tasks.principal_id = ?
+		          UNION ALL
+		          SELECT slug, position FROM tag_order WHERE principal_id = ?
+		        )
+		  GROUP BY slug
+		  ORDER BY MIN(place), slug`, principalID, principalID)
+	if err != nil {
+		return nil, fmt.Errorf("tag order: %w", err)
+	}
+	defer rows.Close()
+
+	out := []string{}
+	for rows.Next() {
+		var slug string
+		var place int64
+		if err := rows.Scan(&slug, &place); err != nil {
+			return nil, err
+		}
+		out = append(out, slug)
+	}
+	return out, rows.Err()
+}
+
+// writeTagOrder replaces an account's arrangement with the list given.
+//
+// Past the cap it keeps the front of the list rather than refusing: what is dropped is the
+// newest end, which sorts after everything placed anyway. A caller who asked for the
+// arrangement directly is told instead — see SetTagOrder.
+func writeTagOrder(ctx context.Context, tx *sql.Tx, principalID string, slugs []string) error {
+	if len(slugs) > TagOrderMax {
+		slugs = slugs[:TagOrderMax]
+	}
 	if _, err := tx.ExecContext(ctx,
 		`DELETE FROM tag_order WHERE principal_id = ?`, principalID); err != nil {
 		return fmt.Errorf("set tag order: %w", err)
 	}
-	for at, slug := range clean {
+	for at, slug := range slugs {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO tag_order (principal_id, slug, position) VALUES (?, ?, ?)`,
 			principalID, slug, at); err != nil {
 			return fmt.Errorf("set tag order: %w", err)
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("set tag order: %w", err)
-	}
-	s.changed(principalID)
 	return nil
 }
 
@@ -175,6 +289,27 @@ func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter
 		return 0, fmt.Errorf("rename tag: %w", err)
 	}
 	n, _ := res.RowsAffected()
+
+	// The new name takes the old one's place in the cloud, because it is the same tag: a rename
+	// that sent it to the end would rearrange a list nobody touched. A new word that inherits no
+	// place had none to inherit — the old word had not got one either.
+	//
+	// Only when the rename covered the whole account. A scoped token renames its slice, so the
+	// old slug is still out there on tasks it cannot see, and its place is still its own.
+	if scope == nil {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE OR IGNORE tag_order SET slug = ? WHERE principal_id = ? AND slug = ?`,
+			to, principalID, from); err != nil {
+			return 0, fmt.Errorf("rename tag: %w", err)
+		}
+		// Left behind when the new name already had a place of its own, which is a merge.
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM tag_order WHERE principal_id = ? AND slug = ?`,
+			principalID, from); err != nil {
+			return 0, fmt.Errorf("rename tag: %w", err)
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
@@ -214,9 +349,20 @@ func scopeClause(principalID string, scope *filter.Node) (string, []any) {
 	return where, args
 }
 
+// loadTags reads a task's tags in the order its account arranged them.
+//
+// The same ORDER BY as the cloud's, because the chips on a row and the pills above it are the
+// same tags: sorted two different ways they read as two different sets, and the eye goes looking
+// for the difference.
 func loadTags(ctx context.Context, q querier, seq int64) ([]string, error) {
 	rows, err := q.QueryContext(ctx,
-		`SELECT slug FROM task_tags WHERE task_seq = ? ORDER BY slug`, seq)
+		`SELECT task_tags.slug
+		   FROM task_tags
+		   JOIN tasks ON tasks.seq = task_tags.task_seq
+		   LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		                      AND tag_order.slug = task_tags.slug
+		  WHERE task_tags.task_seq = ?
+		  ORDER BY COALESCE(tag_order.position, `+unplaced+`), task_tags.slug`, seq)
 	if err != nil {
 		return nil, fmt.Errorf("task tags: %w", err)
 	}
