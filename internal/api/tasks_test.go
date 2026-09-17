@@ -105,24 +105,59 @@ func upperOf(s string) string {
 	return string(out)
 }
 
-// Refused rather than treated as matching nothing: a typo would otherwise be indistinguishable
-// from an empty result.
-func TestAnUnknownSlugInAFilterIsRefused(t *testing.T) {
+/**
+ * Tags come and go with the tasks that carry them, so a filter naming one that has gone still
+ * answers. It used to be a refusal, on the grounds that a typo is indistinguishable from an
+ * empty result — but an empty result is a true answer to the question asked, and the rule broke
+ * filters nobody had changed.
+ */
+func TestASlugNothingCarriesMatchesNothing(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 	c.task(`{"title":"Fix the tap","tags":["home"]}`)
 
-	resp := c.do("GET", "/api/tasks?tags=and(home,chorse)", "")
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("status = %s, want 400", resp.Status)
+	for query, want := range map[string]int{
+		"?tags=and(home,chorse)":  0,
+		"?tags=chorse":            0,
+		"?tags=or(home,chorse)":   1,
+		"?tags=and(home,not(ch))": 1,
+		"?tags=not(chorse)":       1,
+	} {
+		resp := c.do("GET", "/api/tasks"+query, "")
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s = %s, want 200", query, resp.Status)
+			continue
+		}
+		if got := len(c.json(resp)["tasks"].([]any)); got != want {
+			t.Errorf("%s returned %d tasks, want %d", query, got, want)
+		}
 	}
-	var body errorBody
-	json.NewDecoder(resp.Body).Decode(&body)
-	if body.Code != CodeTagUnknown {
-		t.Errorf("code = %q", body.Code)
-	}
-	if !contains(body.Message, "chorse") {
-		t.Errorf("message does not name the tag: %q", body.Message)
+}
+
+// A malformed slug and a malformed expression are still refused: those are the caller's spelling
+// of the question, not an answer about what exists.
+func TestAMalformedFilterIsStillRefused(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.task(`{"title":"Fix the tap","tags":["home"]}`)
+
+	for _, query := range []string{
+		"?tags=and(home",
+		"?tags=not(a,b)",
+		"?tags=and(a!b)",
+		"?tags=and(two%20words)",
+		"?tags=and()",
+	} {
+		resp := c.do("GET", "/api/tasks"+query, "")
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s = %s, want 400", query, resp.Status)
+			continue
+		}
+		var body errorBody
+		json.NewDecoder(resp.Body).Decode(&body)
+		if body.Code != CodeFilterInvalid {
+			t.Errorf("%s gave code %q, want %q", query, body.Code, CodeFilterInvalid)
+		}
 	}
 }
 
@@ -401,8 +436,10 @@ func TestRenamingATagMerges(t *testing.T) {
 	if got := len(c.list("?tags=house")["tasks"].([]any)); got != 2 {
 		t.Errorf("after the merge house has %d tasks", got)
 	}
-	if resp := c.do("GET", "/api/tasks?tags=home", ""); resp.StatusCode != http.StatusBadRequest {
-		t.Error("the old slug still exists")
+	// Nothing says home any more, so nothing matches it. It is not a refusal: a tag stops
+	// existing the moment its last task stops carrying it.
+	if got := len(c.list("?tags=home")["tasks"].([]any)); got != 0 {
+		t.Errorf("the old slug still names %d tasks", got)
 	}
 }
 

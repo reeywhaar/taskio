@@ -138,44 +138,6 @@ func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []str
 	return nil
 }
 
-// UnknownSlugs returns which of these slugs no visible task carries.
-//
-// Collected together, so a caller that got three wrong learns all three from one refusal.
-func (s *Store) UnknownSlugs(ctx context.Context, principalID string, scope *filter.Node, slugs []string) ([]string, error) {
-	if len(slugs) == 0 {
-		return nil, nil
-	}
-	where, args := scopeClause(principalID, scope)
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(slugs)), ",")
-	for _, slug := range slugs {
-		args = append(args, slug)
-	}
-	rows, err := s.reader.QueryContext(ctx,
-		`SELECT DISTINCT task_tags.slug
-		   FROM task_tags JOIN tasks ON tasks.seq = task_tags.task_seq
-		  WHERE `+where+` AND task_tags.slug IN (`+placeholders+`)`, args...)
-	if err != nil {
-		return nil, fmt.Errorf("check tags: %w", err)
-	}
-	defer rows.Close()
-
-	known := map[string]bool{}
-	for rows.Next() {
-		var slug string
-		if err := rows.Scan(&slug); err != nil {
-			return nil, err
-		}
-		known[slug] = true
-	}
-	var unknown []string
-	for _, slug := range slugs {
-		if !known[slug] {
-			unknown = append(unknown, slug)
-		}
-	}
-	return unknown, rows.Err()
-}
-
 // RenameTag moves a slug on every task the caller can reach, and reports how many.
 //
 // For a session that is the whole account; for a scoped token it is the scope, which makes it a

@@ -75,7 +75,7 @@ func TestEveryCodeTheAPICanEmitIsDocumented(t *testing.T) {
 	text := string(source)
 
 	for _, code := range []string{
-		CodeInvalid, CodeTagUnknown, CodeFilterInvalid, CodeCursorInvalid,
+		CodeInvalid, CodeFilterInvalid, CodeCursorInvalid,
 		CodeUnauthenticated, CodeForbidden, CodeOutOfScope, CodeNotFound,
 		CodePrefixAmbiguous, CodeRateLimited,
 	} {

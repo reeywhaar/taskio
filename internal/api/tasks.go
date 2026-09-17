@@ -55,18 +55,13 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 			refuse(w, http.StatusBadRequest, CodeFilterInvalid, err.Error())
 			return
 		}
-		// Refused rather than treated as matching nothing: a typo would otherwise be
-		// indistinguishable from an empty result, and the caller most likely to make one is a
-		// model that will conclude the list is empty and act on it.
-		unknown, err := s.store.UnknownSlugs(r.Context(), principalOf(r).ID, scopeOf(r), filter.Slugs(parsed))
-		if err != nil {
-			s.fail(w, r, err)
-			return
-		}
-		if len(unknown) > 0 {
-			refuse(w, http.StatusBadRequest, CodeTagUnknown, unknownSentence(unknown))
-			return
-		}
+		// A slug nothing carries matches nothing, and that is the whole of it. This used to be
+		// a refusal, on the grounds that a typo is indistinguishable from an empty result —
+		// but an empty result is a true answer to the question that was asked, and the rule
+		// cost more than it caught: a filter naming a tag whose last task has been deleted
+		// stopped working without the caller changing anything, not() of a word that does not
+		// exist excludes nothing and was refused anyway, and a group naming a tag its tasks
+		// have not been written yet could not be opened at all.
 	}
 
 	query := store.TaskQuery{Filter: parsed, Status: q.Get("status")}
@@ -284,18 +279,4 @@ func (s *Server) task(r *http.Request) (*store.Task, error) {
 		return nil, errOutOfScope
 	}
 	return task, nil
-}
-
-func unknownSentence(unknown []string) string {
-	if len(unknown) == 1 {
-		return "No task carries the tag " + strconv.Quote(unknown[0]) + "."
-	}
-	out := "No task carries these tags: "
-	for i, slug := range unknown {
-		if i > 0 {
-			out += ", "
-		}
-		out += strconv.Quote(slug)
-	}
-	return out + "."
 }

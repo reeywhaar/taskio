@@ -8,7 +8,6 @@ import (
 // Refusal codes. The code is the contract; the message is not, and nothing may match on it.
 const (
 	CodeInvalid              = "invalid"
-	CodeTagUnknown           = "tag_unknown"
 	CodeFilterInvalid        = "filter_invalid"
 	CodeCursorInvalid        = "cursor_invalid"
 	CodeOutOfScope           = "out_of_scope"

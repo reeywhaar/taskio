@@ -85,8 +85,10 @@ or(and(home,chores),not(work))          nested freely
 Prefix form, so there is no precedence to get wrong: the parentheses are the structure.
 
 - `and` and `or` take one or more arguments; `not` takes exactly one.
-- **A slug no task of yours carries is refused**, naming every wrong one at once. A typo would
-  otherwise be indistinguishable from an empty result.
+- **A slug nothing carries matches nothing.** It is not an error: tags come and go with the
+  tasks that carry them, so a filter that names one whose last task was finished off still
+  answers rather than breaking. The only refusals here are a malformed slug and a malformed
+  expression.
 - At most 1,024 bytes, 8 deep, 64 parts.
 
 ## Scopes
@@ -262,7 +264,7 @@ decoration.
 ## Errors
 
 ```json
-{ "ok": false, "code": "tag_unknown", "message": "No task carries the tag \"chorse\"." }
+{ "ok": false, "code": "filter_invalid", "message": "not() takes exactly one argument." }
 ```
 
 `code` is stable and safe to match on. `message` is written to be read, and names the limit or
@@ -271,7 +273,6 @@ the value that was wrong.
 | code | status | what to do |
 | --- | --- | --- |
 | `invalid` | 400 | The body or a parameter is wrong; the message says how |
-| `tag_unknown` | 400 | Check the spelling against `GET /api/tags` |
 | `filter_invalid` | 400 | The expression does not parse |
 | `cursor_invalid` | 400 | Start the list again |
 | `unauthenticated` | 401 | The token is missing, wrong, expired or revoked |
