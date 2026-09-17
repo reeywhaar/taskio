@@ -131,6 +131,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 
 	s.handle("GET /api/groups", s.requireSession(s.listGroups))
 	s.handle("POST /api/groups", s.requireSession(s.createGroup))
+	// Before {id}, and no group can be called order: a group id is a prefixed ULID.
+	s.handle("PUT /api/groups/order", s.requireSession(s.putGroupOrder))
 	s.handle("PATCH /api/groups/{id}", s.requireSession(s.patchGroup))
 	s.handle("DELETE /api/groups/{id}", s.requireSession(s.deleteGroup))
 

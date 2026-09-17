@@ -149,3 +149,53 @@ func TestAGroupsColourIsSixHexDigitsOrNothing(t *testing.T) {
 		t.Errorf("a group with no colour = %s", resp.Status)
 	}
 }
+
+// The rail is a list somebody arranged, not a log of when they wrote things.
+func TestGroupsComeBackInTheOrderTheyWereDraggedInto(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	made := map[string]string{}
+	for _, name := range []string{"One", "Two", "Three"} {
+		made[name] = c.json(c.do("POST", "/api/groups",
+			`{"name":"`+name+`","tags":["work"]}`))["id"].(string)
+	}
+
+	if got := groupNames(c.json(c.do("GET", "/api/groups", ""))); len(got) != 3 || got[0] != "One" {
+		t.Fatalf("written order = %v", got)
+	}
+
+	body := `{"ids":["` + made["Three"] + `","` + made["One"] + `"]}`
+	if resp := c.do("PUT", "/api/groups/order", body); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("order = %s", resp.Status)
+	}
+	// Two was not named, so it keeps its place after the ones that were.
+	if got := groupNames(c.json(c.do("GET", "/api/groups", ""))); len(got) != 3 ||
+		got[0] != "Three" || got[1] != "One" || got[2] != "Two" {
+		t.Errorf("arranged = %v, want Three, One, Two", got)
+	}
+}
+
+// A group written in another tab mid-drag lands at the end rather than at the top.
+func TestAGroupArrangedAroundKeepsItsPlace(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	first := c.json(c.do("POST", "/api/groups", `{"name":"One","tags":["work"]}`))["id"].(string)
+	if resp := c.do("PUT", "/api/groups/order", `{"ids":["`+first+`"]}`); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("order = %s", resp.Status)
+	}
+
+	c.do("POST", "/api/groups", `{"name":"Later","tags":["home"]}`)
+	if got := groupNames(c.json(c.do("GET", "/api/groups", ""))); len(got) != 2 || got[1] != "Later" {
+		t.Errorf("groups = %v, want the new one last", got)
+	}
+}
+
+func TestATokenCannotArrangeGroups(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	a := mintToken(t, s, c, "claude", "")
+
+	if resp := a.do("PUT", "/api/groups/order", `{"ids":[]}`); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a token arranging groups = %s, want 401", resp.Status)
+	}
+}

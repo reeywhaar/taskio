@@ -112,6 +112,20 @@ The arrangement belongs to the account and is stored per slug, so a tag that goe
 comes back is where it was left. Tags nobody has dragged sort after the ones somebody has, so a
 new tag arrives at the end rather than in the middle of an arrangement.
 
+## Groups are dragged like tags, and All is not one of them
+
+The rail's groups carry the same press-and-move gesture as the pills, one axis over: the carried
+row dims, a bar shows the place it would land, and nothing moves until it is let go. The gesture
+itself is in one place — the two would otherwise be two copies of pointer capture, a slop
+threshold and a swallowed click.
+
+All does not carry. It is the list with nothing lit rather than a stored group, so it has no
+place in the arrangement and stays at the top of the rail.
+
+A new group is written after the ones already there rather than at position zero, which is where
+the first arranged group sits. Otherwise writing one puts it at the top of somebody's
+arrangement, tied with the group they had put first.
+
 ## A group is a saved filter, and the tags are still the state
 
 The rail lists groups rather than one List entry, and pressing one lights its tags. What it does

@@ -25,6 +25,7 @@ var all = []Migration{
 	groups,
 	groupColor,
 	tagOrder,
+	groupOrder,
 }
 
 // exec runs a statement block as one migration.

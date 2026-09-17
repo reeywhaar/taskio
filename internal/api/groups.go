@@ -76,6 +76,23 @@ func (s *Server) patchGroup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, renderGroup(g))
 }
 
+type groupOrderRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// putGroupOrder records where the rail's groups have been dragged to.
+func (s *Server) putGroupOrder(w http.ResponseWriter, r *http.Request) {
+	var req groupOrderRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.store.SetGroupOrder(r.Context(), principalOf(r).ID, req.IDs); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) deleteGroup(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.DeleteGroup(r.Context(), principalOf(r).ID, r.PathValue("id")); err != nil {
 		s.fail(w, r, err)

@@ -17,3 +17,7 @@ export const patchGroupsById = (
 
 export const deleteGroupsById = (id: string) =>
   request<void>(`/api/groups/${id}`, { method: "DELETE" });
+
+/** Where the rail's groups have been dragged to. The whole arrangement, not one move. */
+export const putGroupsOrder = (body: { ids: string[] }) =>
+  request<void>("/api/groups/order", { method: "PUT", body });

@@ -1,15 +1,12 @@
 import { useRef, useState } from "react";
 
+import { useCarry } from "@app/islands/app/carry";
+
 import { PlusIcon } from "@app/components/icons/Icon";
 import type { Tag } from "@app/api/types";
 
 /** How long a press has to last to mean "only this one". */
 const HOLD = 450;
-
-/** How far it has to move first to mean "somewhere else" instead. */
-const SLOP = 6;
-
-type At = { x: number; y: number };
 
 /** The bar that says where a carried pill would land. */
 const MARKER =
@@ -20,20 +17,15 @@ const MARKER =
  *
  * Tap toggles. Hold narrows to this tag alone. Move first and it is a drag, which cancels the
  * hold — three intentions on one target, told apart by what the pointer does rather than by
- * three separate controls.
+ * three separate controls. The carrying is useCarry's; the hold is this pill's, because it is
+ * the only place that has one.
  *
- * Pointer events rather than mouse or touch ones, so all of it is written once and a finger, a
- * pen and a mouse reach it. touch-action:none says this is not a place to start a scroll or a
- * zoom from, which is what lets a finger hold or drag here at all; select-none keeps a held
- * pill from becoming highlighted text, and the context menu is what a long press means on
- * Android otherwise.
+ * touch-action:none says this is not a place to start a scroll or a zoom from, which is what
+ * lets a finger hold or drag here at all; select-none keeps a held pill from becoming
+ * highlighted text, and the context menu is what a long press means on Android otherwise.
  *
- * The pointer is captured for the whole drag, which is why nothing moves until it is let go: a
- * captured pointer is released the moment its element is moved in the DOM, and a cloud that
- * rearranges under the finger does that on the first swap — silently, halfway through.
- *
- * The click that follows a hold or a drag is dropped. A press is one intention, and a finger
- * lifting off should not also toggle the tag it has just narrowed to or moved.
+ * Nothing moves until the pill is let go: a captured pointer is released the moment its element
+ * is moved in the DOM, and a cloud that rearranges under the finger does that on the first swap.
  */
 function Pill({
   slug,
@@ -42,7 +34,7 @@ function Pill({
   mark,
   onToggle,
   onHold,
-  onDrag,
+  onOver,
   onDrop,
 }: {
   slug: string;
@@ -53,14 +45,10 @@ function Pill({
   mark: "before" | "after" | null;
   onToggle: () => void;
   onHold?: () => void;
-  /** Where the pointer is, once the press has travelled far enough to be a drag. */
-  onDrag?: (at: At) => void;
+  onOver?: (slug: string | null) => void;
   onDrop?: () => void;
 }) {
   const timer = useRef(0);
-  const spent = useRef(false);
-  const from = useRef<At | null>(null);
-  const moving = useRef(false);
   const [holding, setHolding] = useState(false);
 
   const endHold = () => {
@@ -68,12 +56,13 @@ function Pill({
     setHolding(false);
   };
 
-  const finish = (dropped: boolean) => {
-    endHold();
-    from.current = null;
-    if (moving.current && dropped) onDrop?.();
-    moving.current = false;
-  };
+  const carry = useCarry({
+    find: "[data-slug]",
+    enabled: !!onOver,
+    onStart: endHold,
+    onOver: (el) => onOver?.(el?.dataset.slug ?? null),
+    onDrop: () => onDrop?.(),
+  });
 
   return (
     <button
@@ -81,44 +70,34 @@ function Pill({
       data-slug={slug}
       aria-pressed={on}
       onPointerDown={(e) => {
-        spent.current = false;
-        moving.current = false;
-        from.current = { x: e.clientX, y: e.clientY };
-        // Without it the pointer leaves this 60px target on its first move and the rest of the
-        // drag is reported to whatever it passes over.
-        if (onDrag) e.currentTarget.setPointerCapture(e.pointerId);
+        carry.press(e);
         if (!onHold) return;
         setHolding(true);
         timer.current = window.setTimeout(() => {
-          spent.current = true;
+          carry.spent.current = true;
           setHolding(false);
           onHold();
         }, HOLD);
       }}
-      onPointerMove={(e) => {
-        const start = from.current;
-        if (!start || !onDrag) return;
-        if (!moving.current) {
-          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < SLOP)
-            return;
-          moving.current = true;
-          spent.current = true;
-          endHold();
-        }
-        onDrag({ x: e.clientX, y: e.clientY });
+      onPointerMove={carry.move}
+      onPointerUp={() => {
+        endHold();
+        carry.release();
       }}
-      onPointerUp={() => finish(true)}
-      onPointerCancel={() => finish(false)}
-      onContextMenu={(e) => (onHold || onDrag) && e.preventDefault()}
+      onPointerCancel={() => {
+        endHold();
+        carry.cancel();
+      }}
+      onContextMenu={(e) => (onHold || onOver) && e.preventDefault()}
       onClick={() => {
-        if (spent.current) {
-          spent.current = false;
+        if (carry.spent.current) {
+          carry.spent.current = false;
           return;
         }
         onToggle();
       }}
       className={`relative rounded-full px-2.5 py-1 text-xs transition select-none motion-reduce:transition-none ${
-        onDrag ? "touch-none" : "touch-manipulation"
+        onOver ? "touch-none" : "touch-manipulation"
       } ${holding ? "scale-90" : ""} ${carried ? "opacity-40" : ""} ${
         // A bar in the gap beside the pill rather than a ring around it: what is being chosen
         // is a place between two tags, not a tag. Drawn as a pseudo-element, so the pills do
@@ -175,10 +154,8 @@ export function TagCloud({
     ...selected.filter((s) => !known.has(s)),
   ];
 
-  const over = (slug: string) => (at: At) => {
+  const over = (slug: string) => (it: string | null) => {
     setCarrying(slug);
-    const under = document.elementFromPoint(at.x, at.y)?.closest("[data-slug]");
-    const it = under instanceof HTMLElement ? under.dataset.slug : undefined;
     setOnto(it && it !== slug ? it : null);
   };
 
@@ -218,7 +195,7 @@ export function TagCloud({
           mark={markFor(slug)}
           onToggle={() => onToggle(slug)}
           onHold={onOnly && (() => onOnly(slug))}
-          onDrag={onReorder && over(slug)}
+          onOver={onReorder && over(slug)}
           onDrop={onReorder && drop}
         />
       ))}

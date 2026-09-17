@@ -34,11 +34,12 @@ type Group struct {
 // shortest way to be sure neither can be escaped out of is to accept one shape.
 var colorRE = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
-// Groups lists an account's, oldest first, so adding one does not move the others.
+// Groups lists an account's in the order they are drawn in: where they were dragged to, then
+// oldest first, so a group nobody has moved does not move when another one is added.
 func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, name, color, created_at FROM groups
-		  WHERE principal_id = ? ORDER BY created_at, id`, principalID)
+		  WHERE principal_id = ? ORDER BY position, created_at, id`, principalID)
 	if err != nil {
 		return nil, fmt.Errorf("list groups: %w", err)
 	}
@@ -106,9 +107,14 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 	}
 	defer tx.Rollback()
 
+	// After the ones already there rather than at position zero, which is where the first
+	// arranged group sits: a new group belongs at the end of somebody's arrangement, not tied
+	// with the top of it and broken apart by whatever the tiebreak happens to say.
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO groups (id, principal_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)`,
-		g.ID, principalID, g.Name, g.Color, unix(g.CreatedAt)); err != nil {
+		`INSERT INTO groups (id, principal_id, name, color, created_at, position)
+		 VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1
+		                           FROM groups WHERE principal_id = ?))`,
+		g.ID, principalID, g.Name, g.Color, unix(g.CreatedAt), principalID); err != nil {
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 	if err := writeGroupTags(ctx, tx, g.ID, g.Tags); err != nil {
@@ -164,6 +170,55 @@ func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, t
 	}
 	s.changed(principalID)
 	return g, nil
+}
+
+// SetGroupOrder writes where the rail's groups have been dragged to.
+//
+// The whole arrangement at once rather than one move, like the tag cloud's: the client knows
+// the order it is showing, and sending that is one write against a race between two windows.
+//
+// Ids this does not name keep their place after the ones it does, oldest first. A group written
+// in another tab while this one was being dragged then lands at the end rather than at the top,
+// which is where a position of zero would have put it.
+func (s *Store) SetGroupOrder(ctx context.Context, principalID string, ids []string) error {
+	current, err := s.Groups(ctx, principalID)
+	if err != nil {
+		return err
+	}
+
+	named := map[string]bool{}
+	order := make([]string, 0, len(current))
+	for _, id := range ids {
+		if named[id] {
+			continue
+		}
+		named[id] = true
+		order = append(order, id)
+	}
+	for _, g := range current {
+		if !named[g.ID] {
+			order = append(order, g.ID)
+		}
+	}
+
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for at, id := range order {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE groups SET position = ? WHERE principal_id = ? AND id = ?`,
+			at, principalID, id); err != nil {
+			return fmt.Errorf("set group order: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("set group order: %w", err)
+	}
+	s.changed(principalID)
+	return nil
 }
 
 // DeleteGroup removes one. Its tags go by cascade, and no task is touched: a group names tags,

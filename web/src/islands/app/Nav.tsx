@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getGroups } from "@app/api/actions/groups";
+import { getGroups, putGroupsOrder } from "@app/api/actions/groups";
+import type { Group } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import {
   BurgerIcon,
@@ -9,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
 } from "@app/components/icons/Icon";
+import { useCarry } from "@app/islands/app/carry";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
 import { markURI } from "@app/mark";
 import type { Location } from "@app/islands/app/route";
@@ -30,6 +32,55 @@ export function Nav({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
   const groups = useQuery({ queryKey: qk.groups, queryFn: getGroups });
+  const client = useQueryClient();
+
+  /** The group being carried, and the one it would be dropped on. */
+  const [carrying, setCarrying] = useState<string | null>(null);
+  const [onto, setOnto] = useState<string | null>(null);
+
+  const listed = groups.data?.groups ?? [];
+
+  const arrange = useMutation({
+    mutationFn: (ids: string[]) => putGroupsOrder({ ids }),
+    onMutate: (ids) => {
+      const before = client.getQueryData<{ groups: Group[] }>(qk.groups);
+      if (before) {
+        const by = new Map(before.groups.map((g) => [g.id, g]));
+        client.setQueryData(qk.groups, {
+          groups: ids.flatMap((id) => by.get(id) ?? []),
+        });
+      }
+      return before;
+    },
+    onError: (_err, _ids, before) =>
+      before && client.setQueryData(qk.groups, before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.groups }),
+  });
+
+  /**
+   * Nothing moves until the group is let go, and All is not in it.
+   *
+   * The same arrangement as the tag cloud's, one axis over: a bar above or below the row it
+   * would land on, drawn as a pseudo-element so the rows do not shift under the finger.
+   */
+  const drop = () => {
+    const ids = listed.map((g) => g.id);
+    const from = carrying ? ids.indexOf(carrying) : -1;
+    const to = onto ? ids.indexOf(onto) : -1;
+    setCarrying(null);
+    setOnto(null);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(to, 0, ids[from]!);
+    arrange.mutate(next);
+  };
+
+  const markFor = (id: string): "above" | "below" | null => {
+    if (!carrying || onto !== id) return null;
+    const ids = listed.map((g) => g.id);
+    return ids.indexOf(carrying) < ids.indexOf(id) ? "below" : "above";
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -84,16 +135,24 @@ export function Nav({
           which is where everybody starts. */}
       <Item label="All" lit={litBy([])} onClick={() => show([])} />
 
-      {(groups.data?.groups ?? []).map((group) => (
+      {listed.map((group) => (
         <Item
           key={group.id}
+          id={group.id}
           label={group.name}
           lit={litBy(group.tags)}
+          carried={carrying === group.id}
+          mark={markFor(group.id)}
           onClick={() => show(group.tags)}
           onEdit={() => {
             setOpen(false);
             setEditing(group);
           }}
+          onOver={(id) => {
+            setCarrying(group.id);
+            setOnto(id && id !== group.id ? id : null);
+          }}
+          onDrop={drop}
         />
       ))}
 
@@ -243,28 +302,62 @@ function Mark({ colour }: { colour: string }) {
  * The pencil waits for the pointer, because a rail of names with a control on every line is a
  * rail about editing rather than about where you are. Where there is no pointer to wait for it
  * is simply there.
+ *
+ * A group row also carries: press and move and it goes somewhere else in the rail. All does not,
+ * because All is not a group — it is the list with nothing lit, and it stays at the top.
  */
 function Item({
+  id,
   label,
   lit,
+  carried = false,
+  mark = null,
   onClick,
   onEdit,
+  onOver,
+  onDrop,
   bare = false,
 }: {
+  /** The group this row is, where it is one. */
+  id?: string;
   label: string;
   lit: boolean;
+  carried?: boolean;
+  mark?: "above" | "below" | null;
   onClick: () => void;
   onEdit?: () => void;
+  onOver?: (id: string | null) => void;
+  onDrop?: () => void;
   /** Already inside an <li>, because the caller needed to space it. */
   bare?: boolean;
 }) {
+  const carry = useCarry({
+    find: "[data-group]",
+    enabled: !!onOver,
+    onOver: (el) => onOver?.(el?.dataset.group ?? null),
+    onDrop: () => onDrop?.(),
+  });
+
   const row = (
-    <div className="group/row flex items-center gap-1">
+    <div className="group/row relative flex items-center gap-1">
       <button
         type="button"
-        onClick={onClick}
+        data-group={id}
+        onPointerDown={carry.press}
+        onPointerMove={carry.move}
+        onPointerUp={carry.release}
+        onPointerCancel={carry.cancel}
+        onClick={() => {
+          if (carry.spent.current) {
+            carry.spent.current = false;
+            return;
+          }
+          onClick();
+        }}
         aria-current={lit ? "page" : undefined}
-        className={`min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm ${
+        className={`min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none ${
+          onOver ? "touch-none" : ""
+        } ${carried ? "opacity-40" : ""} ${
           lit
             ? "bg-fill font-medium text-brand"
             : "text-muted hover:bg-fill hover:text-fg"
@@ -281,6 +374,16 @@ function Item({
         >
           <PencilIcon />
         </button>
+      ) : null}
+      {/* The bar itself rather than a pseudo-element on the row: it is absolute, so it takes
+          no space and the rows do not shift under the finger to make room for it. */}
+      {mark ? (
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-fg ${
+            mark === "above" ? "-top-0.5" : "-bottom-0.5"
+          }`}
+        />
       ) : null}
     </div>
   );
