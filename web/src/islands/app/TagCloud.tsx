@@ -1,7 +1,78 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { PlusIcon } from "@app/components/icons/Icon";
 import type { Tag } from "@app/api/types";
+
+/** How long a press has to last to mean "only this one". */
+const HOLD = 450;
+
+/**
+ * A pill, and the press that means the other thing.
+ *
+ * Pointer events rather than mouse or touch ones, so the hold is written once and a finger, a
+ * pen and a mouse all reach it. touch-action tells the browser this element is not a place to
+ * start a scroll or a double-tap zoom from, which is what makes a long press on a phone land
+ * here instead of being swallowed as a gesture; select-none keeps a held pill from turning into
+ * highlighted text, and the context menu is what a long press means on Android otherwise.
+ *
+ * The click that follows a hold is dropped. A press is one intention, and a finger lifting off
+ * after half a second should not also toggle the tag that was just narrowed to.
+ */
+function Pill({
+  slug,
+  on,
+  onToggle,
+  onHold,
+}: {
+  slug: string;
+  on: boolean;
+  onToggle: () => void;
+  onHold?: () => void;
+}) {
+  const timer = useRef(0);
+  const held = useRef(false);
+  const [holding, setHolding] = useState(false);
+
+  const start = () => {
+    if (!onHold) return;
+    held.current = false;
+    setHolding(true);
+    timer.current = window.setTimeout(() => {
+      held.current = true;
+      setHolding(false);
+      onHold();
+    }, HOLD);
+  };
+
+  const stop = () => {
+    window.clearTimeout(timer.current);
+    setHolding(false);
+  };
+
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => onHold && e.preventDefault()}
+      onClick={() => {
+        if (held.current) {
+          held.current = false;
+          return;
+        }
+        onToggle();
+      }}
+      className={`touch-manipulation rounded-full px-2.5 py-1 text-xs transition-transform select-none motion-reduce:transition-none ${
+        holding ? "scale-90" : ""
+      } ${on ? "bg-brand text-brand-ink" : "bg-fill text-muted hover:text-fg"}`}
+    >
+      {slug}
+    </button>
+  );
+}
 
 /**
  * One component, used twice: on the list it filters, in the editor it assigns. The caller owns
@@ -15,6 +86,7 @@ export function TagCloud({
   selected,
   onToggle,
   onCreate,
+  onOnly,
 }: {
   tags: Tag[];
   selected: string[];
@@ -22,6 +94,9 @@ export function TagCloud({
   /** Only the editor's cloud offers this: a tag exists once a task carries it, so inventing
    *  one on the filter screen would narrow the list to nothing. */
   onCreate?: (slug: string) => void;
+  /** Only the filter's cloud offers this: holding a pill on the list narrows to that one tag,
+   *  where on a task it would quietly take every other tag off. */
+  onOnly?: (slug: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
@@ -34,24 +109,15 @@ export function TagCloud({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {shown.map((slug) => {
-        const on = selected.includes(slug);
-        return (
-          <button
-            key={slug}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onToggle(slug)}
-            className={`rounded-full px-2.5 py-1 text-xs ${
-              on
-                ? "bg-brand text-brand-ink"
-                : "bg-fill text-muted hover:text-fg"
-            }`}
-          >
-            {slug}
-          </button>
-        );
-      })}
+      {shown.map((slug) => (
+        <Pill
+          key={slug}
+          slug={slug}
+          on={selected.includes(slug)}
+          onToggle={() => onToggle(slug)}
+          onHold={onOnly && (() => onOnly(slug))}
+        />
+      ))}
 
       {onCreate ? (
         adding ? (

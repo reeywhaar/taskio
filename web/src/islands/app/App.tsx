@@ -297,6 +297,9 @@ function List({
             tags={tags.data?.tags ?? []}
             selected={filters.tags}
             onToggle={toggleTag}
+            onOnly={(slug) =>
+              onGo({ ...location, filters: { ...filters, tags: [slug] } })
+            }
           />
         </div>
       </div>
