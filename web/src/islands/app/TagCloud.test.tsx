@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TagCloud } from "@app/islands/app/TagCloud";
 
@@ -52,5 +52,122 @@ describe("TagCloud", () => {
       <TagCloud tags={tags} selected={["brand-new"]} onToggle={vi.fn()} />,
     );
     expect(screen.getByRole("button", { name: "brand-new" })).toBeDefined();
+  });
+});
+
+/**
+ * jsdom has no layout, so which pill is under the pointer has to be said rather than measured.
+ * What is being pinned here is the order that comes out of a drag, not where the pixels are.
+ */
+function dragging(cloud: HTMLElement, over: string) {
+  const under = [...cloud.querySelectorAll("[data-slug]")].find(
+    (el) => (el as HTMLElement).dataset.slug === over,
+  );
+  document.elementFromPoint = () => under as Element;
+}
+
+const three = [
+  { id: "a", slug: "alpha" },
+  { id: "b", slug: "beta" },
+  { id: "c", slug: "gamma" },
+];
+
+const press = (el: Element, x: number) =>
+  fireEvent.pointerDown(el, { clientX: x, clientY: 0, pointerId: 1 });
+
+describe("dragging a pill", () => {
+  beforeEach(() => {
+    // jsdom has neither of these, and the pill asks for the capture on every press.
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  it("carries a pill past another and lands it after, moving right", () => {
+    const onReorder = vi.fn();
+    const { container } = render(
+      <TagCloud
+        tags={three}
+        selected={[]}
+        onToggle={vi.fn()}
+        onReorder={onReorder}
+      />,
+    );
+    const alpha = screen.getByRole("button", { name: "alpha" });
+    press(alpha, 0);
+    dragging(container, "gamma");
+    fireEvent.pointerMove(alpha, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(alpha, { pointerId: 1 });
+
+    expect(onReorder).toHaveBeenCalledWith(["beta", "gamma", "alpha"]);
+  });
+
+  it("lands it before, moving left", () => {
+    const onReorder = vi.fn();
+    const { container } = render(
+      <TagCloud
+        tags={three}
+        selected={[]}
+        onToggle={vi.fn()}
+        onReorder={onReorder}
+      />,
+    );
+    const gamma = screen.getByRole("button", { name: "gamma" });
+    press(gamma, 80);
+    dragging(container, "alpha");
+    fireEvent.pointerMove(gamma, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(gamma, { pointerId: 1 });
+
+    expect(onReorder).toHaveBeenCalledWith(["gamma", "alpha", "beta"]);
+  });
+
+  /** A press is one intention: the tag that was just moved must not also be lit. */
+  it("does not toggle the tag it moved", () => {
+    const onToggle = vi.fn();
+    const { container } = render(
+      <TagCloud
+        tags={three}
+        selected={[]}
+        onToggle={onToggle}
+        onReorder={vi.fn()}
+      />,
+    );
+    const alpha = screen.getByRole("button", { name: "alpha" });
+    press(alpha, 0);
+    dragging(container, "beta");
+    fireEvent.pointerMove(alpha, { clientX: 40, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(alpha, { pointerId: 1 });
+    fireEvent.click(alpha);
+
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  /** Under the threshold it is a press that wobbled, not a drag. */
+  it("is still a tap if the pointer barely moved", () => {
+    const onToggle = vi.fn();
+    const onReorder = vi.fn();
+    render(
+      <TagCloud
+        tags={three}
+        selected={[]}
+        onToggle={onToggle}
+        onReorder={onReorder}
+      />,
+    );
+    const alpha = screen.getByRole("button", { name: "alpha" });
+    press(alpha, 0);
+    fireEvent.pointerMove(alpha, { clientX: 3, clientY: 0, pointerId: 1 });
+    fireEvent.pointerUp(alpha, { pointerId: 1 });
+    fireEvent.click(alpha);
+
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledWith("alpha");
+  });
+
+  it("is not offered where there is nothing to arrange", () => {
+    render(<TagCloud tags={three} selected={[]} onToggle={vi.fn()} />);
+    // The editor's cloud must keep its pills scrollable under a finger.
+    expect(screen.getByRole("button", { name: "alpha" }).className).toContain(
+      "touch-manipulation",
+    );
   });
 });

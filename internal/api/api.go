@@ -124,6 +124,11 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 
 	// Tokens are session-only: a credential must not mint or manage credentials, and a stolen
 	// one that could read this could see where somebody signs in from.
+	// Before the {slug} routes it sits beside: a literal wins in the mux, and no tag can be
+	// called order because "order" is a slug like any other — so the method is what keeps them
+	// apart, and PUT is not something the slug routes answer.
+	s.handle("PUT /api/tags/order", s.requireSession(s.setTagOrder))
+
 	s.handle("GET /api/groups", s.requireSession(s.listGroups))
 	s.handle("POST /api/groups", s.requireSession(s.createGroup))
 	s.handle("PATCH /api/groups/{id}", s.requireSession(s.patchGroup))

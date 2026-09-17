@@ -57,6 +57,30 @@ no border beside it there, so nothing reads as a double frame, and it is drawn o
 clicking one does not leave it ringed. A text field matches either way, which is the reason the
 rule stops at the controls that do not.
 
+## A pill takes three kinds of press
+
+Tap toggles the tag. Hold it for half a second and the filter narrows to that tag alone — two
+lit and a third wanted by itself is otherwise three presses. Move first and it is a drag, which
+cancels the hold and rearranges the cloud.
+
+Three intentions on one target, told apart by what the pointer does rather than by three
+controls, and written as pointer events so a finger, a pen and a mouse all reach them. The pill
+sets `touch-action: none`, because a phone otherwise reads the hold and the drag as the start of
+a scroll and swallows both.
+
+The click that follows a hold or a drag is dropped. A press is one intention, and a finger
+lifting off should not also toggle the tag it has just narrowed to or moved.
+
+**Nothing moves until the pill is let go.** A dragged pill is dimmed and a bar is drawn in the
+gap where it would land — on the right of the pill under the finger when it is travelling right,
+the left when travelling left, which is how both ends of the row stay reachable. The alternative,
+rearranging under the finger, loses the pointer capture the moment the carried element is moved
+in the DOM: the drag ends halfway through and nobody has let go of anything.
+
+The arrangement belongs to the account and is stored per slug, so a tag that goes out of use and
+comes back is where it was left. Tags nobody has dragged sort after the ones somebody has, so a
+new tag arrives at the end rather than in the middle of an arrangement.
+
 ## A group is a saved filter, and the tags are still the state
 
 The rail lists groups rather than one List entry, and pressing one lights its tags. What it does

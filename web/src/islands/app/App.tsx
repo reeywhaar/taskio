@@ -6,14 +6,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { getTags } from "@app/api/actions/tags";
+import { getTags, putTagsOrder } from "@app/api/actions/tags";
 import {
   getTasks,
   patchTasksById,
   postTasksByIdDone,
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
-import type { Task } from "@app/api/types";
+import type { Tag, Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
 import { useLive } from "@app/api/live";
@@ -169,6 +169,28 @@ function List({
     onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
   });
 
+  /**
+   * The arrangement is drawn before the server has it, because the pill is already where the
+   * finger let go of it — putting it back for one round trip is the cloud arguing with what
+   * somebody just did.
+   */
+  const arrange = useMutation({
+    mutationFn: (slugs: string[]) => putTagsOrder({ slugs }),
+    onMutate: (slugs) => {
+      const before = client.getQueryData<{ tags: Tag[] }>(qk.tags);
+      if (before) {
+        const by = new Map(before.tags.map((tag) => [tag.slug, tag]));
+        client.setQueryData(qk.tags, {
+          tags: slugs.flatMap((slug) => by.get(slug) ?? []),
+        });
+      }
+      return before;
+    },
+    onError: (_err, _slugs, before) =>
+      before && client.setQueryData(qk.tags, before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.tags }),
+  });
+
   const toggleTag = (slug: string) => {
     const next = filters.tags.includes(slug)
       ? filters.tags.filter((s) => s !== slug)
@@ -300,6 +322,7 @@ function List({
             onOnly={(slug) =>
               onGo({ ...location, filters: { ...filters, tags: [slug] } })
             }
+            onReorder={(slugs) => arrange.mutate(slugs)}
           />
         </div>
       </div>

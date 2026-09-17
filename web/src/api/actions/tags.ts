@@ -16,3 +16,7 @@ export const deleteTagsBySlug = (slug: string) =>
   request<{ tasks: number }>(`/api/tags/${encodeURIComponent(slug)}`, {
     method: "DELETE",
   });
+
+/** Where the pills have been dragged to. The whole arrangement, not one move. */
+export const putTagsOrder = (body: { slugs: string[] }) =>
+  request<void>("/api/tags/order", { method: "PUT", body });

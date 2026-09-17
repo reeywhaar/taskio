@@ -52,11 +52,18 @@ func NormalizeSlug(raw string) string {
 // exists elsewhere on the account is not something a confined credential learns for free.
 func (s *Store) Tags(ctx context.Context, principalID string, scope *filter.Node) ([]Tag, error) {
 	where, args := scopeClause(principalID, scope)
+	// Where they were dragged to first, then the rest alphabetically. A tag nobody has moved
+	// has no row in tag_order, and sorts after every tag that does — new tags arrive at the end
+	// rather than in the middle of an arrangement somebody made.
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT DISTINCT task_tags.slug
-		   FROM task_tags JOIN tasks ON tasks.seq = task_tags.task_seq
+		`SELECT task_tags.slug, MIN(COALESCE(tag_order.position, `+unplaced+`)) AS place
+		   FROM task_tags
+		   JOIN tasks ON tasks.seq = task_tags.task_seq
+		   LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		                      AND tag_order.slug = task_tags.slug
 		  WHERE `+where+`
-		  ORDER BY task_tags.slug`, args...)
+		  GROUP BY task_tags.slug
+		  ORDER BY place, task_tags.slug`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list tags: %w", err)
 	}
@@ -65,12 +72,70 @@ func (s *Store) Tags(ctx context.Context, principalID string, scope *filter.Node
 	out := []Tag{}
 	for rows.Next() {
 		var slug string
-		if err := rows.Scan(&slug); err != nil {
+		var place int64
+		if err := rows.Scan(&slug, &place); err != nil {
 			return nil, err
 		}
 		out = append(out, TagOf(slug))
 	}
 	return out, rows.Err()
+}
+
+// unplaced sorts a tag nobody has dragged after every tag somebody has.
+const unplaced = "1000000"
+
+// TagOrderMax is how many slugs an arrangement may name. Larger than any cloud anybody can read,
+// and small enough that the list is one statement.
+const TagOrderMax = 512
+
+// SetTagOrder records where the tags have been dragged to.
+//
+// The whole arrangement at once rather than one move at a time: the client knows the order it is
+// showing, and sending that is one write against a race between two drags in two windows.
+//
+// Slugs nothing carries are kept rather than refused. A tag goes out of use whenever its last
+// task is finished off, and an arrangement that threw those away would rearrange itself behind
+// somebody's back.
+func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []string) error {
+	if len(slugs) > TagOrderMax {
+		return Invalid("That is more than %d tags in one arrangement.", TagOrderMax)
+	}
+	seen := map[string]bool{}
+	clean := make([]string, 0, len(slugs))
+	for _, raw := range slugs {
+		slug := NormalizeSlug(raw)
+		if !filter.ValidSlug(slug) {
+			return Invalid("%q is not a tag.", raw)
+		}
+		if seen[slug] {
+			continue
+		}
+		seen[slug] = true
+		clean = append(clean, slug)
+	}
+
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM tag_order WHERE principal_id = ?`, principalID); err != nil {
+		return fmt.Errorf("set tag order: %w", err)
+	}
+	for at, slug := range clean {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO tag_order (principal_id, slug, position) VALUES (?, ?, ?)`,
+			principalID, slug, at); err != nil {
+			return fmt.Errorf("set tag order: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("set tag order: %w", err)
+	}
+	s.changed(principalID)
+	return nil
 }
 
 // UnknownSlugs returns which of these slugs no visible task carries.

@@ -20,6 +20,27 @@ func (s *Server) listTags(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"tags": out})
 }
 
+type tagOrderRequest struct {
+	Slugs []string `json:"slugs"`
+}
+
+// setTagOrder records where the cloud's pills have been dragged to.
+//
+// Session-only, like groups: it is an arrangement of somebody's screen rather than something a
+// program needs to work the list, and a scoped token naming every slug on the account is a
+// scoped token learning the words it cannot see.
+func (s *Server) setTagOrder(w http.ResponseWriter, r *http.Request) {
+	var req tagOrderRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.store.SetTagOrder(r.Context(), principalOf(r).ID, req.Slugs); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 type renameTagRequest struct {
 	Slug string `json:"slug"`
 }
