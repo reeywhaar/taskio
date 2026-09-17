@@ -325,6 +325,15 @@ showing them should not be the last to know.
 It is a browser's channel, not an agent's: session-only, and absent from `/docs`. Something
 holding a token has the list endpoints and a schedule of its own.
 
+## Every dialog draws a way out
+
+A dialog fills the screen on a phone, so there is no backdrop beside it to press, and there is no
+Escape on a phone either. What was left was whatever the footer happened to offer — and the
+editor's three buttons are Delete, Mark done and Save, none of which is "not this".
+
+So the close is on the dialog rather than in each footer: one control, always drawn, next to the
+title. It closes without saving, which is the whole point of it.
+
 ## A dialog is the whole screen on a phone
 
 A centred card on a phone spends its margins on the page behind it, which nobody is reading,
