@@ -49,6 +49,10 @@ export function BulkBar({
   };
 
   return (
+    // bar-sized buttons, because this is a row of controls and not a row beside a field: at the
+    // field size they are 44px slabs with an 80px floor under the width, and six of those is a
+    // wall. The two that answer a prompt keep the field size, since by then there is a field
+    // beside them to match.
     <div className="mx-auto mb-4 flex w-full max-w-3xl shrink-0 flex-wrap items-center gap-2 raised rounded-lg bg-bg px-3 py-2 md:px-6">
       {/* It counts what is in front of somebody, which is a different thing from a workload
           number pinned to a tab. */}
@@ -99,6 +103,7 @@ export function BulkBar({
       ) : (
         <>
           <Button
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() =>
               run(() =>
@@ -114,24 +119,28 @@ export function BulkBar({
               all todos — but it fixes nothing about pinning: a todo list holds pinned and
               unpinned tasks side by side, and a selection spanning both needs to say which. */}
           <Button
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() => run(() => postTasksBulkPinned(ids, true))}
           >
             Pin
           </Button>
           <Button
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() => run(() => postTasksBulkPinned(ids, false))}
           >
             Unpin
           </Button>
           <Button
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() => setAsking("priority")}
           >
             Priority
           </Button>
           <Button
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() => setAsking("tag")}
           >
@@ -139,6 +148,7 @@ export function BulkBar({
           </Button>
           <Button
             variant="danger"
+            size="bar"
             disabled={busy || ids.length === 0}
             onClick={() => {
               if (
