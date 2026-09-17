@@ -69,6 +69,25 @@ no border beside it there, so nothing reads as a double frame, and it is drawn o
 clicking one does not leave it ringed. A text field matches either way, which is the reason the
 rule stops at the controls that do not.
 
+## A search says what the filter is hiding
+
+A filtered list that comes back empty, or nearly, leaves somebody unable to tell whether their
+words are wrong or their filter is. The screen can answer that, so under the results it does:
+the same term against the whole account, minus what is already above, in two groups — the ones
+whose tags are not lit, and the ones that are finished. Neither group is drawn when it is empty.
+
+Those rows open and do nothing else. A tick or a pin there would change a task the list above is
+not showing, which is a change nobody can see the result of.
+
+It is one request, not one per group, and it is not sent until the foot of the list comes into
+view: somebody who found what they wanted in the first three rows never asks the question, and
+the answer is a scan of the whole account.
+
+The observer that watches the foot is built per search and not while the list is still coming.
+An empty page has its foot at the top of the window, so one attached then reports the bottom as
+reached before there is a list to reach the bottom of — which is how a lazy request ends up
+firing immediately on every search, and lazy only in the comment above it.
+
 ## A pill takes three kinds of press
 
 Tap toggles the tag. Hold it for half a second and the filter narrows to that tag alone — two

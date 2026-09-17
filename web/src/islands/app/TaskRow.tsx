@@ -34,8 +34,8 @@ export function rank(task: Task): string {
 export function TaskRow({
   task,
   apart = false,
-  selectable,
-  selected,
+  selectable = false,
+  selected = false,
   onSelect,
   onOpen,
   onToggleDone,
@@ -44,12 +44,15 @@ export function TaskRow({
   task: Task;
   /** Set on the first row of a new run, which is where the wider gap goes. */
   apart?: boolean;
-  selectable: boolean;
-  selected: boolean;
-  onSelect: (id: string) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
   onOpen: (id: string) => void;
-  onToggleDone: (task: Task) => void;
-  onTogglePinned: (task: Task) => void;
+  /** Left out where the row is not in the list it would change: the search results from
+   *  elsewhere are rows about tasks the list above is not showing, and a tick there is a change
+   *  nobody can see the result of. The row still opens. */
+  onToggleDone?: (task: Task) => void;
+  onTogglePinned?: (task: Task) => void;
 }) {
   const done = task.status === "done";
   const pieces = excerpt(task.description);
@@ -62,7 +65,7 @@ export function TaskRow({
         if (window.getSelection()?.toString()) return;
         // While picking, the card picks. Opening a task from a row somebody is ticking is the
         // wrong half of a mode, and the box is a small target to have to hit.
-        if (selectable) onSelect(task.id);
+        if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
       className={`group flex cursor-pointer items-start gap-3 rounded-lg bg-surface px-3 py-2.5 hover:bg-fill ${
@@ -80,7 +83,7 @@ export function TaskRow({
             type="checkbox"
             aria-label={`Select ${task.title}`}
             checked={selected}
-            onChange={() => onSelect(task.id)}
+            onChange={() => onSelect?.(task.id)}
             className="size-4"
           />
         </span>
@@ -114,11 +117,12 @@ export function TaskRow({
 
           <button
             type="button"
+            hidden={!onTogglePinned}
             aria-label={
               task.pinned ? `Unpin ${task.title}` : `Pin ${task.title}`
             }
             aria-pressed={task.pinned}
-            onClick={() => onTogglePinned(task)}
+            onClick={() => onTogglePinned?.(task)}
             className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
               task.pinned
                 ? "text-brand"
@@ -187,11 +191,12 @@ export function TaskRow({
 
       <button
         type="button"
+        hidden={!onToggleDone}
         aria-label={done ? `Reopen ${task.title}` : `Finish ${task.title}`}
         aria-pressed={done}
         onClick={(e) => {
           e.stopPropagation();
-          onToggleDone(task);
+          onToggleDone?.(task);
         }}
         className={`flex h-6 shrink-0 items-center rounded-md px-1.5 text-lg hover:bg-line ${
           done ? "text-brand" : "text-muted hover:text-fg"

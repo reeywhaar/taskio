@@ -26,6 +26,7 @@ import { rank, TaskRow } from "@app/islands/app/TaskRow";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
 import { TaskDialog } from "@app/islands/app/TaskDialog";
 import { BulkBar } from "@app/islands/app/BulkBar";
+import { Elsewhere } from "@app/islands/app/Elsewhere";
 import { Settings } from "@app/islands/app/Settings";
 import {
   printAnd,
@@ -122,6 +123,24 @@ function List({
   });
   const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
 
+  /**
+   * The same search with nothing narrowing it, for what the filter is hiding.
+   *
+   * One request rather than one per section: every match on the account comes back and the ids
+   * already on screen are taken out of it, so the two groups below the list are two slices of
+   * one answer rather than two more round trips.
+   *
+   * Only once the bottom of the list is in view. Somebody who found what they wanted in the
+   * first three rows never asks the question, and the answer is a whole-account scan.
+   */
+  const [deep, setDeep] = useState(false);
+  const wider = useQuery({
+    queryKey: qk.taskList(JSON.stringify({ q: filters.q, everywhere: true })),
+    queryFn: () => getTasks({ q: filters.q, status: "all" }),
+    enabled: filters.q !== "" && deep,
+    placeholderData: keepPreviousData,
+  });
+
   // The browser restores scroll on a real navigation and not at all on a pushState one, so
   // closing a task on a long list would otherwise drop somebody at the top of it.
   const scroller = useRef<HTMLDivElement>(null);
@@ -129,6 +148,35 @@ function List({
     setScroller(scroller.current);
     return () => setScroller(null);
   }, []);
+
+  // A new search is a new question, and the old answer is not an answer to it.
+  useEffect(() => setDeep(false), [filters.q]);
+
+  /**
+   * The foot of the list, watched rather than measured: a scroll handler asking where it is on
+   * every frame is the same question answered worse.
+   *
+   * Not while the list is still coming. An empty page has its foot at the top of the window, so
+   * an observer attached then reports the bottom as reached before there is a list to reach the
+   * bottom of — which is how a lazy request fires on every search, immediately, and lazily only
+   * in the comment above it.
+   *
+   * Rebuilt per search rather than kept, because a new observer reports what it sees when it
+   * starts. Without that, a search whose results are short enough to leave the foot in view
+   * would wait for an intersection that has already happened and will not happen again.
+   */
+  const foot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = foot.current;
+    if (!el || list.isPending) return;
+    const eye = new IntersectionObserver(
+      ([seen]) => seen?.isIntersecting && setDeep(true),
+      // A little before it arrives, so the answer is usually there by the time it does.
+      { root: scroller.current, rootMargin: "200px" },
+    );
+    eye.observe(el);
+    return () => eye.disconnect();
+  }, [filters.q, list.isPending]);
   useEffect(() => {
     if (route.name === "list" && list.data) {
       const offset = storedScroll();
@@ -395,6 +443,22 @@ function List({
               ))}
             </ul>
           )}
+
+          {/* Watched rather than measured, and below the list rather than after it: what marks
+              the foot is where the rows end, whether there were twenty of them or none. */}
+          <div ref={foot} aria-hidden="true" />
+
+          {filters.q ? (
+            <Elsewhere
+              found={wider.data?.tasks ?? []}
+              shown={tasks}
+              view={filters.view}
+              waiting={deep && wider.isPending}
+              onOpen={(id) =>
+                onGo({ ...location, route: { name: "task", id } })
+              }
+            />
+          ) : null}
 
           {/* A search turns pagination off, so the button is not drawn while the box has
           something in it. */}
