@@ -128,9 +128,13 @@ nobody needs a column of, and it appears on the same terms.
 ## A color means whatever the person who set it decided
 
 A task can carry one, and nothing in taskio reads it: nothing sorts, filters or groups by it, and
-there is no default. It is drawn four pixels wide down the left of the row, and the four pixels
-are there whether or not there is a color in them — a list where three rows are colored and
+there is no default. It is drawn four pixels wide down the left of the row, and the space is
+there whether or not there is a color in it — a list where three rows are colored and
 ninety-seven are not is a list whose text still lines up.
+
+A bar the card crops, not a border along its edge. A border follows the radius, so it bows
+inward at the corners and comes out as a leaf rather than a line; a bar behind `overflow-hidden`
+is straight, and the corners simply take its ends off.
 
 The swatches sit beside the priority field, which had the space, and the two are unrelated: one
 orders the list and the other is a mark somebody made for themselves.

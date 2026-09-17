@@ -68,14 +68,24 @@ export function TaskRow({
         if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
-      // The edge is always four pixels wide and only sometimes colored, so a task given one
-      // does not shunt its own text sideways — and a list of a hundred rows lines up whether
-      // three of them are colored or none.
-      style={task.color ? { borderLeftColor: task.color } : undefined}
-      className={`group flex cursor-pointer items-start gap-3 rounded-lg border-l-4 border-transparent bg-surface py-2.5 pr-3 pl-2 hover:bg-fill ${
+      className={`group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-lg bg-surface py-2.5 pr-3 pl-3 hover:bg-fill ${
         apart ? "mt-4" : ""
       }`}
     >
+      {/* A bar cropped by the card rather than a border drawn along its edge: a border follows
+          the radius and comes out as a leaf. This is a straight line, and the corners take the
+          ends off it.
+
+          The twelve pixels of padding beside it are there whether or not there is a bar, so a
+          list lines up whether three rows are colored or none. */}
+      {task.color ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-1"
+          style={{ background: task.color }}
+        />
+      ) : null}
+
       {selectable ? (
         // The box reports the tick itself; without this the card behind it reports a second
         // one and the row toggles back to where it started.
