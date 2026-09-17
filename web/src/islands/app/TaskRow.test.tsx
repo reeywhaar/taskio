@@ -49,6 +49,17 @@ describe("TaskRow", () => {
     expect(zero.className).toContain("group-hover:opacity-100");
   });
 
+  /**
+   * The bug: a pinned row with no priority drew the pin behind an invisible nought, so the pin
+   * hung in the middle of the column with nothing under the id.
+   */
+  it("shows the nought on a pinned row, so the pin has something to stand beside", () => {
+    row({ pinned: true });
+    expect(screen.getByTitle("Priority 0").className).not.toContain(
+      "opacity-0",
+    );
+  });
+
   it("does not hide one that is set", () => {
     row({ priority: 3 });
     expect(screen.getByTitle("Priority 3").className).not.toContain(

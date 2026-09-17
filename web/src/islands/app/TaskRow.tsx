@@ -117,12 +117,19 @@ export function TaskRow({
         <span className="flex items-center gap-1">
           {/* A nought on every row is a column of noughts that says nothing, so it keeps out
               of the way until somebody points at the row — where it stands beside the pin
-              rather than leaving it there on its own. */}
+              rather than leaving it there on its own.
+
+              Unless the row is pinned. The pin is drawn whether or not anybody is pointing,
+              and with an invisible nought holding the place in front of it, it hangs in the
+              middle of a column with nothing under the id. A nought beside it costs the row
+              nothing and gives the pin something to stand next to. */}
           <span
             className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
-              task.priority === 0
-                ? "bg-line text-muted opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
-                : "wash"
+              task.priority === 0 ? "bg-line text-muted" : "wash"
+            } ${
+              task.priority === 0 && !task.pinned
+                ? "opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
+                : ""
             }`}
             title={`Priority ${task.priority}`}
           >
