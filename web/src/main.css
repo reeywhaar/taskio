@@ -119,13 +119,24 @@
 }
 
 .sunken {
+  box-shadow: var(--well);
+}
+
+/*
+ * A field says it has focus by lighting the edge of its own well.
+ *
+ * The old rule was that a field colors its border and everything else takes a ring. There are no
+ * borders now, so the border half of that has to become something: an inset line at the mouth of
+ * the well, which is the same idea — the shape the field already has, saying it is the one being
+ * typed into — rather than a ring hovering outside a thing that has no edge to sit against.
+ *
+ * focus-within as well as focus, because a field is sometimes a box with the input inside it.
+ */
+.sunken:focus,
+.sunken:focus-within {
   box-shadow:
-    inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
-    inset -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
-    inset -4px -4px 8px color-mix(in srgb, var(--lit) 16%, transparent),
-    inset 1px 1px 1.5px color-mix(in srgb, var(--cast) 55%, transparent),
-    inset 2px 2px 4px color-mix(in srgb, var(--cast) 32%, transparent),
-    inset 3px 4px 9px color-mix(in srgb, var(--cast) 16%, transparent);
+    var(--well),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--color-brand) 65%, transparent);
 }
 
 /* Pressed is raised turned inside out, which is what a finger on a real button does. */
@@ -141,6 +152,14 @@
 :root {
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
+  /* Named once, because focus draws it again with a line on top. */
+  --well:
+    inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
+    inset -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
+    inset -4px -4px 8px color-mix(in srgb, var(--lit) 16%, transparent),
+    inset 1px 1px 1.5px color-mix(in srgb, var(--cast) 55%, transparent),
+    inset 2px 2px 4px color-mix(in srgb, var(--cast) 32%, transparent),
+    inset 3px 4px 9px color-mix(in srgb, var(--cast) 16%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -153,9 +172,9 @@
 }
 
 /*
- * One focus treatment for everything that is not a field. A field colors its own border; these
- * have none to color, so they take a ring, and outside is where it belongs when there is no
- * border beside it to read as a second frame.
+ * One focus treatment for everything that is not a field. A field lights the mouth of its own
+ * well, above; these are raised rather than sunken and have no mouth, so they take a ring, and
+ * outside is where it belongs on a surface that sits in front of the page.
  *
  * focus-visible rather than focus: a button reached by mouse does not match it, so clicking one
  * does not leave it ringed. A text field does match either way, which is why the rule stops at

@@ -51,23 +51,25 @@ and then lose to the 16px rule above.
 The cost is that every call site has to pass a width, and one that forgets gets the browser's
 default input size. That happened, and the browser test now asserts a field fills its form.
 
-## Focus is the border, not a ring
+## Focus lights the mouth of the well
 
-A focused control takes the brand color on its own border and draws no outline.
+A field is sunken, so it has no border to color and nothing outside it to ring. What it has is an
+edge where the surface drops away, and focus draws a brand-colored line along that edge, inside.
+It is the shape the field already has, saying it is the one being typed into.
 
-The alternative was an outline, and the trouble is where it sits. Outside the border there is a
-gap between the two, and the pair reads as a second frame around the field rather than as
-focus; flush or inset it doubles the edge into something heavier than the control. The border
-is already the shape of the field, so coloring it says the same thing with nothing added.
+The alternative was an outline, and the trouble is where it sits: outside there is a gap, and the
+pair reads as a second frame around the field rather than as focus; flush or inset against a
+border it doubles the edge. Neither problem exists at the mouth of a well, which is why the line
+goes there.
 
-It is not color alone: the border goes from a light grey to a saturated brand color, which is
-a change in lightness as well as hue.
+It is not color alone — a well that was empty of any line now has one, which is a change in
+structure as much as in hue.
 
-**Everything without a border takes a ring instead** — buttons, links, the tag pills. There is
-no border beside it there, so nothing reads as a double frame, and it is drawn on
-`:focus-visible` rather than `:focus`: a button reached by mouse does not match that, so
-clicking one does not leave it ringed. A text field matches either way, which is the reason the
-rule stops at the controls that do not.
+**Everything raised takes a ring instead** — buttons, links, the tag pills. They stand in front of
+the page rather than sinking into it, so there is no mouth to light and outside is where a ring
+belongs. It is drawn on `:focus-visible` rather than `:focus`: a button reached by mouse does not
+match that, so clicking one does not leave it ringed. A field matches either way, which is the
+reason the rule stops at the controls that do not.
 
 ## A search says what the filter is hiding
 
@@ -237,13 +239,35 @@ list holds pinned and unpinned tasks side by side, so a selection can span both 
 which way it is going — following the view there meant a selection could be pinned from the
 todo list and never unpinned from it.
 
-## `line` strokes and `fill` fills
+## Light says what a thing is, not a border
 
-Two tokens, because a 1px edge and a filled plate want different contrast against the same
-background. A color pitched to make a border visible makes a selected row a slab; one pitched
-for the plate makes the border invisible. They are read at two weights — 1.5px around a control
-and 1px for a structural hairline — and the color is pitched for the thicker one, which is
-what somebody types into.
+A surface is the same color as whatever it sits on. It is in front because it catches light on
+one side and casts on the other, and it is behind because the same light falls on the inside of
+it. `raised` is a card, a button, a pill; `sunken` is a field, a trough, anything meant to be
+filled; pressed is raised turned inside out, which is what a finger on a real button does.
+
+The shadow is three layers a side rather than one. A single `box-shadow` is one blur with an even
+falloff, and an even falloff is what makes a thing look like a sticker with a grey smudge behind
+it — real penumbra is dense right under the edge and gives up quickly. The alphas are fractions
+of one color per side, so a theme has two values to change rather than twelve. The throw is
+short: a long one reads as furniture hovering over the page instead of a page with things pressed
+into it.
+
+**Two grounds, a hair apart.** The page is the lighter and the rail is the darker, and that is the
+only thing dividing them now that the rail draws no line. A thing standing on the page takes the
+page's ground; a chip inside a card takes `fill`, because it cannot be the color of the thing it
+sits on.
+
+**The brand is a wash, not a fill.** A block of it on everything lit is a screen shouting, so what
+a lit thing wears is a radial wash of the brand — pale in the middle, gathering to the rim, three
+stops because two arrive at full strength exactly at the boundary and draw a ring around a pale
+hole. It is `color-mix` on the one `--color-brand`, so that value still controls all of it. The
+label on it is ordinary text: the brand cannot be read on a wash of the brand, which measured
+4.03 against a 4.5 bar at its best, where plain foreground is 9.54 on the same wash.
+
+**One rounding.** 6px for a control or a field, including the segmented control and the segment
+inside it; 8px for a card; 12px for a modal. A corner that depends on which pass restyled it is
+the thing this is written down to stop.
 
 ## The mark is two rectangles, not a letter
 
