@@ -273,7 +273,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 
 // scanTasks reads rows and attaches each task's tags.
 // taskColumns is the row every read of a task selects, in the order scanTasks reads it.
-const taskColumns = "seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at"
+const taskColumns = "seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at"
 
 // cursorKeys reads the sort values off the last row of a page, in the order they sort.
 func cursorKeys(columns []string, t *Task) []int64 {
@@ -314,7 +314,7 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 			done             sql.NullInt64
 		)
 		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &created, &updated, &done); err != nil {
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
 		t.CreatedAt = time.Unix(created, 0).UTC()
@@ -354,10 +354,10 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 		done             any
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at
+		`SELECT seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at
 		   FROM tasks WHERE seq = ?`, seq).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &created, &updated, &done)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)
 	}

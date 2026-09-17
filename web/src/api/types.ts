@@ -10,6 +10,8 @@ export type Task = {
   status: Status;
   priority: number;
   pinned: boolean;
+  /** #rrggbb, or empty for none. */
+  color: string;
   created_at: number;
   updated_at: number;
   done_at: number | null;

@@ -503,3 +503,42 @@ func TestAShortWordIsNotAnIdPrefix(t *testing.T) {
 		t.Errorf("three characters of an id returned %v, want nothing", got)
 	}
 }
+
+// It has no meaning here: whoever writes it decides what it means, and nothing sorts by it.
+func TestATaskCanCarryAColour(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	made := c.task(`{"title":"Fix the tap","color":"#2563EB"}`)
+	if made["color"] != "#2563eb" {
+		t.Errorf("colour = %v, want it lowercased", made["color"])
+	}
+	id := made["id"].(string)
+
+	if got := c.json(c.do("PATCH", "/api/tasks/"+id, `{"color":""}`))["color"]; got != "" {
+		t.Errorf("after clearing it, colour = %v", got)
+	}
+	// A task written without one has none rather than a default.
+	if got := c.task(`{"title":"Order the part"}`)["color"]; got != "" {
+		t.Errorf("a new task's colour = %v, want none", got)
+	}
+
+	for _, bad := range []string{`"blue"`, `"#fff"`, `"#12345g"`} {
+		resp := c.do("PATCH", "/api/tasks/"+id, `{"color":`+bad+`}`)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("colour %s = %s, want 400", bad, resp.Status)
+		}
+	}
+}
+
+// A patch that does not mention it leaves it alone, like every other field.
+func TestAPatchWithoutAColourLeavesIt(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap","color":"#16a34a"}`)["id"].(string)
+
+	after := c.json(c.do("PATCH", "/api/tasks/"+id, `{"title":"Fix the other tap"}`))
+	if after["color"] != "#16a34a" {
+		t.Errorf("colour = %v, want it kept", after["color"])
+	}
+}

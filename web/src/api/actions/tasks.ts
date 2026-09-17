@@ -21,6 +21,7 @@ export const postTasks = (body: {
   title: string;
   description?: string;
   tags?: string[];
+  color?: string;
   priority?: number;
   pinned?: boolean;
 }) => request<Task>("/api/tasks", { method: "POST", body });
@@ -33,6 +34,7 @@ export const patchTasksById = (
     tags?: string[];
     priority?: number;
     pinned?: boolean;
+    color?: string;
   },
 ) => request<Task>(`/api/tasks/${id}`, { method: "PATCH", body });
 

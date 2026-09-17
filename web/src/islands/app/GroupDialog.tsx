@@ -15,29 +15,7 @@ import { Dialog } from "@app/components/Dialog";
 import { Group as Caption } from "@app/components/Field";
 import { TextField } from "@app/components/TextField";
 import { TagCloud } from "@app/islands/app/TagCloud";
-import { BRAND, markURI } from "@app/mark";
-
-/**
- * What a group may wear, without opening the picker.
- *
- * Eight hues far enough apart to be told apart at 16px in a browser tab, which is the size this
- * is actually read at. An earlier set had the brand beside an amber and the two were one colour
- * on the tab — a palette whose entries are not distinguishable is a palette with fewer entries
- * than it appears to have.
- *
- * The brand leads because it is what a group wears with nothing chosen; the rest run round the
- * wheel.
- */
-const COLOURS = [
-  BRAND,
-  "#dc2626",
-  "#eab308",
-  "#16a34a",
-  "#0d9488",
-  "#2563eb",
-  "#7c3aed",
-  "#c026d3",
-];
+import { Swatches } from "@app/components/Swatches";
 
 /** Open on a group to change it, on "new" to write one, shut on null. */
 export type Editing = Group | "new" | null;
@@ -105,8 +83,6 @@ export function GroupDialog({
     );
 
   const usable = name.trim() !== "" && chosen.length > 0 && !save.isPending;
-  // A colour that is not one of the eight came from the picker, so the picker is what is lit.
-  const custom = colour !== "" && !COLOURS.includes(colour);
 
   return (
     <Dialog
@@ -162,57 +138,7 @@ export function GroupDialog({
           label="Colour"
           hint="What the tab wears while this group is the one on screen."
         >
-          <div className="flex flex-wrap items-center gap-2">
-            {COLOURS.map((swatch) => {
-              // The brand is stored as no colour at all, so a group that was never given one
-              // and a group given the brand are the same group.
-              const value = swatch === BRAND ? "" : swatch;
-              const on = colour === value;
-              return (
-                <button
-                  key={swatch}
-                  type="button"
-                  aria-label={swatch === BRAND ? "The brand colour" : swatch}
-                  aria-pressed={on}
-                  onClick={() => setColour(value)}
-                  className={`size-7 rounded-md ring-offset-2 ring-offset-surface ${
-                    on ? "ring-2 ring-fg" : ""
-                  }`}
-                  style={{ background: swatch }}
-                />
-              );
-            })}
-
-            {/* The eight are a shortcut, not the range. The browser's own picker is the one
-                everybody already knows how to use, and the server takes any six hex digits.
-
-                It wears a wheel rather than its own value, which is what the control does
-                rather than what it currently holds: showing the value made a ninth swatch that
-                was a copy of whichever of the eight was chosen. */}
-            <label
-              className={`relative size-7 cursor-pointer overflow-hidden rounded-md ring-offset-2 ring-offset-surface ${
-                custom ? "ring-2 ring-fg" : ""
-              }`}
-              style={{
-                background:
-                  "conic-gradient(#dc2626, #eab308, #16a34a, #0d9488, #2563eb, #7c3aed, #c026d3, #dc2626)",
-              }}
-            >
-              <input
-                type="color"
-                aria-label="Another colour"
-                value={colour || BRAND}
-                onChange={(e) => setColour(e.target.value.toLowerCase())}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </label>
-
-            <img
-              src={markURI(colour)}
-              alt=""
-              className="ml-1 size-7 rounded-[4px]"
-            />
-          </div>
+          <Swatches value={colour} onChange={setColour} />
         </Caption>
 
         {error ? <p className="text-sm text-accent">{error}</p> : null}

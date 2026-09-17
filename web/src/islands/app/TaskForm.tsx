@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getTags } from "@app/api/actions/tags";
 import { qk } from "@app/api/keys";
-import { Field } from "@app/components/Field";
+import { Field, Group as Caption } from "@app/components/Field";
+import { Swatches } from "@app/components/Swatches";
 import { TextField } from "@app/components/TextField";
 import { Editor } from "@app/islands/app/Editor";
 import { TagCloud } from "@app/islands/app/TagCloud";
@@ -15,6 +16,8 @@ export type Draft = {
    *  somebody typing -1 passes through on the way. */
   priority: string;
   tags: string[];
+  /** #rrggbb, or empty for none. It means whatever whoever set it decided it means. */
+  color: string;
 };
 
 export const emptyDraft = (tags: string[] = []): Draft => ({
@@ -22,6 +25,7 @@ export const emptyDraft = (tags: string[] = []): Draft => ({
   description: "",
   priority: "0",
   tags,
+  color: "",
 });
 
 /**
@@ -60,17 +64,33 @@ export function TaskForm({
         limits={{ assetMax: 10 << 20 }}
       />
 
-      <Field
-        label="Priority"
-        hint="Higher sorts higher. A pin beats any number."
-      >
-        <TextField
-          type="number"
-          className="w-24"
-          value={draft.priority}
-          onChange={(e) => set({ priority: e.target.value })}
-        />
-      </Field>
+      {/* Side by side, because the space beside a 24-wide number field was empty and a row of
+          swatches is the shape that fits it. They are unrelated: one orders the list and the
+          other means whatever the person who set it decided. */}
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+        <Field
+          label="Priority"
+          hint="Higher sorts higher. A pin beats any number."
+        >
+          <TextField
+            type="number"
+            className="w-24"
+            value={draft.priority}
+            onChange={(e) => set({ priority: e.target.value })}
+          />
+        </Field>
+
+        <Caption
+          label="Colour"
+          hint="Down the left of the row. Yours to mean anything."
+        >
+          <Swatches
+            value={draft.color}
+            onChange={(color) => set({ color })}
+            none="No colour"
+          />
+        </Caption>
+      </div>
 
       <TagCloud
         tags={tags.data?.tags ?? []}

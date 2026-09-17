@@ -111,9 +111,9 @@ not a bug.
 
 ```
 GET    /api/tasks              ?tags= &q= &status= &limit= &cursor=
-POST   /api/tasks              {title, description?, tags?}
+POST   /api/tasks              {title, description?, tags?, priority?, pinned?, color?}
 GET    /api/tasks/{id}
-PATCH  /api/tasks/{id}         {title?, description?, tags?}
+PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?}
 POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 DELETE /api/tasks/{id}
@@ -162,7 +162,7 @@ there. A task already at that value is not written: `updated_at` does not move f
 {
   "tasks": [ { "id": "8qw4tz9k", "title": "Fix the tap", "description": "It drips.",
                "tags": ["home","repair"], "status": "todo",
-               "priority": 0, "pinned": false,
+               "priority": 0, "pinned": false, "color": "",
                "created_at": 1789343452, "updated_at": 1789343452, "done_at": null } ],
   "total": 1
 }
@@ -173,6 +173,10 @@ summarise the wrong list.
 
 `total` is how many match the filter, before `limit`. `next_cursor` is present only when there
 is another page — a search never has one, because results are ranked.
+
+`color` is `#rrggbb` or empty, and **means whatever the person who wrote it decided it means**.
+Nothing here sorts, filters or groups by it, and no colour is the default — so leave it alone
+unless you were asked for one.
 
 The done list is ordered by when things were finished. Every other list is ordered **pinned
 first, then by `priority` descending, then by when they were written** — so a list read top to

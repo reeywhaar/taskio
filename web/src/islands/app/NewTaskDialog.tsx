@@ -48,6 +48,7 @@ export function NewTaskDialog({
         description: draft.description,
         tags: draft.tags,
         priority: Number(draft.priority) || 0,
+        color: draft.color,
       }),
     // Written and gone. Opening the task that was just written puts a second modal where the
     // first one was, and two wide dialogs with the same fields in the same place read as one

@@ -29,6 +29,7 @@ const detail = (status: "todo" | "done"): TaskDetail =>
     tags: [],
     priority: 0,
     pinned: false,
+    color: "",
     status,
     created_at: 1789343452,
     updated_at: 1789343452,

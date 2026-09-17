@@ -12,6 +12,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   status: "todo",
   priority: 0,
   pinned: false,
+  color: "",
   created_at: 0,
   updated_at: 0,
   done_at: null,

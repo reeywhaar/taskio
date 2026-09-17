@@ -39,9 +39,12 @@ type Task struct {
 	Tags        []string
 	Priority    int
 	Pinned      bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DoneAt      *time.Time
+	// Color is #rrggbb, or empty for none. It has no meaning here: whoever writes it decides
+	// what it means, and nothing sorts or filters by it.
+	Color     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DoneAt    *time.Time
 }
 
 // Status renders done_at. One fact, one column: a status column beside a timestamp is two
@@ -75,11 +78,16 @@ type TaskNew struct {
 	Tags        []string
 	Priority    int
 	Pinned      bool
+	Color       string
 }
 
 func (s *Store) CreateTask(ctx context.Context, principalID string, scope []string, in TaskNew) (*Task, error) {
 	title, description, tags := in.Title, in.Description, in.Tags
 	title, err := validTitle(title)
+	if err != nil {
+		return nil, err
+	}
+	colour, err := validColor(in.Color)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +104,6 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	if description, err = s.inlineAssets(ctx, principalID, description); err != nil {
 		return nil, err
 	}
-	if err := validDescription(description); err != nil {
-		return nil, err
-	}
 	title = s.normalizeMentions(ctx, principalID, scope, title)
 	description = s.normalizeMentions(ctx, principalID, scope, description)
 
@@ -110,6 +115,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 		Tags:        tags,
 		Priority:    in.Priority,
 		Pinned:      in.Pinned,
+		Color:       colour,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -125,9 +131,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, title, description, priority, pinned, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, title, description, in.Priority, in.Pinned, unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, title, description, priority, pinned, color, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, title, description, in.Priority, in.Pinned, colour, unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -158,6 +164,7 @@ type TaskPatch struct {
 	Tags        *[]string
 	Priority    *int
 	Pinned      *bool
+	Color       *string
 }
 
 // UpdateTask applies a patch and reports the task as it now stands.
@@ -207,19 +214,28 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 	if patch.Pinned != nil {
 		pinned = *patch.Pinned
 	}
+	colour := task.Color
+	if patch.Color != nil {
+		var err error
+		if colour, err = validColor(*patch.Color); err != nil {
+			return nil, err
+		}
+	}
 
 	moved := false
 	now := s.Now()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?, updated_at = ?
-		  WHERE seq = ? AND (title <> ? OR description <> ? OR priority <> ? OR pinned <> ?)`,
-		title, description, priority, pinned, unix(now), task.Seq, title, description, priority, pinned)
+		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?, color = ?, updated_at = ?
+		  WHERE seq = ? AND (title <> ? OR description <> ? OR priority <> ? OR pinned <> ?
+		                     OR color <> ?)`,
+		title, description, priority, pinned, colour, unix(now),
+		task.Seq, title, description, priority, pinned, colour)
 	if err != nil {
 		return nil, fmt.Errorf("update task: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		moved = true
-		task.Title, task.Description, task.Priority, task.Pinned, task.UpdatedAt = title, description, priority, pinned, now
+		task.Title, task.Description, task.Priority, task.Pinned, task.Color, task.UpdatedAt = title, description, priority, pinned, colour, now
 		// Both joins are rebuilt from the saved text, so neither can drift from the words.
 		if err := syncContent(ctx, tx, task.Seq, principalID, scope, title, description); err != nil {
 			return nil, err
@@ -371,10 +387,10 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 		done             sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, priority, pinned, created_at, updated_at, done_at
+		`SELECT seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at
 		   FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &created, &updated, &done)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not
 		// the caller's business either way.

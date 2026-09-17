@@ -34,6 +34,16 @@ type Group struct {
 // shortest way to be sure neither can be escaped out of is to accept one shape.
 var colorRE = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
+// validColor folds what was sent into the one shape stored, or refuses it. Shared by the two
+// things that wear one, so a group and a task cannot disagree about what a colour is.
+func validColor(color string) (string, error) {
+	color = strings.ToLower(strings.TrimSpace(color))
+	if color != "" && !colorRE.MatchString(color) {
+		return "", Invalid("A colour is six hex digits after a hash, like #ef6500.")
+	}
+	return color, nil
+}
+
 // Groups lists an account's in the order they are drawn in: where they were dragged to, then
 // oldest first, so a group nobody has moved does not move when another one is added.
 func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error) {
@@ -269,9 +279,9 @@ func validGroup(name string, tags []string, color string) (string, []string, str
 	if len(slugs) == 0 {
 		return "", nil, "", Invalid("A group needs at least one tag. Everything is already a group.")
 	}
-	color = strings.ToLower(strings.TrimSpace(color))
-	if color != "" && !colorRE.MatchString(color) {
-		return "", nil, "", Invalid("A colour is six hex digits after a hash, like #ef6500.")
+	color, err = validColor(color)
+	if err != nil {
+		return "", nil, "", err
 	}
 	return name, slugs, color, nil
 }

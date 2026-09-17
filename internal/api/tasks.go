@@ -18,6 +18,7 @@ type taskBody struct {
 	Status      string   `json:"status"`
 	Priority    int      `json:"priority"`
 	Pinned      bool     `json:"pinned"`
+	Color       string   `json:"color"`
 	CreatedAt   int64    `json:"created_at"`
 	UpdatedAt   int64    `json:"updated_at"`
 	DoneAt      *int64   `json:"done_at"`
@@ -32,6 +33,7 @@ func renderTask(t *store.Task) taskBody {
 		Status:      t.Status(),
 		Priority:    t.Priority,
 		Pinned:      t.Pinned,
+		Color:       t.Color,
 		CreatedAt:   t.CreatedAt.Unix(),
 		UpdatedAt:   t.UpdatedAt.Unix(),
 	}
@@ -119,6 +121,7 @@ type createTaskRequest struct {
 	Tags        []string `json:"tags"`
 	Priority    int      `json:"priority"`
 	Pinned      bool     `json:"pinned"`
+	Color       string   `json:"color"`
 }
 
 // createTask writes one. An unknown slug is accepted: writing a word onto a task is how a tag
@@ -138,6 +141,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		Tags:        tags,
 		Priority:    req.Priority,
 		Pinned:      req.Pinned,
+		Color:       req.Color,
 	})
 	if err != nil {
 		s.fail(w, r, err)
@@ -201,6 +205,7 @@ type patchTaskRequest struct {
 	Tags        *[]string `json:"tags"`
 	Priority    *int      `json:"priority"`
 	Pinned      *bool     `json:"pinned"`
+	Color       *string   `json:"color"`
 }
 
 // patchTask changes wording and tags. Absent leaves a field alone and empty clears it.
@@ -227,6 +232,7 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 		Tags:        req.Tags,
 		Priority:    req.Priority,
 		Pinned:      req.Pinned,
+		Color:       req.Color,
 	})
 	if err != nil {
 		s.fail(w, r, err)

@@ -112,6 +112,21 @@ The arrangement belongs to the account and is stored per slug, so a tag that goe
 comes back is where it was left. Tags nobody has dragged sort after the ones somebody has, so a
 new tag arrives at the end rather than in the middle of an arrangement.
 
+## A colour means whatever the person who set it decided
+
+A task can carry one, and nothing in taskio reads it: nothing sorts, filters or groups by it, and
+there is no default. It is drawn four pixels wide down the left of the row, and the four pixels
+are there whether or not there is a colour in them — a list where three rows are coloured and
+ninety-seven are not is a list whose text still lines up.
+
+The swatches sit beside the priority field, which had the space, and the two are unrelated: one
+orders the list and the other is a mark somebody made for themselves.
+
+Groups wear one too, and the palette is the same control. Where they differ is the empty choice:
+a group without a colour wears the brand, so empty is what the brand swatch stores; a task
+without one wears nothing, so empty is a swatch of its own and the brand is a colour like any
+other.
+
 ## Groups are dragged like tags, and All is not one of them
 
 The rail's groups carry the same press-and-move gesture as the pills, one axis over: the carried

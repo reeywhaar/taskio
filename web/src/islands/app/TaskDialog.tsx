@@ -45,6 +45,7 @@ export function TaskDialog({
       description: task.data.description,
       priority: String(task.data.priority),
       tags: task.data.tags,
+      color: task.data.color,
     });
   }, [task.data]);
 
@@ -60,6 +61,7 @@ export function TaskDialog({
         description: draft.description,
         tags: draft.tags,
         priority: Number(draft.priority) || 0,
+        color: draft.color,
       }),
     onSuccess: () => {
       invalidate();

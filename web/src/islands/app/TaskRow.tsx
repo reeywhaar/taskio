@@ -68,7 +68,11 @@ export function TaskRow({
         if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
-      className={`group flex cursor-pointer items-start gap-3 rounded-lg bg-surface px-3 py-2.5 hover:bg-fill ${
+      // The edge is always four pixels wide and only sometimes coloured, so a task given one
+      // does not shunt its own text sideways — and a list of a hundred rows lines up whether
+      // three of them are coloured or none.
+      style={task.color ? { borderLeftColor: task.color } : undefined}
+      className={`group flex cursor-pointer items-start gap-3 rounded-lg border-l-4 border-transparent bg-surface py-2.5 pr-3 pl-2 hover:bg-fill ${
         apart ? "mt-4" : ""
       }`}
     >
