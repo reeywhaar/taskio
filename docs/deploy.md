@@ -82,24 +82,6 @@ Multi-stage, and the stages do not depend on each other.
 - **`HEALTHCHECK` runs `taskio healthcheck`**, a second process asking the first, so the image
   needs no HTTP client and a wedged server fails it.
 
-## Tags
-
-A publish moves two tags onto one image:
-
-| tag | what it means |
-| --- | --- |
-| `:latest` | whatever was published last. Fine for a first look, and a pin to nothing |
-| `:v1` | this line of the software, fixes included. What a deployment pins to |
-
-There is no release number, so there is none to keep in step with. If this ever grows one, `:v2`
-is what a break in the API or the storage would be published under, beside a `:v1` that keeps
-getting fixes.
-
-What the binary says it is, is the commit it was built from — stamped through `-ldflags`, printed
-by `taskio version`, and logged on the startup line. It is the one fact about a build that is
-true without anybody maintaining it. A tree with uncommitted changes stamps `1a2b3c4+dirty`,
-because that build is not the commit it names.
-
 ## The bundle is read from disk, not embedded
 
 `serve` hands the static server an `os.DirFS` over `/srv/web`, walked once at startup.
