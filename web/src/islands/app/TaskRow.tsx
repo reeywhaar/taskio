@@ -68,9 +68,9 @@ export function TaskRow({
         if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
-      // The edge is always four pixels wide and only sometimes coloured, so a task given one
+      // The edge is always four pixels wide and only sometimes colored, so a task given one
       // does not shunt its own text sideways — and a list of a hundred rows lines up whether
-      // three of them are coloured or none.
+      // three of them are colored or none.
       style={task.color ? { borderLeftColor: task.color } : undefined}
       className={`group flex cursor-pointer items-start gap-3 rounded-lg border-l-4 border-transparent bg-surface py-2.5 pr-3 pl-2 hover:bg-fill ${
         apart ? "mt-4" : ""
@@ -178,7 +178,7 @@ export function TaskRow({
 
         {task.tags.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            {/* The page's own ground, not a fill: the card hovers to the fill colour, and a
+            {/* The page's own ground, not a fill: the card hovers to the fill color, and a
                 chip painted in it would disappear exactly when somebody points at the card. */}
             {task.tags.map((slug) => (
               <span

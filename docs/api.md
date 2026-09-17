@@ -175,7 +175,7 @@ summarise the wrong list.
 is another page — a search never has one, because results are ranked.
 
 `color` is `#rrggbb` or empty, and **means whatever the person who wrote it decided it means**.
-Nothing here sorts, filters or groups by it, and no colour is the default — so leave it alone
+Nothing here sorts, filters or groups by it, and no color is the default — so leave it alone
 unless you were asked for one.
 
 The done list is ordered by when things were finished. Every other list is ordered **pinned

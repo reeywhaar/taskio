@@ -505,40 +505,40 @@ func TestAShortWordIsNotAnIdPrefix(t *testing.T) {
 }
 
 // It has no meaning here: whoever writes it decides what it means, and nothing sorts by it.
-func TestATaskCanCarryAColour(t *testing.T) {
+func TestATaskCanCarryAColor(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 
 	made := c.task(`{"title":"Fix the tap","color":"#2563EB"}`)
 	if made["color"] != "#2563eb" {
-		t.Errorf("colour = %v, want it lowercased", made["color"])
+		t.Errorf("color = %v, want it lowercased", made["color"])
 	}
 	id := made["id"].(string)
 
 	if got := c.json(c.do("PATCH", "/api/tasks/"+id, `{"color":""}`))["color"]; got != "" {
-		t.Errorf("after clearing it, colour = %v", got)
+		t.Errorf("after clearing it, color = %v", got)
 	}
 	// A task written without one has none rather than a default.
 	if got := c.task(`{"title":"Order the part"}`)["color"]; got != "" {
-		t.Errorf("a new task's colour = %v, want none", got)
+		t.Errorf("a new task's color = %v, want none", got)
 	}
 
 	for _, bad := range []string{`"blue"`, `"#fff"`, `"#12345g"`} {
 		resp := c.do("PATCH", "/api/tasks/"+id, `{"color":`+bad+`}`)
 		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("colour %s = %s, want 400", bad, resp.Status)
+			t.Errorf("color %s = %s, want 400", bad, resp.Status)
 		}
 	}
 }
 
 // A patch that does not mention it leaves it alone, like every other field.
-func TestAPatchWithoutAColourLeavesIt(t *testing.T) {
+func TestAPatchWithoutAColorLeavesIt(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 	id := c.task(`{"title":"Fix the tap","color":"#16a34a"}`)["id"].(string)
 
 	after := c.json(c.do("PATCH", "/api/tasks/"+id, `{"title":"Fix the other tap"}`))
 	if after["color"] != "#16a34a" {
-		t.Errorf("colour = %v, want it kept", after["color"])
+		t.Errorf("color = %v, want it kept", after["color"])
 	}
 }

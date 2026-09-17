@@ -28,12 +28,12 @@ describe("the mark", () => {
     expect(shapes(markSVG())).toEqual(shapes(file));
   });
 
-  it("wears the colour it is given", () => {
+  it("wears the color it is given", () => {
     expect(markSVG("#2563eb")).toContain("#2563eb");
     expect(markSVG("#2563eb")).not.toContain(BRAND);
   });
 
-  /** The value lands inside an attribute, so anything that is not a colour is not written. */
+  /** The value lands inside an attribute, so anything that is not a color is not written. */
   it("refuses anything that is not six hex digits", () => {
     for (const bad of ['" onload="x', "red", "#fff", ""]) {
       expect(markSVG(bad)).toContain(`fill="${BRAND}"`);

@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 /*
- * Semantic tokens, not colours. Components name what a colour is for; this is the only file
+ * Semantic tokens, not colors. Components name what a color is for; this is the only file
  * that says what those are.
  *
  * line strokes and fill fills, read at two weights: 1.5px around a control and 1px for a
- * structural hairline. The colour is pitched for the thicker one, which is what somebody types
+ * structural hairline. The color is pitched for the thicker one, which is what somebody types
  * into.
  *
  * brand is what the application does; accent is what it refuses. brand-ink is what can be read
@@ -58,8 +58,8 @@
 }
 
 /*
- * One focus treatment for everything that is not a field. A field colours its own border; these
- * have none to colour, so they take a ring, and outside is where it belongs when there is no
+ * One focus treatment for everything that is not a field. A field colors its own border; these
+ * have none to color, so they take a ring, and outside is where it belongs when there is no
  * border beside it to read as a second frame.
  *
  * focus-visible rather than focus: a button reached by mouse does not match it, so clicking one
@@ -211,7 +211,7 @@ textarea {
  * The one control still wearing the browser's own design.
  *
  * appearance:none takes it off, and everything below puts ours back: the field's border weight
- * and colour, the brand when it is ticked, and the tick itself drawn rather than typed — a
+ * and color, the brand when it is ticked, and the tick itself drawn rather than typed — a
  * glyph would be whatever font happened to load.
  */
 input[type="checkbox"] {
@@ -330,7 +330,7 @@ input[type="checkbox"]:focus-visible {
  *
  * A pulse crossing the line rather than the whole line fading in and out: a bar that blinks
  * says the page is unwell, where a thing travelling says the page is working. It is the brand
- * colour, arriving out of nothing and leaving into it, so the line itself is never drawn — a
+ * color, arriving out of nothing and leaving into it, so the line itself is never drawn — a
  * rule across the top of a list would read as a border that comes and goes.
  */
 @keyframes pulse-across {

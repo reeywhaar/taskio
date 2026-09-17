@@ -17,7 +17,7 @@ import type { Location } from "@app/islands/app/route";
 
 /**
  * The nav rail is the only thing always in the same place: the groups, settings, and the docs
- * at the foot. Where you are is drawn in the foreground colour rather than hidden.
+ * at the foot. Where you are is drawn in the foreground color rather than hidden.
  *
  * Below the breakpoint it goes behind a burger and slides over as a sheet — the same component
  * with different chrome rather than a second nav.
@@ -101,7 +101,7 @@ export function Nav({
    * last pressed — so it survives a reload, a link from somebody else, and the pills.
    */
   const current = (groups.data?.groups ?? []).find((g) => litBy(g.tags));
-  const colour = current?.color ?? "";
+  const color = current?.color ?? "";
 
   // The tab wears it, which is the whole point of a group having one: two windows open on two
   // groups are two icons rather than two of the same icon.
@@ -112,9 +112,9 @@ export function Nav({
       // The .ico is for browsers that will not read an svg, and they will not read a data URI
       // of one either: it is left alone and stays the brand.
       if (link.type !== "image/svg+xml") continue;
-      link.href = colour ? markURI(colour) : "/favicon.svg";
+      link.href = color ? markURI(color) : "/favicon.svg";
     }
-  }, [colour]);
+  }, [color]);
 
   const show = (tags: string[]) => {
     setOpen(false);
@@ -211,13 +211,13 @@ export function Nav({
         >
           <BurgerIcon />
         </button>
-        <Mark colour={colour} />
+        <Mark color={color} />
         <span className="font-semibold">taskio</span>
       </div>
 
       <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex lg:w-60 xl:w-72">
         <div className="flex items-center gap-2 px-4 py-3 font-semibold">
-          <Mark colour={colour} />
+          <Mark color={color} />
           taskio
         </div>
         {items}
@@ -249,7 +249,7 @@ export function Nav({
           <nav className="flex h-full w-full flex-col bg-surface shadow-rail">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="flex items-center gap-2 font-semibold">
-                <Mark colour={colour} />
+                <Mark color={color} />
                 taskio
               </span>
               <button
@@ -286,10 +286,10 @@ function same(a: string[], b: string[]): boolean {
  * carries its own pale ground, so it is a tile at either theme and needs nothing from the
  * palette around it.
  */
-function Mark({ colour }: { colour: string }) {
+function Mark({ color }: { color: string }) {
   return (
     <img
-      src={colour ? markURI(colour) : "/favicon.svg"}
+      src={color ? markURI(color) : "/favicon.svg"}
       alt=""
       className="size-5 rounded-[3px]"
     />

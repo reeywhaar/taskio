@@ -87,7 +87,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	if err != nil {
 		return nil, err
 	}
-	colour, err := validColor(in.Color)
+	color, err := validColor(in.Color)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 		Tags:        tags,
 		Priority:    in.Priority,
 		Pinned:      in.Pinned,
-		Color:       colour,
+		Color:       color,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -133,7 +133,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 		res, err := tx.ExecContext(ctx,
 			`INSERT INTO tasks (id, principal_id, title, description, priority, pinned, color, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, title, description, in.Priority, in.Pinned, colour, unix(now), unix(now))
+			task.ID, principalID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -214,10 +214,10 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 	if patch.Pinned != nil {
 		pinned = *patch.Pinned
 	}
-	colour := task.Color
+	color := task.Color
 	if patch.Color != nil {
 		var err error
-		if colour, err = validColor(*patch.Color); err != nil {
+		if color, err = validColor(*patch.Color); err != nil {
 			return nil, err
 		}
 	}
@@ -228,14 +228,14 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?, color = ?, updated_at = ?
 		  WHERE seq = ? AND (title <> ? OR description <> ? OR priority <> ? OR pinned <> ?
 		                     OR color <> ?)`,
-		title, description, priority, pinned, colour, unix(now),
-		task.Seq, title, description, priority, pinned, colour)
+		title, description, priority, pinned, color, unix(now),
+		task.Seq, title, description, priority, pinned, color)
 	if err != nil {
 		return nil, fmt.Errorf("update task: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		moved = true
-		task.Title, task.Description, task.Priority, task.Pinned, task.Color, task.UpdatedAt = title, description, priority, pinned, colour, now
+		task.Title, task.Description, task.Priority, task.Pinned, task.Color, task.UpdatedAt = title, description, priority, pinned, color, now
 		// Both joins are rebuilt from the saved text, so neither can drift from the words.
 		if err := syncContent(ctx, tx, task.Seq, principalID, scope, title, description); err != nil {
 			return nil, err

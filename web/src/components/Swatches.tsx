@@ -1,12 +1,15 @@
+import { useState, type ReactNode } from "react";
+
+import { ColorDialog } from "@app/components/ColorDialog";
 import { DropperIcon } from "@app/components/icons/Icon";
 import { BRAND } from "@app/mark";
 
 /**
- * The colours anything here can wear, without opening the picker.
+ * The colors anything here can wear, without opening the picker.
  *
  * Eight hues far enough apart to be told apart at 16px in a browser tab and at 4px down the
  * edge of a row, which are the sizes they are actually read at. An earlier set had the brand
- * beside an amber and the two were one colour — a palette whose entries are not distinguishable
+ * beside an amber and the two were one color — a palette whose entries are not distinguishable
  * has fewer entries than it appears to.
  *
  * The brand leads because it is what a group wears with nothing chosen; the rest run round the
@@ -24,28 +27,32 @@ export const COLOURS = [
 ];
 
 /**
- * A row of colours and a way out of it.
+ * A row of colors and a way out of it.
  *
  * The eight are a shortcut rather than the range: the browser's own picker sits beside them and
  * the server takes any six hex digits. It wears a wheel rather than its own value, which is what
  * the control does rather than what it happens to hold — showing the value made a ninth swatch
  * that was a copy of whichever of the eight was chosen.
  *
- * `none` names the empty choice for the things that have one. A group without a colour wears the
+ * `none` names the empty choice for the things that have one. A group without a color wears the
  * brand, so there the first swatch is the brand and empty is what it stores; a task without one
- * wears nothing, so there empty is a swatch of its own and the brand is a colour like the rest.
+ * wears nothing, so there empty is a swatch of its own and the brand is a color like the rest.
  */
 export function Swatches({
   value,
   onChange,
   none,
+  preview,
 }: {
   /** #rrggbb, or empty. */
   value: string;
-  onChange: (colour: string) => void;
+  onChange: (color: string) => void;
   /** What an empty value is called, where it is a choice rather than the brand. */
   none?: string;
+  /** What wearing it looks like, drawn in the picker while somebody is choosing. */
+  preview?: (color: string) => ReactNode;
 }) {
+  const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
 
   return (
@@ -64,7 +71,7 @@ export function Swatches({
       ) : null}
 
       {COLOURS.map((swatch) => {
-        // Where the brand is the default, it is stored as no colour at all: a group that was
+        // Where the brand is the default, it is stored as no color at all: a group that was
         // never given one and a group given the brand are the same group.
         const held = !none && swatch === BRAND ? "" : swatch;
         const on = value === held;
@@ -72,7 +79,7 @@ export function Swatches({
           <button
             key={swatch}
             type="button"
-            aria-label={!none && swatch === BRAND ? "The brand colour" : swatch}
+            aria-label={!none && swatch === BRAND ? "The brand color" : swatch}
             aria-pressed={on}
             onClick={() => onChange(held)}
             className={`size-5 rounded ring-offset-2 ring-offset-surface ${
@@ -84,37 +91,44 @@ export function Swatches({
       })}
 
       {/* The spot wears whatever is chosen and says what it is for with the dropper, rather
-          than wearing a wheel that is a picture of the idea of colour. Two swatches of the same
-          colour would otherwise be ambiguous — the icon is what tells them apart. */}
-      <label
-        className={`relative flex size-5 cursor-pointer items-center justify-center rounded ring-offset-2 ring-offset-surface ${
+          than wearing a wheel that is a picture of the idea of color. Two swatches of the same
+          color would otherwise be ambiguous — the icon is what tells them apart. */}
+      <button
+        type="button"
+        aria-label="Another color"
+        title="Another color"
+        onClick={() => setPicking(true)}
+        className={`flex size-5 items-center justify-center rounded ring-offset-2 ring-offset-surface ${
           value ? "" : "border-[1.5px] border-line"
         } ${custom ? "ring-2 ring-fg" : ""}`}
         style={value ? { background: value, color: ink(value) } : undefined}
       >
-        <DropperIcon className="pointer-events-none text-xs" />
-        <input
-          type="color"
-          aria-label="Another colour"
-          value={value || BRAND}
-          onChange={(e) => onChange(e.target.value.toLowerCase())}
-          className="absolute inset-0 cursor-pointer opacity-0"
-        />
-      </label>
+        <DropperIcon className="text-xs" />
+      </button>
+
+      <ColorDialog
+        open={picking}
+        value={value || BRAND}
+        preview={preview}
+        onClose={(picked) => {
+          setPicking(false);
+          if (picked) onChange(picked);
+        }}
+      />
     </div>
   );
 }
 
 /**
- * Black or white, whichever can be seen on that colour.
+ * Black or white, whichever can be seen on that color.
  *
- * The dropper sits on a colour somebody chose, so there is no palette to pick its own from: the
+ * The dropper sits on a color somebody chose, so there is no palette to pick its own from: the
  * WCAG relative luminance of the ground decides, at the threshold where black and white swap
  * places against mid-grey.
  */
-function ink(colour: string): string {
+function ink(color: string): string {
   const channel = (at: number) => {
-    const value = parseInt(colour.slice(at, at + 2), 16) / 255;
+    const value = parseInt(color.slice(at, at + 2), 16) / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   };
   const luminance =

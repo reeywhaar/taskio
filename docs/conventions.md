@@ -2,6 +2,19 @@
 
 Naming, commits, comments, ids, time. Settled once here so it is not re-argued in review.
 
+## American spelling
+
+`color`, `favorite`, `theater`. Not `colour`, `favourite`, `theatre`.
+
+Not a view about which is the better English. It is the dialect computers speak, and everything
+this is written against already spells it that way — CSS has `color` and
+`background-color`, the DOM has `colorScheme`, JSON field names follow the Go struct fields, and
+those follow the CSS. A codebase that says `colour` in its own names has two spellings of one
+word and a rule nobody can remember about which half is which.
+
+It is one word in one dialect, everywhere: identifiers, comments, commit messages, the interface
+itself.
+
 ## Comments
 
 **Why, never what.** A comment restating the line under it is noise. A comment recording the

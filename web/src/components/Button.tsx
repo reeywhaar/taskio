@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from "react";
 /**
  * Three variants, and choosing between them is the whole decision.
  *
- * solid is the brand colour, which is the one thing on a screen of greys that is this
+ * solid is the brand color, which is the one thing on a screen of greys that is this
  * application rather than the browser's furniture. quiet is filled rather than outlined:
  * bordered, it draws a second rounded rectangle inside the one a panel already draws.
  *

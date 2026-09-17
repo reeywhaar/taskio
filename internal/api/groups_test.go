@@ -123,8 +123,8 @@ func TestATokenCannotReachGroups(t *testing.T) {
 	}
 }
 
-// The colour is what the tab wears, so it reaches a stylesheet and an SVG: one shape only.
-func TestAGroupsColourIsSixHexDigitsOrNothing(t *testing.T) {
+// The color is what the tab wears, so it reaches a stylesheet and an SVG: one shape only.
+func TestAGroupsColorIsSixHexDigitsOrNothing(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 
@@ -133,20 +133,20 @@ func TestAGroupsColourIsSixHexDigitsOrNothing(t *testing.T) {
 		t.Fatalf("create = %s", resp.Status)
 	}
 	if got := c.json(resp)["color"]; got != "#2563eb" {
-		t.Errorf("colour = %v, want it lowercased", got)
+		t.Errorf("color = %v, want it lowercased", got)
 	}
 
 	for _, bad := range []string{`"red"`, `"#fff"`, `"#12345g"`, `"#ef6500; --x: y"`} {
 		resp := c.do("POST", "/api/groups", `{"name":"X","tags":["work"],"color":`+bad+`}`)
 		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("colour %s = %s, want 400", bad, resp.Status)
+			t.Errorf("color %s = %s, want 400", bad, resp.Status)
 		}
 	}
 
-	// And none at all is a group that wears the brand, not a group with a broken colour.
+	// And none at all is a group that wears the brand, not a group with a broken color.
 	resp = c.do("POST", "/api/groups", `{"name":"Plain","tags":["home"]}`)
 	if resp.StatusCode != http.StatusCreated || c.json(resp)["color"] != "" {
-		t.Errorf("a group with no colour = %s", resp.Status)
+		t.Errorf("a group with no color = %s", resp.Status)
 	}
 }
 

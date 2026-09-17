@@ -16,6 +16,7 @@ import { Group as Caption } from "@app/components/Field";
 import { TextField } from "@app/components/TextField";
 import { TagCloud } from "@app/islands/app/TagCloud";
 import { Swatches } from "@app/components/Swatches";
+import { markURI } from "@app/mark";
 
 /** Open on a group to change it, on "new" to write one, shut on null. */
 export type Editing = Group | "new" | null;
@@ -40,7 +41,7 @@ export function GroupDialog({
 
   const [name, setName] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
-  const [colour, setColour] = useState("");
+  const [color, setColor] = useState("");
   const [error, setError] = useState("");
 
   // Filled when it opens, not cleared when it closes: a dialog emptied on the way out shows the
@@ -49,7 +50,7 @@ export function GroupDialog({
     if (!editing) return;
     setName(group?.name ?? "");
     setChosen(group?.tags ?? []);
-    setColour(group?.color ?? "");
+    setColor(group?.color ?? "");
     setError("");
   }, [editing, group]);
 
@@ -62,7 +63,7 @@ export function GroupDialog({
 
   const save = useMutation({
     mutationFn: () => {
-      const body = { name: name.trim(), tags: chosen, color: colour };
+      const body = { name: name.trim(), tags: chosen, color: color };
       return group ? patchGroupsById(group.id, body) : postGroups(body);
     },
     onSuccess: done,
@@ -134,10 +135,20 @@ export function GroupDialog({
         </Caption>
 
         <Caption
-          label="Colour"
+          label="Color"
           hint="What the tab wears while this group is the one on screen."
         >
-          <Swatches value={colour} onChange={setColour} />
+          <Swatches
+            value={color}
+            onChange={setColor}
+            preview={(picked) => (
+              <img
+                src={markURI(picked)}
+                alt=""
+                className="size-9 rounded-[5px]"
+              />
+            )}
+          />
         </Caption>
 
         {error ? <p className="text-sm text-accent">{error}</p> : null}

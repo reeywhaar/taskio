@@ -24,22 +24,22 @@ type Group struct {
 	PrincipalID string
 	Name        string
 	Tags        []string
-	// Color is #rrggbb, or empty for the brand colour. What the tab wears while the group is
-	// the one being looked at, so two windows are two colours rather than two of the same icon.
+	// Color is #rrggbb, or empty for the brand color. What the tab wears while the group is
+	// the one being looked at, so two windows are two colors rather than two of the same icon.
 	Color     string
 	CreatedAt time.Time
 }
 
-// A colour is six hex digits and nothing else: it reaches a stylesheet and an SVG, and the
+// A color is six hex digits and nothing else: it reaches a stylesheet and an SVG, and the
 // shortest way to be sure neither can be escaped out of is to accept one shape.
 var colorRE = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 // validColor folds what was sent into the one shape stored, or refuses it. Shared by the two
-// things that wear one, so a group and a task cannot disagree about what a colour is.
+// things that wear one, so a group and a task cannot disagree about what a color is.
 func validColor(color string) (string, error) {
 	color = strings.ToLower(strings.TrimSpace(color))
 	if color != "" && !colorRE.MatchString(color) {
-		return "", Invalid("A colour is six hex digits after a hash, like #ef6500.")
+		return "", Invalid("A color is six hex digits after a hash, like #ef6500.")
 	}
 	return color, nil
 }

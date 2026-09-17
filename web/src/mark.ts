@@ -5,7 +5,7 @@
  * because the first paint of every page needs one before any of this has run. The test beside
  * this keeps the two the same shape.
  *
- * Here as well as there because the colour changes: a group wears its own, and the tab it is
+ * Here as well as there because the color changes: a group wears its own, and the tab it is
  * open in wears the group's, so two windows are two icons rather than two of the same one.
  */
 
@@ -36,7 +36,7 @@ export function markURI(color?: string): string {
  * Six hex digits after a hash, or the brand.
  *
  * The server refuses anything else, and this is the second place that has to be sure: the value
- * is written straight into an attribute, and a colour that could be anything is a colour that
+ * is written straight into an attribute, and a color that could be anything is a color that
  * could close the quote.
  */
 function paint(color: string): string {

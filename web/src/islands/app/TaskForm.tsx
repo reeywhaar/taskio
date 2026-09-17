@@ -81,13 +81,19 @@ export function TaskForm({
         </Field>
 
         <Caption
-          label="Colour"
+          label="Color"
           hint="Down the left of the row. Yours to mean anything."
         >
           <Swatches
             value={draft.color}
             onChange={(color) => set({ color })}
-            none="No colour"
+            none="No color"
+            preview={(picked) => (
+              <span
+                className="flex h-9 w-28 items-center rounded-lg border-l-4 bg-fill"
+                style={{ borderLeftColor: picked }}
+              />
+            )}
           />
         </Caption>
       </div>

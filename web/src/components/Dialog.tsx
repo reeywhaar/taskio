@@ -93,9 +93,13 @@ export function Dialog({
     <dialog
       ref={ref}
       tabIndex={-1}
-      onClose={onClose}
+      // Mine, not one of my children's. close and cancel do not bubble in the DOM, and React
+      // delivers them as though they did — so a picker opening from inside the editor and being
+      // saved took the editor down with it.
+      onClose={(e) => e.target === ref.current && onClose()}
       // Escape fires cancel before close. Routing through one path means there is one way out.
       onCancel={(e) => {
+        if (e.target !== ref.current) return;
         e.preventDefault();
         onClose();
       }}

@@ -10,7 +10,7 @@ type groupBody struct {
 	ID   string   `json:"id"`
 	Name string   `json:"name"`
 	Tags []string `json:"tags"`
-	// Empty for the brand colour, which is what a group without one wears.
+	// Empty for the brand color, which is what a group without one wears.
 	Color     string `json:"color"`
 	CreatedAt int64  `json:"created_at"`
 }

@@ -53,14 +53,14 @@ default input size. That happened, and the browser test now asserts a field fill
 
 ## Focus is the border, not a ring
 
-A focused control takes the brand colour on its own border and draws no outline.
+A focused control takes the brand color on its own border and draws no outline.
 
 The alternative was an outline, and the trouble is where it sits. Outside the border there is a
 gap between the two, and the pair reads as a second frame around the field rather than as
 focus; flush or inset it doubles the edge into something heavier than the control. The border
-is already the shape of the field, so colouring it says the same thing with nothing added.
+is already the shape of the field, so coloring it says the same thing with nothing added.
 
-It is not colour alone: the border goes from a light grey to a saturated brand colour, which is
+It is not color alone: the border goes from a light grey to a saturated brand color, which is
 a change in lightness as well as hue.
 
 **Everything without a border takes a ring instead** — buttons, links, the tag pills. There is
@@ -125,19 +125,19 @@ appear on the row being pointed at. Where there is no pointer, they are simply t
 What is not a control follows it too: the nought a task of priority zero carries is a value
 nobody needs a column of, and it appears on the same terms.
 
-## A colour means whatever the person who set it decided
+## A color means whatever the person who set it decided
 
 A task can carry one, and nothing in taskio reads it: nothing sorts, filters or groups by it, and
 there is no default. It is drawn four pixels wide down the left of the row, and the four pixels
-are there whether or not there is a colour in them — a list where three rows are coloured and
+are there whether or not there is a color in them — a list where three rows are colored and
 ninety-seven are not is a list whose text still lines up.
 
 The swatches sit beside the priority field, which had the space, and the two are unrelated: one
 orders the list and the other is a mark somebody made for themselves.
 
 Groups wear one too, and the palette is the same control. Where they differ is the empty choice:
-a group without a colour wears the brand, so empty is what the brand swatch stores; a task
-without one wears nothing, so empty is a swatch of its own and the brand is a colour like any
+a group without a color wears the brand, so empty is what the brand swatch stores; a task
+without one wears nothing, so empty is a swatch of its own and the brand is a color like any
 other.
 
 ## Groups are dragged like tags, and All is not one of them
@@ -169,11 +169,11 @@ down before anything has it. That is deliberate: naming the group is often the m
 decides the tag exists, and the tasks follow. The cloud on the list cannot do this, because
 inventing a tag there narrows the list to nothing.
 
-A group may also carry a colour, and what wears it is the tab: the favicon's letter takes it, and
-so does the mark beside the name in the rail. Nothing else on the page changes. The colour is for
+A group may also carry a color, and what wears it is the tab: the favicon's letter takes it, and
+so does the mark beside the name in the rail. Nothing else on the page changes. The color is for
 telling one window from another at a glance, which is a job for a 16px tile rather than for
 repainting every button — and it comes from a short list rather than a picker, because eight
-obviously different colours do that job and sixteen million do not.
+obviously different colors do that job and sixteen million do not.
 
 Groups are session-only in the API. Not because a program could not use one, but because a
 scoped token must not learn tag names its scope does not reach, and a group is a list of tag
@@ -236,14 +236,14 @@ todo list and never unpinned from it.
 ## `line` strokes and `fill` fills
 
 Two tokens, because a 1px edge and a filled plate want different contrast against the same
-background. A colour pitched to make a border visible makes a selected row a slab; one pitched
+background. A color pitched to make a border visible makes a selected row a slab; one pitched
 for the plate makes the border invisible. They are read at two weights — 1.5px around a control
-and 1px for a structural hairline — and the colour is pitched for the thicker one, which is
+and 1px for a structural hairline — and the color is pitched for the thicker one, which is
 what somebody types into.
 
 ## The mark is two rectangles, not a letter
 
-The favicon is a brand-coloured T on a pale tile, drawn as two rectangles rather than as
+The favicon is a brand-colored T on a pale tile, drawn as two rectangles rather than as
 `<text>`. A favicon that names a font is a favicon drawn differently on every machine, and at
 16px the difference is the whole mark.
 
@@ -411,7 +411,7 @@ where it started.
 
 ## The checkbox is ours
 
-`appearance: none`, then the field's border weight and colour, the brand when it is ticked, and
+`appearance: none`, then the field's border weight and color, the brand when it is ticked, and
 a tick drawn with a clip path rather than typed — a glyph would be whatever font happened to
 load. Where `corner-shape: squircle` is understood it rounds further; everywhere else the
 radius stands on its own.
