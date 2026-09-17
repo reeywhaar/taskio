@@ -311,6 +311,6 @@ curl -sS -H "$AUTH" -H "$JSON" -X POST "$TASKIO/api/tasks" \
 curl -sS -H "$AUTH" "$TASKIO/api/tasks?tags=and(home,repair)"
 curl -sS -H "$AUTH" "$TASKIO/api/tasks?q=tpa"
 
-# Finish it
+# Mark it done
 curl -sS -H "$AUTH" -X POST "$TASKIO/api/tasks/8qw4/done"
 ```

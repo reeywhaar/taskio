@@ -108,7 +108,7 @@ export function BulkBar({
               )
             }
           >
-            {view === "done" ? "Reopen" : "Finish"}
+            {view === "done" ? "Mark as todo" : "Mark done"}
           </Button>
           {/* Both, always. The view fixes the status every selected task has — a todo list is
               all todos — but it fixes nothing about pinning: a todo list holds pinned and

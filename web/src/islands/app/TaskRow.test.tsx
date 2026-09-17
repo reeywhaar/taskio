@@ -63,14 +63,14 @@ describe("TaskRow", () => {
   it("offers to pin an unpinned task and unpin a pinned one", () => {
     const onTogglePinned = vi.fn();
     const { unmount } = row({}, { onTogglePinned });
-    fireEvent.click(screen.getByRole("button", { name: "Pin Fix the tap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
     expect(onTogglePinned).toHaveBeenCalled();
     unmount();
 
     row({ pinned: true });
     expect(
       screen
-        .getByRole("button", { name: "Unpin Fix the tap" })
+        .getByRole("button", { name: "Unpin" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
   });
@@ -104,9 +104,7 @@ describe("TaskRow", () => {
     const onSelect = vi.fn();
     row({}, { selectable: true, onSelect });
 
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "Select Fix the tap" }),
-    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select" }));
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
@@ -114,7 +112,7 @@ describe("TaskRow", () => {
   it("does not open the task when the pin is pressed", () => {
     const onOpen = vi.fn();
     row({}, { onOpen });
-    fireEvent.click(screen.getByRole("button", { name: "Pin Fix the tap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
     expect(onOpen).not.toHaveBeenCalled();
   });
 });

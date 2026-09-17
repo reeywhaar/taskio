@@ -99,8 +99,11 @@ export function TaskDialog({
             Delete
           </Button>
           <span className="flex-1" />
+          {/* What it does, rather than what it is called elsewhere. "Finish" sits where a
+              dialog's dismiss button lives and reads as finishing the editing — which is the one
+              thing it does not do. */}
           <Button onClick={() => toggleDone.mutate()}>
-            {done ? "Reopen" : "Finish"}
+            {done ? "Mark as todo" : "Mark done"}
           </Button>
           <Button
             variant="solid"

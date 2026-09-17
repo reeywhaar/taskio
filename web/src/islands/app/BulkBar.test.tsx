@@ -59,13 +59,13 @@ describe("BulkBar", () => {
   // This one the view does fix: a todo list is all todos, so only one of the two can move them.
   it("offers the one status action the view leaves open", () => {
     const { unmount } = bar("todo");
-    expect(screen.getByRole("button", { name: "Finish" })).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Reopen" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Mark done" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Mark as todo" })).toBeNull();
     unmount();
 
     bar("done");
-    expect(screen.getByRole("button", { name: "Reopen" })).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Finish" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Mark as todo" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
   });
 
   it("sets one priority across the selection", async () => {

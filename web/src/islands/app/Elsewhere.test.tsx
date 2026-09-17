@@ -115,7 +115,7 @@ describe("Elsewhere", () => {
         onOpen={vi.fn()}
       />,
     );
-    for (const name of [/^Finish /, /^Pin /]) {
+    for (const name of [/^Mark /, /^Pin /]) {
       const control = screen.queryByRole("button", { name });
       expect(control === null || control.hasAttribute("hidden")).toBe(true);
     }

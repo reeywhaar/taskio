@@ -12,7 +12,7 @@ import { TaskId } from "@app/islands/app/TaskId";
  * Everything else in the card is a control in its own right — the mark, the id, a link in the
  * description — and each stops the click from reaching the card behind it.
  *
- * Finishing a task lives at the right as a mark. The left column carries what the task is —
+ * Marking a task done lives at the right as a mark. The left column carries what the task is —
  * its id, whether it is pinned, what it is worth — and the selection's box when there is one.
  * See docs/interface.md.
  *
@@ -81,7 +81,7 @@ export function TaskRow({
         >
           <input
             type="checkbox"
-            aria-label={`Select ${task.title}`}
+            aria-label="Select"
             checked={selected}
             onChange={() => onSelect?.(task.id)}
             className="size-4"
@@ -118,9 +118,8 @@ export function TaskRow({
           <button
             type="button"
             hidden={!onTogglePinned}
-            aria-label={
-              task.pinned ? `Unpin ${task.title}` : `Pin ${task.title}`
-            }
+            aria-label={task.pinned ? "Unpin" : "Pin"}
+            title={task.pinned ? "Unpin" : "Pin"}
             aria-pressed={task.pinned}
             onClick={() => onTogglePinned?.(task)}
             className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
@@ -192,7 +191,8 @@ export function TaskRow({
       <button
         type="button"
         hidden={!onToggleDone}
-        aria-label={done ? `Reopen ${task.title}` : `Finish ${task.title}`}
+        aria-label={done ? "Mark as todo" : "Mark done"}
+        title={done ? "Mark as todo" : "Mark done"}
         aria-pressed={done}
         onClick={(e) => {
           e.stopPropagation();
