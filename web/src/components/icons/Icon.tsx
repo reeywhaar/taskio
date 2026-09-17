@@ -35,6 +35,12 @@ export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+export const MinusIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
 export const CrossIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <path d="M6 6l12 12M18 6L6 18" />

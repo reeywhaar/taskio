@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getTags } from "@app/api/actions/tags";
 import { qk } from "@app/api/keys";
-import { Field, Group as Caption } from "@app/components/Field";
+import { Group as Caption } from "@app/components/Field";
+import { NumberField } from "@app/components/NumberField";
 import { Swatches } from "@app/components/Swatches";
 import { TextField } from "@app/components/TextField";
 import { Editor } from "@app/islands/app/Editor";
@@ -64,21 +65,23 @@ export function TaskForm({
         limits={{ assetMax: 10 << 20 }}
       />
 
-      {/* Side by side, because the space beside a 24-wide number field was empty and a row of
-          swatches is the shape that fits it. They are unrelated: one orders the list and the
-          other means whatever the person who set it decided. */}
+      {/* Side by side, because the space beside the number was empty and a row of swatches is
+          the shape that fits it. They are unrelated: one orders the list and the other means
+          whatever the person who set it decided. */}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <Field
+        {/* A caption, not a label: Field wraps its child in one, and a label takes the first
+            labelable thing inside it — which here is the decrease button rather than the
+            field. */}
+        <Caption
           label="Priority"
           hint="Higher sorts higher. A pin beats any number."
         >
-          <TextField
-            type="number"
-            className="w-24"
+          <NumberField
+            label="Priority"
             value={draft.priority}
-            onChange={(e) => set({ priority: e.target.value })}
+            onChange={(priority) => set({ priority })}
           />
-        </Field>
+        </Caption>
 
         <Caption
           label="Color"

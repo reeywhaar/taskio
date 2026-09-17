@@ -10,6 +10,7 @@ import {
 } from "@app/api/actions/tasks";
 import type { Filters } from "@app/islands/app/route";
 import { Button } from "@app/components/Button";
+import { NumberField } from "@app/components/NumberField";
 import { TextField } from "@app/components/TextField";
 
 /**
@@ -88,12 +89,11 @@ export function BulkBar({
             void run(() => postTasksBulkPriority(ids, Number(priority) || 0));
           }}
         >
-          <TextField
+          <NumberField
             autoFocus
-            type="number"
+            label="Priority"
             value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="w-24"
+            onChange={setPriority}
           />
           <Button type="submit" variant="solid" disabled={busy}>
             Set

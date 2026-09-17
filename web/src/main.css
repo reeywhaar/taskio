@@ -343,6 +343,22 @@ textarea {
 }
 
 /*
+ * Our stepper, not the browser's.
+ *
+ * No browser on a phone draws the spinner at all, which is what NumberField exists for; a
+ * desktop one that does would draw a second pair of arrows inside ours.
+ */
+input[type="number"] {
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/*
  * The one control still wearing the browser's own design.
  *
  * appearance:none takes it off, and everything below puts ours back: the field's border weight

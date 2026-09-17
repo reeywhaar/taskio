@@ -464,6 +464,20 @@ Beside the id it was a column appearing on the left, which shoved every row's co
 at the moment somebody began picking — and the mark it now replaces had nothing to do while
 picking anyway, since a row being ticked is not a row being finished.
 
+## The stepper is ours, because the platform has none
+
+No browser on a phone draws the spinner on `input[type=number]` — iOS Safari included — so on the
+device where a keyboard is most in the way, the only way to change a number was to type it.
+`NumberField` puts a minus and a plus either side of the field, square and the height of the
+field rather than the height of a spinner arrow, because the pointer that needed them is a
+finger. The native spinner is turned off everywhere rather than left to appear beside ours on a
+desktop.
+
+It carries its own name. A `Field` wraps its child in a `<label>`, and a label attaches to the
+first labelable thing inside it — which here is the decrease button, not the field — so a
+stepper takes the caption form and the name comes down as a prop: the field is "Priority" and
+the buttons either side are "Decrease Priority" and "Increase Priority".
+
 ## The checkbox is ours
 
 `appearance: none`, then the field's border weight and color, the brand when it is ticked, and
