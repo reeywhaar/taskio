@@ -84,22 +84,21 @@ Multi-stage, and the stages do not depend on each other.
 
 ## Tags
 
-A publish moves three tags onto one image:
+A publish moves two tags onto one image:
 
 | tag | what it means |
 | --- | --- |
 | `:latest` | whatever was published last. Fine for a first look, and a pin to nothing |
-| `:v1` | this line of the software, fixes included. What most deployments want |
-| `:v1.0.0` | this build and no other. The only one that never moves |
+| `:v1` | this line of the software, fixes included. What a deployment pins to |
 
-The number lives in `VERSION` at the root of the repository, one line, and `private/deploy.sh`
-reads it. The major part of it is where `:v1` comes from, so a release of `1.4.0` moves `:latest`
-and `:v1` and creates `:v1.4.0`.
+There is no release number, so there is none to keep in step with. If this ever grows one, `:v2`
+is what a break in the API or the storage would be published under, beside a `:v1` that keeps
+getting fixes.
 
-It is also stamped into the binary through `-ldflags`, which is what `taskio version` prints and
-what the startup line logs. A tree with uncommitted changes in it stamps `1.0.0+dirty`: the image
-is still tagged, because the tags are how it reaches the host, but the thing running says what it
-actually is rather than claiming to be the release.
+What the binary says it is, is the commit it was built from — stamped through `-ldflags`, printed
+by `taskio version`, and logged on the startup line. It is the one fact about a build that is
+true without anybody maintaining it. A tree with uncommitted changes stamps `1a2b3c4+dirty`,
+because that build is not the commit it names.
 
 ## The bundle is read from disk, not embedded
 
