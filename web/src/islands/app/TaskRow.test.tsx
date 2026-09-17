@@ -111,6 +111,19 @@ describe("TaskRow", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  /**
+   * The bug: the box was a column added on the left, so every row's contents jumped sideways
+   * the moment somebody pressed Select.
+   */
+  it("puts the box where the mark stands, so picking moves nothing", () => {
+    const { container } = row({}, { selectable: true });
+    const card = container.querySelector("li")!;
+    expect(
+      card.lastElementChild!.querySelector('input[type="checkbox"]'),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
+  });
+
   // The box itself must not count twice: once from the input, once from the card behind it.
   it("counts a click on the box once", () => {
     const onSelect = vi.fn();

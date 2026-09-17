@@ -12,9 +12,11 @@ import { TaskId } from "@app/islands/app/TaskId";
  * Everything else in the card is a control in its own right — the mark, the id, a link in the
  * description — and each stops the click from reaching the card behind it.
  *
- * Marking a task done lives at the right as a mark. The left column carries what the task is —
- * its id, whether it is pinned, what it is worth — and the selection's box when there is one.
- * See docs/interface.md.
+ * Marking a task done lives at the right as a mark, and while a selection is being made the
+ * selection's box stands in that same place — there is nothing to mark done from a row somebody
+ * is picking, and a box added on the left is a column that moves every row sideways when Select
+ * is pressed. The left column carries what the task is: its id, whether it is pinned, what it is
+ * worth. See docs/interface.md.
  *
  * The mark, the id and the title's first line share one band the height of that line, and each
  * centres inside it. They are three different font sizes, so aligning their tops puts them on
@@ -84,23 +86,6 @@ export function TaskRow({
           className="absolute inset-y-0 left-0 w-1 bg-[image:var(--sheen)]"
           style={{ backgroundColor: task.color }}
         />
-      ) : null}
-
-      {selectable ? (
-        // The box reports the tick itself; without this the card behind it reports a second
-        // one and the row toggles back to where it started.
-        <span
-          className="flex h-6 shrink-0 items-center"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            aria-label="Select"
-            checked={selected}
-            onChange={() => onSelect?.(task.id)}
-            className="size-4"
-          />
-        </span>
       ) : null}
 
       <span
@@ -209,26 +194,48 @@ export function TaskRow({
         ) : null}
       </div>
 
-      <button
-        type="button"
-        hidden={!onToggleDone}
-        aria-label={done ? "Mark as todo" : "Mark done"}
-        title={done ? "Mark as todo" : "Mark done"}
-        aria-pressed={done}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleDone?.(task);
-        }}
-        // Drawn on the row that is being pointed at rather than on all ninety of them: a
-        // column of marks down a list is a column of marks. A finger has no hover to wait for,
-        // so under one it is simply there — which is the same rule as the pin above, read from
-        // the other end.
-        className={`flex h-6 shrink-0 items-center rounded-md px-1.5 text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line ${
-          done ? "text-brand" : "text-muted hover:text-fg"
-        }`}
-      >
-        {done ? <UndoIcon /> : <CheckIcon />}
-      </button>
+      {/* The box stands where the mark stands, and the two are the same size, so pressing
+          Select changes what is in that slot and moves nothing. Beside the id it was a seventh
+          column appearing on the left, which pushed every row's contents sideways the moment a
+          selection began — and there was already a control here doing nothing while picking.
+
+          The box reports the tick itself; without stopping the click the card behind it
+          reports a second one and the row toggles back to where it started. */}
+      {selectable ? (
+        <span
+          className="flex h-6 w-8 shrink-0 items-center justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            aria-label="Select"
+            checked={selected}
+            onChange={() => onSelect?.(task.id)}
+            className="size-4"
+          />
+        </span>
+      ) : (
+        <button
+          type="button"
+          hidden={!onToggleDone}
+          aria-label={done ? "Mark as todo" : "Mark done"}
+          title={done ? "Mark as todo" : "Mark done"}
+          aria-pressed={done}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleDone?.(task);
+          }}
+          // Drawn on the row that is being pointed at rather than on all ninety of them: a
+          // column of marks down a list is a column of marks. A finger has no hover to wait
+          // for, so under one it is simply there — which is the same rule as the pin above,
+          // read from the other end.
+          className={`flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line ${
+            done ? "text-brand" : "text-muted hover:text-fg"
+          }`}
+        >
+          {done ? <UndoIcon /> : <CheckIcon />}
+        </button>
+      )}
     </li>
   );
 }

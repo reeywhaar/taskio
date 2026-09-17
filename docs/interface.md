@@ -458,6 +458,12 @@ somebody is ticking is the wrong half, and the box is a small target to have to 
 itself stops the click reaching the card, or the row counts the tick twice and toggles back to
 where it started.
 
+The box stands at the right of the row, in the slot the done mark occupies the rest of the time,
+and both are the same size. Pressing Select then changes what is in that slot and moves nothing.
+Beside the id it was a column appearing on the left, which shoved every row's contents sideways
+at the moment somebody began picking — and the mark it now replaces had nothing to do while
+picking anyway, since a row being ticked is not a row being finished.
+
 ## The checkbox is ours
 
 `appearance: none`, then the field's border weight and color, the brand when it is ticked, and
