@@ -256,8 +256,15 @@ into it.
 **A sheen across every raised thing**, running against the light: a little paler along the bottom
 and a breath of dark along the top. With the light rather than against it, the gradient and the
 shadow say the same thing twice and the shape flattens instead. It is `background-image`, so the
-color the element chose stays under it — and it is left off the brand wash, which is at most a
-third brand and would have the color washed out of it by a pale gradient beneath.
+color the element chose stays under it — and it is left off the brand wash, which would have the
+color washed out of it by a pale gradient beneath.
+
+**And the same sheen turned over on every sunken thing**, because the surface is: pale along the
+top, dark along the floor. Both halves share one pair of stops, so there is one intensity to
+change rather than two, and a card and a field then shade in opposite directions — which is the
+difference you can see without hunting for an edge. Measured down the middle of the search field
+it runs 239 at the top to 235 at the bottom in light and 49 to 37 in dark, against a card running
+234 to 240 and 40 to 52 the other way.
 
 **Two grounds, a hair apart.** The page is the lighter and the rail is the darker, and that is the
 only thing dividing them now that the rail draws no line. A thing standing on the page takes the
@@ -265,11 +272,18 @@ page's ground; a chip inside a card takes `fill`, because it cannot be the color
 sits on.
 
 **The brand is a wash, not a fill.** A block of it on everything lit is a screen shouting, so what
-a lit thing wears is a radial wash of the brand — pale in the middle, gathering to the rim, three
-stops because two arrive at full strength exactly at the boundary and draw a ring around a pale
-hole. It is `color-mix` on the one `--color-brand`, so that value still controls all of it. The
-label on it is ordinary text: the brand cannot be read on a wash of the brand, which measured
-4.03 against a 4.5 bar at its best, where plain foreground is 9.54 on the same wash.
+a lit thing wears is a radial wash of the brand — an eighth of it in the middle, half at the rim,
+three stops because two arrive at full strength exactly at the boundary and draw a ring around a
+pale hole. It is `color-mix` on the one `--color-brand`, so that value still controls all of it.
+The label on it is ordinary text: the brand cannot be read on a wash of the brand, which measured
+4.03 against a 4.5 bar at its best, where plain foreground is 6.70 at the strongest point of the
+wash as it now stands, and 5.63 on the same point in dark.
+
+The two percentages in the gradient are radii, one per axis, and reading them as a size is how
+this came to look washed out at strengths that should have been plenty: the ellipse was drawn
+well past the box, so the corners sat at six tenths of the ramp and the last stop was never
+painted. The rim strength is only the strength somebody sees if the ellipse ends where the shape
+does.
 
 **One rounding.** 6px for a control or a field, including the segmented control and the segment
 inside it; 8px for a card; 12px for a modal. A corner that depends on which pass restyled it is
