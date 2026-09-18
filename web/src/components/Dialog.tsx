@@ -144,24 +144,32 @@ export function Dialog({
             overscroll-contain stops a touch scroll that reached the end carrying on into the
             page behind, where overflow:hidden on the body is not reliably enough on its own.
           */}
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-5 pb-4 sm:px-5">
-            {/* A way out that is always drawn, because the ones that are not always there
-                leave the phone with none: below the breakpoint this fills the screen, so there
-                is no backdrop to press beside it, and there is no Escape on a phone. Not every
-                dialog has a Cancel in its footer, and the one that is hardest to leave is the
-                editor, which has three buttons and none of them is "not this". */}
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-lg font-semibold">{title}</h2>
-              <button
-                type="button"
-                aria-label="Close"
-                title="Close"
-                onClick={onClose}
-                className="-mt-1 -mr-1 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
-              >
-                <CrossIcon />
-              </button>
-            </div>
+          {/* Outside the scroller, and ruled off from it.
+              
+              The title used to scroll away with the body, which on a long description meant a
+              page of prose with nothing at the top of it saying what it belonged to. A rule
+              under it says where the dialog's own furniture ends and its contents begin — the
+              same line the footer draws, from the other end.
+
+              A way out that is always drawn, because the ones that are not always there leave
+              the phone with none: below the breakpoint this fills the screen, so there is no
+              backdrop to press beside it, and there is no Escape on a phone. Not every dialog
+              has a Cancel in its footer, and the one that is hardest to leave is the editor,
+              which has three buttons and none of them is "not this". */}
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-4 pt-5 pb-4 sm:px-5">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <button
+              type="button"
+              aria-label="Close"
+              title="Close"
+              onClick={onClose}
+              className="-mt-1 -mr-1 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
+            >
+              <CrossIcon />
+            </button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-4 pb-4 sm:px-5">
             {children}
           </div>
           {footer ? (

@@ -26,6 +26,24 @@ describe("Dialog", () => {
     expect(document.activeElement?.tagName).toBe("DIALOG");
   });
 
+  /**
+   * The title stays put and the body scrolls under it. It used to be the first thing inside the
+   * scroller, so a long description scrolled its own name off the top and left a page of prose
+   * with nothing saying what it belonged to.
+   */
+  it("keeps the title out of the part that scrolls", () => {
+    const { container } = mount(
+      <Dialog open onClose={vi.fn()} title="Task">
+        <p>Something long</p>
+      </Dialog>,
+    );
+    const scroller = container.querySelector(".overflow-y-auto")!;
+    const heading = screen.getByRole("heading", { name: "Task" });
+    expect(scroller).not.toBeNull();
+    expect(scroller.contains(heading)).toBe(false);
+    expect(scroller.textContent).toBe("Something long");
+  });
+
   // data-autofocus, because React's autoFocus is a call that runs while this is still hidden.
   it("gives focus back to a field that asked for it", () => {
     mount(

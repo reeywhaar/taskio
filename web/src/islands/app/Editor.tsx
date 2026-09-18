@@ -191,9 +191,13 @@ export function Editor({
         title={title?.trim() || "Description"}
         wide
       >
+        {/* A floor under it, because a description of two lines in a box of two lines is a
+            dialog that has shrunk to fit and reads as cramped — the room is the point of
+            opening it. Above the breakpoint only: on a phone the dialog is the whole screen
+            already, and a minimum there could only make it scroll. */}
         <div
           ref={preview}
-          className="prose text-sm"
+          className="prose text-sm sm:min-h-50"
           dangerouslySetInnerHTML={{ __html: render(value) }}
         />
       </Dialog>

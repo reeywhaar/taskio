@@ -131,6 +131,14 @@ A task's own chips come back in that same order, because the chips on a row and 
 it are the same tags: sorted two different ways they read as two different sets, and the eye goes
 looking for the difference.
 
+## The current row in the rail is the whole row
+
+The ground belongs to the row, not to the name inside it. On the name it stopped short of the
+pencil, which then sat outside the thing it edits with a strip of rail between them — and the
+group somebody is looking at read as a shape with a button beside it rather than as one row. The
+pencil has no ground of its own, because a shade over a shade is a second rectangle inside the
+one this was about.
+
 ## A control that waits for a pointer is a control a finger does not have
 
 The pin on a row waited for hover, which on a phone never comes: the only way to pin was to open
@@ -500,9 +508,16 @@ A centred card on a phone spends its margins on the page behind it, which nobody
 and leaves the editor a slot to type into. Below the breakpoint the dialog is the viewport:
 no inset, no rounding, no border. Above it, the centred card it always was.
 
-Either way the body scrolls and the footer does not, so what a dialog asks for is never below
-the fold with nothing to press. The editor takes the slack, which is the point of the screen
-being full — a description is the thing you opened it to write.
+Either way the title and the footer stay put and the body scrolls between them, so what a dialog
+asks for is never below the fold with nothing to press, and a long description never scrolls its
+own name off the top. Both are ruled off from the body with the same line, from either end. The
+editor takes the slack, which is the point of the screen being full — a description is the thing
+you opened it to write.
+
+**A preview has a floor under it.** A description of two lines in a box of two lines is a dialog
+that has shrunk to fit, and the room is the point of opening it at all. Above the breakpoint
+only: on a phone the dialog is the whole screen already, and a minimum there could only make it
+scroll.
 
 A shut dialog is `display: none` and says so itself. `flex` would otherwise win the argument
 against the browser's own `dialog:not([open])` rule, and every shut dialog on a page lays
