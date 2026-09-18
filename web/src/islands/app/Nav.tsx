@@ -339,7 +339,14 @@ function Item({
   });
 
   const row = (
-    <div className="group/row relative flex items-center gap-1">
+    // The ground belongs to the row, not to the name inside it. On the name it stopped short of
+    // the pencil, which then sat outside the thing it edits with a strip of rail between them —
+    // and the current group looked like a shape with a button next to it rather than one row.
+    <div
+      className={`group/row relative flex items-center gap-1 rounded-md ${
+        carried ? "opacity-40" : ""
+      } ${lit ? "bg-shade" : "hover:bg-shade"}`}
+    >
       <button
         type="button"
         data-group={id}
@@ -357,11 +364,7 @@ function Item({
         aria-current={lit ? "page" : undefined}
         className={`min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none ${
           onOver ? "touch-none" : ""
-        } ${carried ? "opacity-40" : ""} ${
-          lit
-            ? "bg-shade font-medium text-brand"
-            : "text-muted hover:bg-shade hover:text-fg"
-        }`}
+        } ${lit ? "font-medium text-brand" : "text-muted group-hover/row:text-fg"}`}
       >
         {label}
       </button>
@@ -370,7 +373,9 @@ function Item({
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${label}`}
-          className="rounded-md p-1.5 text-faint opacity-0 hover:bg-shade hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
+          // No ground of its own: it is standing on the row's now, and a shade over a shade
+          // is a second rectangle inside the one this change was about.
+          className="mr-1 rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
         >
           <PencilIcon />
         </button>

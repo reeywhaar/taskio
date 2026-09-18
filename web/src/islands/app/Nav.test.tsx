@@ -66,6 +66,26 @@ describe("Nav", () => {
     });
   });
 
+  /**
+   * The lit ground is the row's, not the name's. On the name it stopped short of the pencil,
+   * which then sat outside the thing it edits with a strip of rail between them.
+   */
+  it("lights the whole row, pencil included", async () => {
+    mount(<Nav location={at(["work", "proxio"])} onGo={vi.fn()} />);
+    await screen.findAllByRole("button", { name: "Deep work" });
+    // The rail's own, not the sheet's copy of it.
+    const name = [...rail().querySelectorAll("button")].find(
+      (b) => b.textContent === "Deep work",
+    )!;
+    const row = name.parentElement!;
+
+    expect(row.className).toContain("bg-shade");
+    expect(name.className).not.toContain("bg-shade");
+    expect(
+      row.querySelector('button[aria-label="Edit Deep work"]'),
+    ).not.toBeNull();
+  });
+
   it("offers a group no way to be renamed from the rail itself", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
     await waitFor(() =>
