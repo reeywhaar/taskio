@@ -360,8 +360,12 @@ It has its own color at its own strength rather than a fraction of `cast`, and t
 — black fog on a beige rail greys it, and taking the color out of a ground is the one thing
 nothing here is allowed to do. Measured through a screenshot, `cast` at this radius moved the
 ground by three levels out of 255, which is a shadow nobody can see; the fog moves it by ten in
-light and eight in dark, on grounds of 229 and 38. The lit side is the raised one unchanged: a
-thing higher up catches no more light, it only casts further.
+light and eight in dark, on grounds of 229 and 38.
+
+And no highlight at all, unlike raised. A highlight says where the light is coming from, and fog
+has no direction to contradict — a white line along the top-left edge of a docked bar is a lit
+edge on the one side rows slide under, drawn straight across the fog that is there to separate
+them.
 
 **It docks rather than floats.** Flush with the bottom edge at either width, and square where it
 meets it: a rounded corner sitting twelve pixels above the foot of the screen is a card somebody

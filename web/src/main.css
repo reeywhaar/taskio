@@ -132,14 +132,15 @@
  *
  * Its own color at its own strength, not a fraction of --cast. Measured through a screenshot,
  * cast at this radius moved the ground by three levels out of 255, which is a shadow nobody can
- * see; this moves it by eighteen. The lit side is the raised one unchanged: a thing higher up
- * catches no more light, it only casts further.
+ * see; this moves it by ten in light and eight in dark.
+ *
+ * And no highlight, unlike raised. A highlight says where the light is coming from, and fog has
+ * no direction to contradict — a white line along the top-left edge of a docked bar is a lit
+ * edge on the one side rows slide under, drawn across the fog that is there to separate them.
  */
 .aloft {
   background-image: var(--sheen);
   box-shadow:
-    -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
-    -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
     0 0 16px var(--fog),
     0 0 40px color-mix(in srgb, var(--fog) 55%, transparent);
 }
