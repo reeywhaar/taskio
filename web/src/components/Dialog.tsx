@@ -155,14 +155,18 @@ export function Dialog({
               under it says where the dialog's own furniture ends and its contents begin — the
               same line the footer draws, from the other end.
 
+              A title bar rather than a panel: 49px around a 28px control, the same at every
+              width. It was 57 on a phone and 65 above it, which on one short word and a close
+              is a band of nothing with a rule under it.
+
               A way out that is always drawn, because the ones that are not always there leave
               the phone with none: below the breakpoint this fills the screen, so there is no
               backdrop to press beside it, and there is no Escape on a phone. Not every dialog
               has a Cancel in its footer, and the one that is hardest to leave is the editor,
               which has three buttons and none of them is "not this". */}
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-4">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
             <div className="flex min-w-0 items-center gap-2">
-              <h2 className="truncate text-lg font-semibold">{title}</h2>
+              <h2 className="truncate text-base font-semibold">{title}</h2>
               {aside}
             </div>
             <button

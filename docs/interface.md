@@ -510,7 +510,10 @@ no inset, no rounding, no border. Above it, the centred card it always was.
 
 Either way the title and the footer stay put and the body scrolls between them, so what a dialog
 asks for is never below the fold with nothing to press, and a long description never scrolls its
-own name off the top. Both are ruled off from the body with the same line, from either end. The
+own name off the top. Both are ruled off from the body with the same line, from either end.
+
+The head is a title bar and not a panel: 49px at every width, around a 28px close. It was 57 on
+a phone and 65 above it, which on one short word is a band of nothing with a rule under it. The
 editor takes the slack, which is the point of the screen being full — a description is the thing
 you opened it to write.
 
