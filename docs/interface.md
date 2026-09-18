@@ -472,6 +472,21 @@ Beside the id it was a column appearing on the left, which shoved every row's co
 at the moment somebody began picking — and the mark it now replaces had nothing to do while
 picking anyway, since a row being ticked is not a row being finished.
 
+## What a field means lives behind a question mark
+
+A caption names the field and a `?` beside it opens a dialog saying what it is for. The
+explanation used to be a line of small grey text under every field, which makes a form read as
+twice as long as it is and says most of it to people who already knew. Behind a mark it is there
+when it is wanted, takes no room when it is not, and has space to say the whole thing rather
+than the half that fits on one line — priority now explains pins, negative numbers and the gaps
+between bands, which was never going to fit under a 64px field.
+
+The mark is drawn beside the caption and written after the control, because a `<label>` names
+the first labelable thing inside it and a `<button>` is one: put the mark where it looks like it
+belongs and the caption stops naming the field and starts naming the mark. A grid puts it back
+in the first row. There is a test for exactly that, because it is invisible until somebody
+tries to use the form without a mouse.
+
 ## The stepper is ours, because the platform has none
 
 No browser on a phone draws the spinner on `input[type=number]` — iOS Safari included — so on the

@@ -15,7 +15,8 @@ vi.mock("@app/api/actions/account", () => ({
 
 /** The first step, which every test past the first one has to get through. */
 const send = async (email: string) => {
-  fireEvent.change(screen.getByLabelText(/address/i), {
+  // By role, because the field's own question mark is named after the field too.
+  fireEvent.change(screen.getByRole("textbox", { name: /address/i }), {
     target: { value: email },
   });
   fireEvent.click(screen.getByRole("button", { name: "Send a code" }));

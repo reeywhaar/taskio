@@ -74,7 +74,23 @@ export function TaskForm({
             field. */}
         <Caption
           label="Priority"
-          hint="Higher sorts higher. A pin beats any number."
+          hint={
+            <>
+              <p>
+                Higher sorts higher. A pin beats any number, so a pinned task
+                with nothing set still sits above an unpinned one set to nine.
+              </p>
+              <p>
+                Negative numbers sort below nought, which is where a thing goes
+                that you do not want to look at and do not want to lose either.
+              </p>
+              <p>
+                The list leaves a wider gap wherever the number changes, so the
+                bands are something to see rather than something to work out by
+                reading down the column.
+              </p>
+            </>
+          }
         >
           <NumberField
             label="Priority"
@@ -85,7 +101,19 @@ export function TaskForm({
 
         <Caption
           label="Color"
-          hint="Down the left of the row. Yours to mean anything."
+          hint={
+            <>
+              <p>
+                A bar down the left of the row, cropped by the card. That is the
+                only place it shows.
+              </p>
+              <p>
+                It means whatever you decide it means: nothing reads it, nothing
+                sorts by it, and it is not a status. Two or three colors used
+                the same way every time are worth more than eight used once.
+              </p>
+            </>
+          }
         >
           <Swatches
             value={draft.color}
