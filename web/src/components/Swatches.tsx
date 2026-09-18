@@ -53,7 +53,14 @@ export function Swatches({
   const custom = value !== "" && !COLOURS.includes(value);
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    // Five across rather than a row that runs on: the swatches share a line with the priority
+    // stepper, and ten of them in a row made one side of it twice the width of the other. Two
+    // short rows are the same swatches in a block the shape of the thing beside them.
+    //
+    // A fixed count rather than wrapping, because wrapping is decided by whatever width the
+    // swatches happen to be given — the same control would be one row in a wide dialog and
+    // three on a phone, and where it breaks would be arithmetic nobody chose.
+    <div className="grid w-fit grid-cols-5 items-center gap-1.5">
       {none ? (
         <button
           type="button"
