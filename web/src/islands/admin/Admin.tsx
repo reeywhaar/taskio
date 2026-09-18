@@ -36,7 +36,7 @@ export function Admin() {
 
 function Heading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-2 text-sm font-semibold tracking-wide text-faint uppercase">
+    <h2 className="mb-2 text-sm font-semibold tracking-wide uppercase">
       {children}
     </h2>
   );

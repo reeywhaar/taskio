@@ -127,7 +127,7 @@ export function Nav({
 
   const items = (
     <ul className="flex flex-1 flex-col gap-0.5 p-2">
-      <li className="px-3 pt-1 pb-1 text-xs font-medium tracking-wide text-faint uppercase">
+      <li className="px-3 pt-1 pb-1 text-xs font-medium tracking-wide text-muted uppercase">
         Groups
       </li>
 

@@ -168,7 +168,7 @@ function Mentions({
   if (list.length === 0) return null;
   return (
     <div>
-      <h3 className="text-xs font-medium tracking-wide text-faint uppercase">
+      <h3 className="text-xs font-medium tracking-wide text-muted uppercase">
         {heading}
       </h3>
       <ul className="mt-1 flex flex-col gap-1">

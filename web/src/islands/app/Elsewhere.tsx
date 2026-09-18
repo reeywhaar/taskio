@@ -71,7 +71,7 @@ function Found({
   if (tasks.length === 0) return null;
   return (
     <section className="mb-4 last:mb-0">
-      <h2 className="mb-2 text-xs font-medium tracking-wide text-faint uppercase">
+      <h2 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
         {heading}
       </h2>
       <ul className="flex flex-col gap-2">
