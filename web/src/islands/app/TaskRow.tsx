@@ -1,3 +1,4 @@
+import { ago, MONTH, WEEK } from "@app/ago";
 import { CheckIcon, PinIcon, UndoIcon } from "@app/components/icons/Icon";
 import type { Task } from "@app/api/types";
 import { excerpt } from "@app/markdown";
@@ -59,6 +60,24 @@ export function TaskRow({
   const done = task.status === "done";
   const pieces = excerpt(task.description);
 
+  /**
+   * How long the task has been sitting there, and whether that is a problem yet.
+   *
+   * A week is where a task starts looking neglected and a month is where it starts looking
+   * abandoned — the two marks are the whole feature, and the grey between them is the row
+   * saying there is nothing to see.
+   *
+   * A finished task is never late. It stays grey however old it is, because red on a thing that
+   * is done says it needs attention, which is the one thing it does not.
+   */
+  const since = Date.now() / 1000 - task.updated_at;
+  const age =
+    done || since < WEEK
+      ? "text-faint"
+      : since < MONTH
+        ? "text-warn"
+        : "text-accent";
+
   return (
     <li
       data-task={task.id}
@@ -88,13 +107,31 @@ export function TaskRow({
         />
       ) : null}
 
+      {/* A width, so every row's title starts in the same place. The column used to be as wide
+          as an id and nothing else, which is a fixed number of characters; an age is words, and
+          without this each row would set its own left margin and the titles would come out
+          ragged down the list.
+
+          88px because the longest thing this vocabulary can say is "11 months ago", measured at
+          81 in the font it is drawn in. */}
       <span
-        className="flex shrink-0 flex-col items-start gap-1"
+        className="flex w-22 shrink-0 flex-col items-start gap-1"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="flex h-6 items-center">
           <TaskId id={task.id} />
         </span>
+
+        {/* The exact time is in the tooltip and nowhere else: nobody reads a timestamp and
+            thinks "six weeks", they read the number and then do the arithmetic, if they
+            bother. */}
+        <time
+          dateTime={new Date(task.updated_at * 1000).toISOString()}
+          title={`Last changed ${new Date(task.updated_at * 1000).toLocaleString()}`}
+          className={`text-xs whitespace-nowrap ${age}`}
+        >
+          {ago(task.updated_at)}
+        </time>
 
         {/* Under the id, where the column is already as wide as eight characters and nothing
             else is using the room. The number leads: an unpinned row still spends the pin's

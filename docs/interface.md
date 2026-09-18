@@ -221,11 +221,31 @@ something to work out by reading the capsules down the column. The list asks the
 sorts under rather than working it out again, because two spellings of that would put a line in
 the wrong place.
 
-Both sit in the left column, under the id, where the row is already as wide as eight
-characters and nothing else is using the room. The number comes first: an unpinned row still
+Both sit in the left column, under the id and under the date, where the row is already as wide
+as an age and nothing else is using the room. The number comes first: an unpinned row still
 spends the pin's width, so behind it the number would sit off the left edge the id sets. The pin appears on hover when it is not set — it
 is a thing you do to a task in passing, and burying it in the editor would mean opening a task
 to say it matters.
+
+## A task says how long it has been sitting there
+
+Under the id, in words rather than as a timestamp: "3 hours ago", "2 weeks ago", "11 months
+ago". Nobody reads `2026-08-04 11:42` and thinks "six weeks" — they read the number and then do
+the arithmetic, if they bother, and the point of the label is to be understood without doing
+any. The exact time is in the tooltip, where it costs nothing.
+
+It is `updated_at`, so anything done to the task resets it: editing, pinning, marking done. That
+is the reset button this started out wanting — touching a task is what says it is still live,
+and a separate "I have seen this" mark would be a second thing to keep true.
+
+Two marks on the scale, and they are the whole feature. Under a week it is `faint`, which is the
+row saying there is nothing to see. From a week it is `warn`, from a month `accent`. A finished
+task stays grey however old it is, because red on a thing that is done says it needs attention,
+which is the one thing it does not.
+
+The column is a fixed 88px — the longest thing the vocabulary can say is "11 months ago", which
+measures 81. An id is a fixed number of characters and an age is words, so without a width every
+row would set its own left margin and the titles would come out ragged down the list.
 
 ## A row's two marks are on opposite sides
 

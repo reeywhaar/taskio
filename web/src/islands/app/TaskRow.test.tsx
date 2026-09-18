@@ -72,6 +72,34 @@ describe("TaskRow", () => {
     expect(screen.getByTitle("Priority -2").textContent).toBe("-2");
   });
 
+  /**
+   * The point of printing the date: a week is where a task starts looking neglected and a month
+   * is where it starts looking abandoned. Between them it is grey, which is the row saying there
+   * is nothing to see.
+   */
+  it("colors the age at a week and again at a month", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const day = 24 * 60 * 60;
+
+    const fresh = row({ updated_at: now - 3 * day });
+    expect(screen.getByText("3 days ago").className).toContain("text-faint");
+    fresh.unmount();
+
+    const stale = row({ updated_at: now - 14 * day });
+    expect(screen.getByText("2 weeks ago").className).toContain("text-warn");
+    stale.unmount();
+
+    row({ updated_at: now - 70 * day });
+    expect(screen.getByText("2 months ago").className).toContain("text-accent");
+  });
+
+  // A finished task is never late, however long ago it was finished.
+  it("leaves a done task grey however old it is", () => {
+    const now = Math.floor(Date.now() / 1000);
+    row({ status: "done", updated_at: now - 400 * 24 * 60 * 60 });
+    expect(screen.getByText("1 year ago").className).toContain("text-faint");
+  });
+
   it("offers to pin an unpinned task and unpin a pinned one", () => {
     const onTogglePinned = vi.fn();
     const { unmount } = row({}, { onTogglePinned });
