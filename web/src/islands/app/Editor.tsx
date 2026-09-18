@@ -194,10 +194,16 @@ export function Editor({
         {/* A floor under it, because a description of two lines in a box of two lines is a
             dialog that has shrunk to fit and reads as cramped — the room is the point of
             opening it. Above the breakpoint only: on a phone the dialog is the whole screen
-            already, and a minimum there could only make it scroll. */}
+            already, and a minimum there could only make it scroll.
+
+            shrink-0 with it, and not decoration: a flex item's implicit min-height:auto is what
+            stops it shrinking below its own content, and stating a min-height replaces that. The
+            prose then shrank to fit the dialog, its text painted past the end of the scrollable
+            area, and the last paragraphs sat below the bottom edge with no way to scroll to
+            them. */}
         <div
           ref={preview}
-          className="prose text-sm sm:min-h-50"
+          className="prose shrink-0 text-sm sm:min-h-50"
           dangerouslySetInnerHTML={{ __html: render(value) }}
         />
       </Dialog>

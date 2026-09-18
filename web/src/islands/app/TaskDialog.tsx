@@ -101,6 +101,19 @@ export function TaskDialog({
       wide
       onClose={onClose}
       title={task.data ? "Task" : "Loading"}
+      aside={
+        task.data ? (
+          <>
+            <TaskId id={task.data.id} />
+            {status === "done" ? (
+              <span className="text-xs text-muted">finished</span>
+            ) : null}
+            {status === "deleted" ? (
+              <span className="text-xs text-accent">deleted</span>
+            ) : null}
+          </>
+        ) : null
+      }
       footer={
         <>
           {/* Not shown on a task already in the bin: there is nothing further to do to it
@@ -141,16 +154,6 @@ export function TaskDialog({
 
       {task.data ? (
         <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <TaskId id={task.data.id} />
-            {status === "done" ? (
-              <span className="text-xs text-muted">finished</span>
-            ) : null}
-            {status === "deleted" ? (
-              <span className="text-xs text-accent">deleted</span>
-            ) : null}
-          </div>
-
           <TaskForm draft={draft} onChange={setDraft} />
 
           <Mentions

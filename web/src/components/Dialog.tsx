@@ -35,6 +35,7 @@ export function Dialog({
   open,
   onClose,
   title,
+  aside,
   children,
   footer,
   wide = false,
@@ -42,6 +43,9 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title: string;
+  /** What the title is about — an id, a state — on the title's own line rather than on a row of
+   *  its own underneath it. */
+  aside?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   /** A description is markdown with images in it, and needs room to be worth writing in. */
@@ -156,21 +160,31 @@ export function Dialog({
               backdrop to press beside it, and there is no Escape on a phone. Not every dialog
               has a Cancel in its footer, and the one that is hardest to leave is the editor,
               which has three buttons and none of them is "not this". */}
-          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-4 pt-5 pb-4 sm:px-5">
-            <h2 className="text-lg font-semibold">{title}</h2>
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="truncate text-lg font-semibold">{title}</h2>
+              {aside}
+            </div>
             <button
               type="button"
               aria-label="Close"
               title="Close"
               onClick={onClose}
-              className="-mt-1 -mr-1 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
+              className="-mr-1 shrink-0 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
             >
               <CrossIcon />
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-4 pb-4 sm:px-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-4 sm:px-5">
             {children}
+            {/* A box with a height rather than padding on the box that scrolls.
+
+                Measured: this container's padding-bottom read 16px and contributed nothing at
+                the end of a scroll — a flex scroll container drops it — so a long description
+                stopped dead against the bottom edge. A child is in the flow and cannot be
+                dropped, and the gap above it is part of the cushion. */}
+            <div aria-hidden="true" className="h-2 shrink-0" />
           </div>
           {footer ? (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line px-4 pt-4 pb-5 sm:px-5">

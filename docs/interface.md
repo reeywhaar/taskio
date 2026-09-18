@@ -519,6 +519,22 @@ that has shrunk to fit, and the room is the point of opening it at all. Above th
 only: on a phone the dialog is the whole screen already, and a minimum there could only make it
 scroll.
 
+It carries `shrink-0` with that floor, and the two go together. A flex item's implicit
+`min-height: auto` is what stops it shrinking below its own content, and stating a `min-height`
+replaces it — so the prose shrank to fit the dialog, its text painted past the end of the
+scrollable area, and the last paragraphs sat under the bottom edge with no way to scroll to
+them.
+
+**The cushion at the end of a scroll is a box, not padding.** Measured: the scrolling body's
+`padding-bottom` reads 16px and contributes nothing at the end of the scroll, because a flex
+scroll container drops it — so text stopped dead against the bottom edge. A child with a height
+is in the flow and cannot be dropped.
+
+**What the title is about goes on the title's line.** The task editor's id sat on a row of its
+own under the heading, which cost a row and a gap off the top of every task: on a phone the
+writing started 205px down a 780px screen, and 165 after. A dialog takes an `aside` for that —
+an id, a state — and draws it beside the heading.
+
 A shut dialog is `display: none` and says so itself. `flex` would otherwise win the argument
 against the browser's own `dialog:not([open])` rule, and every shut dialog on a page lays
 itself out as a 3px sliver of border across whatever is behind it.

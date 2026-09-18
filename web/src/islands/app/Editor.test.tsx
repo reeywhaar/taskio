@@ -36,6 +36,21 @@ describe("Editor", () => {
     ).toBeDefined();
   });
 
+  /**
+   * A flex item's implicit min-height:auto is what stops it shrinking below its own content, and
+   * stating a min-height replaces it. Without shrink-0 the prose shrank to fit the dialog, its
+   * text painted past the end of the scrollable area, and the last paragraphs sat under the
+   * bottom edge with no way to scroll to them. jsdom lays nothing out, so this pins the class
+   * that a browser proved was load-bearing.
+   */
+  it("does not let the preview shrink below its own words", () => {
+    editor("# Hello");
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    const prose = document.querySelector(".prose")!;
+    expect(prose.className).toContain("shrink-0");
+    expect(prose.className).toContain("min-h-50");
+  });
+
   it("falls back to naming the field when the task has no title yet", () => {
     editor("Some words", "  ");
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));

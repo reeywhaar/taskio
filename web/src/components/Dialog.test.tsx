@@ -44,6 +44,25 @@ describe("Dialog", () => {
     expect(scroller.textContent).toBe("Something long");
   });
 
+  /**
+   * What the title is about goes on the title's line. On a row of its own underneath it cost a
+   * row and a gap off the top of every task, which on a phone is a twentieth of the screen
+   * before the writing starts.
+   */
+  it("puts the aside beside the title, out of the scrolling part", () => {
+    const { container } = mount(
+      <Dialog open onClose={vi.fn()} title="Task" aside={<span>8qw4tz9k</span>}>
+        <p>Something</p>
+      </Dialog>,
+    );
+    const id = screen.getByText("8qw4tz9k");
+    const heading = screen.getByRole("heading", { name: "Task" });
+    expect(heading.parentElement!.contains(id)).toBe(true);
+    expect(container.querySelector(".overflow-y-auto")!.contains(id)).toBe(
+      false,
+    );
+  });
+
   // data-autofocus, because React's autoFocus is a call that runs while this is still hidden.
   it("gives focus back to a field that asked for it", () => {
     mount(
