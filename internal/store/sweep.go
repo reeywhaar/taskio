@@ -11,8 +11,12 @@ const (
 	// DoneRetention is how long a finished task stays before it is removed outright. The only
 	// removal in the program nobody asked for — and, since deleting is a mark rather than a
 	// removal, the only one there is: a task thrown away carries done_at too, and goes on these
-	// same thirty days.
-	DoneRetention = 30 * 24 * time.Hour
+	// same ninety days.
+	//
+	// A quarter rather than a month, because a month is exactly the window somebody writing up
+	// a month wants to read: a report drafted in the first week of October needs the whole of
+	// September, and at thirty days the start of it has already gone.
+	DoneRetention = 90 * 24 * time.Hour
 
 	// AssetGrace is how long an unreferenced asset is left alone.
 	//

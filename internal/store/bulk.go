@@ -117,7 +117,7 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 // BulkDelete marks a set deleted. See DeleteTask: the mark, not a removal.
 //
 // The statement carries its own comparison, so a task already in the bin is not re-stamped —
-// which would reset the thirty-day sweep on something that has been sitting there for weeks.
+// which would reset the ninety-day sweep on something that has been sitting there for weeks.
 func (s *Store) BulkDelete(ctx context.Context, principalID string, scope *filter.Node, refs []string) error {
 	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
 		now := unix(s.Now())

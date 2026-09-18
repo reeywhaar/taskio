@@ -10,6 +10,7 @@ import {
 } from "@app/api/actions/tasks";
 import type { Filters } from "@app/islands/app/route";
 import { Button } from "@app/components/Button";
+import { copy } from "@app/clipboard";
 import { NumberField } from "@app/components/NumberField";
 import { TextField } from "@app/components/TextField";
 
@@ -40,6 +41,21 @@ export function BulkBar({
   const [slug, setSlug] = useState("");
   const [priority, setPriority] = useState("0");
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  /**
+   * The ids, comma separated, for pasting somewhere that is not this application.
+   *
+   * Which is the point of a selection somebody made by eye: eleven ids picked out of ninety
+   * rows is a filter nothing can express, and reading them off the screen one at a time is how
+   * it gets done otherwise. It says so for a moment afterwards, because a copy that reports
+   * nothing is a copy nobody trusts — the same answer the id on a row gives.
+   */
+  const copyIds = async () => {
+    if (!(await copy(ids.join(", ")))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -57,6 +73,10 @@ export function BulkBar({
     // wall. The two that answer a prompt keep the field size, since by then there is a field
     // beside them to match.
     //
+    // It casts further than a card does, because it is in front of the list rather than part
+    // of it: rows slide under this, and at the same height as the things it is covering it read
+    // as one more row that happened to be last.
+    //
     // Stuck to the foot of the screen below the breakpoint, where the window is what scrolls:
     // the bar was the last thing in the document, so picking a task at the top of a long list
     // meant scrolling to the bottom of it to do anything with the task. Sticky rather than
@@ -69,7 +89,7 @@ export function BulkBar({
     // six pixels past the rows on either side — the outer one is the list's box, the inner one
     // is the bar, and they are the same width now by construction rather than by arithmetic.
     <div className="sticky bottom-3 z-30 mx-auto mb-4 w-full max-w-3xl shrink-0 px-3 md:static md:px-6">
-      <div className="raised flex flex-wrap items-center gap-2 rounded-lg bg-bg px-3 py-2">
+      <div className="aloft flex flex-wrap items-center gap-2 rounded-lg bg-bg px-3 py-2">
         {/* It counts what is in front of somebody, which is a different thing from a workload
           number pinned to a tab. */}
         <span className="text-sm text-muted">{ids.length} selected</span>
@@ -160,6 +180,13 @@ export function BulkBar({
               onClick={() => setAsking("tag")}
             >
               Tag
+            </Button>
+            <Button
+              size="bar"
+              disabled={ids.length === 0}
+              onClick={() => void copyIds()}
+            >
+              {copied ? "Copied" : "Copy ids"}
             </Button>
             <Button
               variant="danger"

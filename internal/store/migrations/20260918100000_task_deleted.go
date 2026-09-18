@@ -8,7 +8,7 @@ package migrations
 //
 // So it is a mark, and the mark sits beside done_at rather than replacing it. A deleted task is
 // finished with — it leaves the todo list, it appears at the top of the finished one where
-// somebody can put it back, and the thirty-day sweep collects it on exactly the mechanics that
+// somebody can put it back, and the ninety-day sweep collects it on exactly the mechanics that
 // already collect a done task. Null for everything that exists today, which is the truth about
 // all of them.
 var taskDeleted = Migration{

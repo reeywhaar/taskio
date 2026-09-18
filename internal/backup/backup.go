@@ -23,9 +23,14 @@ import (
 	"taskio/internal/store"
 )
 
-// Interval is how often the loop looks, which is also a throttle: writing down six things in
-// one minute is one archive holding all six.
-const Interval = 5 * time.Minute
+// Interval is how often the loop looks, which is also a throttle: an afternoon of writing things
+// down is a handful of archives rather than one per thought.
+//
+// Half an hour rather than five minutes. The loop sends nothing when nothing was written — that
+// part was already true — so the cost of the shorter interval was never wasted uploads; it was
+// how finely an instance somebody is actually using peppers the agent, and half an hour is the
+// most anybody stands to lose.
+const Interval = 30 * time.Minute
 
 // uploadTimeout bounds one attempt, so a slow agent cannot stall the loop indefinitely.
 const uploadTimeout = 10 * time.Minute

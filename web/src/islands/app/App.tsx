@@ -416,7 +416,15 @@ function List({
                   task={task}
                   // A wider gap where the run changes, so the bands are something to see
                   // rather than something to work out by reading down the column.
-                  apart={i > 0 && rank(tasks[i - 1]!) !== rank(task)}
+                  //
+                  // Not in the finished list, which is one run: it is ordered by when things
+                  // were finished and by nothing else, so a band drawn where the pin or the
+                  // number changes is a line across a list that is not sorted by either.
+                  apart={
+                    filters.view !== "done" &&
+                    i > 0 &&
+                    rank(tasks[i - 1]!) !== rank(task)
+                  }
                   selectable={selection !== null}
                   selected={selection?.includes(task.id) ?? false}
                   onSelect={(id) =>

@@ -251,9 +251,15 @@ ago". Nobody reads `2026-08-04 11:42` and thinks "six weeks" — they read the n
 the arithmetic, if they bother, and the point of the label is to be understood without doing
 any. The exact time is in the tooltip, where it costs nothing.
 
-It is `updated_at`, so anything done to the task resets it: editing, pinning, marking done. That
-is the reset button this started out wanting — touching a task is what says it is still live,
-and a separate "I have seen this" mark would be a second thing to keep true.
+It counts from the last thing that happened to the task rather than the last time anything was
+written to it: `deleted_at` for one in the bin, `done_at` for one that is finished, `updated_at`
+for one that is live. A finished list is a record of what was finished, and a task closed a
+minute ago read "8 hours ago" because somebody had edited its description that morning — true,
+and not what anybody reads the column for.
+
+On a live task that is `updated_at`, so anything done to it resets the number: editing, pinning,
+marking done. That is the reset button this started out wanting — touching a task is what says
+it is still live, and a separate "I have seen this" mark would be a second thing to keep true.
 
 Two marks on the scale, and they are the whole feature. Under a week it is `faint`, which is the
 row saying there is nothing to see. From a week it is `warn`, from a month `accent`. A finished
@@ -278,7 +284,7 @@ gone with its description, its tags and everything that mentioned it.
 
 So it is a mark. A deleted task carries `done_at` as well as `deleted_at`, which is what makes
 the rest of the program need no changes at all: it drops off the todo list, appears among the
-finished where it can be put back, and the thirty-day sweep collects it on exactly the mechanics
+finished where it can be put back, and the ninety-day sweep collects it on exactly the mechanics
 that already collect a done task.
 
 On the row it says `deleted` in accent where a live task says how long it has been sitting there
@@ -290,6 +296,12 @@ is not a deleted one by any reading.
 It leaves everybody's backlink list while it is there. What points at a task is a list of work
 rather than of history, and a link from the bin is a link to something its owner has said they
 are finished with. It comes back if the task does.
+
+## The finished list is one run
+
+It is ordered by when things were finished and by nothing else, so it draws no bands. The wider
+gap between runs is the todo list saying where the pin ends and the numbers begin — in a list
+sorted by neither, a line drawn where the pin or the number changes is a line across nothing.
 
 ## A row's two marks are on opposite sides
 
@@ -311,12 +323,23 @@ list holds pinned and unpinned tasks side by side, so a selection can span both 
 which way it is going — following the view there meant a selection could be pinned from the
 todo list and never unpinned from it.
 
+**Copy ids** puts the selection on the clipboard, comma separated, which is the point of a
+selection somebody made by eye: eleven ids picked out of ninety rows is a filter nothing can
+express, and reading them off the screen one at a time is how it gets done otherwise. It says
+so for a moment afterwards, because a copy that reports nothing is a copy nobody trusts.
+
 ## Light says what a thing is, not a border
 
 A surface is the same color as whatever it sits on. It is in front because it catches light on
 one side and casts on the other, and it is behind because the same light falls on the inside of
 it. `raised` is a card, a button, a pill; `sunken` is a field, a trough, anything meant to be
 filled; pressed is raised turned inside out, which is what a finger on a real button does.
+
+`aloft` is the one thing that floats over the list rather than sitting in it. Same light, same
+falloff, longer throw — a bar stuck to the foot of the screen with rows sliding underneath it
+has to read as being in front of them, and at a card's height it read as one more row that
+happened to be last. The lit side barely moves: a thing higher up catches no more light, it
+only casts further.
 
 The shadow is three layers a side rather than one. A single `box-shadow` is one blur with an even
 falloff, and an even falloff is what makes a thing look like a sticker with a grey smudge behind

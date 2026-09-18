@@ -80,4 +80,25 @@ describe("BulkBar", () => {
       expect(postTasksBulkPriority).toHaveBeenCalledWith(ids, -2),
     );
   });
+  /**
+   * Eleven ids picked out of ninety rows is a filter nothing can express, and reading them off
+   * the screen one at a time is how that gets done otherwise.
+   */
+  it("copies the selection's ids, comma separated", async () => {
+    const written: string[] = [];
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: (text: string) => {
+          written.push(text);
+          return Promise.resolve();
+        },
+      },
+    });
+
+    bar();
+    fireEvent.click(screen.getByRole("button", { name: "Copy ids" }));
+    await waitFor(() => expect(written).toEqual(["8qw4tz9k, kr20fj8m"]));
+    // And says so, because a copy that reports nothing is a copy nobody trusts.
+    await screen.findByRole("button", { name: "Copied" });
+  });
 });

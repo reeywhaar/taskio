@@ -74,8 +74,20 @@ export function TaskRow({
    *
    * A finished task is never late. It stays grey however old it is, because red on a thing that
    * is done says it needs attention, which is the one thing it does not.
+   *
+   * What the number counts from is the last thing that happened to the task rather than the last
+   * time anything was written to it. A finished list is a record of what was finished, so the
+   * useful moment there is the finishing — a task closed a minute ago read "8 hours ago" because
+   * somebody had edited its description that morning, which is true and is not what anybody is
+   * reading the column for.
    */
-  const since = Date.now() / 1000 - task.updated_at;
+  const at = binned
+    ? (task.deleted_at ?? task.updated_at)
+    : finished
+      ? (task.done_at ?? task.updated_at)
+      : task.updated_at;
+
+  const since = Date.now() / 1000 - at;
   const age =
     finished || since < WEEK
       ? "text-faint"
@@ -141,20 +153,15 @@ export function TaskRow({
             margin below it is the gap the column used to carry uniformly — the date belongs to
             the id above it, and the number and the pin below are their own pair. */}
         <time
-          dateTime={new Date(
-            (binned ? (task.deleted_at ?? task.updated_at) : task.updated_at) *
-              1000,
-          ).toISOString()}
-          title={
-            binned
-              ? `Deleted ${new Date((task.deleted_at ?? task.updated_at) * 1000).toLocaleString()}`
-              : `Last changed ${new Date(task.updated_at * 1000).toLocaleString()}`
-          }
+          dateTime={new Date(at * 1000).toISOString()}
+          title={`${
+            binned ? "Deleted" : finished ? "Done" : "Last changed"
+          } ${new Date(at * 1000).toLocaleString()}`}
           className={`mt-0.5 mb-2 text-[9px] leading-3 whitespace-nowrap ${
             binned ? "text-accent" : age
           }`}
         >
-          {binned ? "deleted" : ago(task.updated_at)}
+          {binned ? "deleted" : ago(at)}
         </time>
 
         {/* Under the id, where the column is already as wide as eight characters and nothing

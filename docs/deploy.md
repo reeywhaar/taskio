@@ -157,7 +157,7 @@ nothing to authenticate with and nothing to point at. It can only hand over one 
 
 ### A copy goes out on meaningful content change, and at no other time
 
-The loop looks every five minutes and sends only when something was actually written since the
+The loop looks every half hour and sends only when something was actually written since the
 last archive the agent accepted.
 
 Meaningful excludes two things. A session's `last_seen_at` and a token's `last_used_at` are the

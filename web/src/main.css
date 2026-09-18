@@ -122,6 +122,26 @@
     4px 6px 11px color-mix(in srgb, var(--cast) 16%, transparent);
 }
 
+/*
+ * Further off the page than raised, for the one thing that floats over the list rather than
+ * sitting in it.
+ *
+ * Same light from the same place, and the same three-layer falloff — what changes is the throw.
+ * raised is a card on a desk, a couple of millimetres up, and a bar stuck to the foot of the
+ * screen with rows sliding underneath it needs to read as being in front of them rather than as
+ * one more row that happens to be last. The lit side barely moves: a thing higher up catches no
+ * more light, it only casts further.
+ */
+.aloft {
+  background-image: var(--sheen);
+  box-shadow:
+    -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
+    -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
+    2px 3px 5px color-mix(in srgb, var(--cast) 70%, transparent),
+    4px 8px 16px color-mix(in srgb, var(--cast) 45%, transparent),
+    8px 16px 32px color-mix(in srgb, var(--cast) 28%, transparent);
+}
+
 .sunken {
   /*
    * The same sheen upside down, because the surface is.

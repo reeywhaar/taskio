@@ -28,7 +28,7 @@ const (
 	StatusDone = "done"
 	// StatusDeleted is a task somebody threw away. It is a kind of finished rather than a
 	// fourth thing: it carries done_at as well, so it leaves the todo list, turns up in the
-	// finished one where it can be put back, and is swept on the same thirty days.
+	// finished one where it can be put back, and is swept on the same ninety days.
 	StatusDeleted = "deleted"
 	StatusAll     = "all"
 )
@@ -295,7 +295,7 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 //
 // Marking an already-done task done is a success and does not move done_at: two agents, or an
 // agent and a person, finishing the same thing is not an error, and re-stamping it would reset
-// the thirty-day sweep.
+// the ninety-day sweep.
 //
 // Undone puts a deleted task back as well. There is no third verb for that and there should not
 // be: what somebody means by taking a task out of the finished list is the same thing whichever
@@ -346,7 +346,7 @@ func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) 
 //
 // It stamps done_at too where there is none, and that is what makes the rest of the program need
 // no changes: the task drops out of the todo list, appears at the top of the finished one where
-// somebody can put it back, and is collected by the thirty-day sweep on the same terms as
+// somebody can put it back, and is collected by the ninety-day sweep on the same terms as
 // anything else that is over.
 //
 // Deleting an already-deleted task is a success and moves nothing, on the same reasoning as

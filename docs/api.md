@@ -176,7 +176,7 @@ summarise the wrong list.
 **`DELETE` marks a task deleted; it does not remove it.** The row keeps its id, its text and its
 tags, its `status` becomes `deleted`, and it carries `done_at` as well as `deleted_at` — so it
 leaves the todo list and joins the finished one, where `POST /api/tasks/{id}/todo` puts it back.
-The thirty-day sweep collects it on the same terms as anything else that is over, which is the
+The ninety-day sweep collects it on the same terms as anything else that is over, which is the
 only removal left in the program. Deleting a task twice is a success and moves nothing.
 
 This is the one place to be careful when summarising: `status=done` counts tasks somebody
