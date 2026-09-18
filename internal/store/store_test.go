@@ -38,7 +38,7 @@ func TestOpenAppliesTheSchema(t *testing.T) {
 	for _, table := range []string{
 		"principals", "invites", "sessions", "tasks", "task_tags",
 		"assets", "asset_blobs", "task_assets", "task_mentions",
-		"tokens", "user_recovery", "recovery_pending", "smtp", "limits",
+		"tokens", "user_recovery", "recovery_pending", "recovery_links", "smtp", "limits",
 	} {
 		var n int
 		if err := st.reader.QueryRow(

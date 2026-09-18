@@ -43,6 +43,10 @@ type Server struct {
 	loginAll  *limiter
 	loginUser *limiter
 	tokenAuth *limiter
+	// Mail a stranger can cause this instance to send. Nothing else on it does that, which is
+	// why these two are the relay's protection rather than the caller's.
+	mailAll  *limiter
+	mailUser *limiter
 
 	routes      []string
 	agentRoutes []string
@@ -78,6 +82,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 		loginAll:  newLimiter(30, 2*time.Second),
 		loginUser: newLimiter(5, 20*time.Second),
 		tokenAuth: newLimiter(60, time.Second),
+		mailAll:   newLimiter(10, time.Minute),
+		mailUser:  newLimiter(3, 10*time.Minute),
 	}
 
 	s.mux.HandleFunc("GET /healthz", s.healthz)
@@ -93,6 +99,16 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.mux.HandleFunc("POST /api/auth/login", s.login)
 	s.mux.HandleFunc("GET /api/auth/invites/{token}", s.getInvite)
 	s.mux.HandleFunc("POST /api/auth/invites/{token}/accept", s.acceptInvite)
+
+	// What the login form is allowed to know before anybody has proved anything, which is
+	// whether it can offer to mail a way back in.
+	s.mux.HandleFunc("GET /api/auth/instance", s.instance)
+
+	// Getting back in without a password. Unauthenticated by necessity: whoever needs these
+	// cannot sign in, which is the whole reason they are here. See internal/api/recovery.go.
+	s.mux.HandleFunc("POST /api/auth/recoveries", s.requestRecovery)
+	s.mux.HandleFunc("GET /api/auth/recoveries/{token}", s.getRecovery)
+	s.mux.HandleFunc("POST /api/auth/recoveries/{token}/accept", s.acceptRecovery)
 	s.handle("POST /api/auth/logout", s.requireSession(s.logout))
 	s.handle("GET /api/auth/me", s.requireSession(s.me))
 
@@ -149,6 +165,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handle("DELETE /api/account/recovery", s.requireSession(s.forgetRecovery))
 
 	s.handle("GET /api/admin/users", s.requireAdmin(s.listUsers))
+	s.handle("POST /api/admin/users/{id}/recovery", s.requireAdmin(s.createUserRecovery))
 	s.handle("POST /api/admin/invites", s.requireAdmin(s.createInvite))
 	s.handle("GET /api/admin/relay", s.requireAdmin(s.getRelay))
 	s.handle("PUT /api/admin/relay", s.requireAdmin(s.putRelay))

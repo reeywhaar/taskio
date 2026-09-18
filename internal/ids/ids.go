@@ -31,6 +31,8 @@ const (
 	Tag       = "g_"
 	// Group takes two letters because a tag already has the one it would want.
 	Group = "gr_"
+	// Recovery is a link back into an account, not the address one can be sent to.
+	Recovery = "r_"
 )
 
 // How long each kind is.

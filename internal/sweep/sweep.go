@@ -50,6 +50,7 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 	sweepSessions(ctx, st, log)
 	run(ctx, log, "invites", st.SweepInvites)
 	run(ctx, log, "recovery attempts", st.SweepRecovery)
+	run(ctx, log, "recovery links", st.SweepRecoveryLinks)
 	run(ctx, log, "done tasks", st.SweepDoneTasks)
 	run(ctx, log, "orphaned assets", st.SweepOrphanAssets)
 }

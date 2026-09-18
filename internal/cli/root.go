@@ -26,7 +26,7 @@ func root() *cobra.Command {
 	// Cobra prints to stderr unless an output is set, which would make `link=$(taskio invite)`
 	// capture nothing.
 	cmd.SetOut(os.Stdout)
-	cmd.AddCommand(serveCmd(), inviteCmd(), tokenCmd(), sweepCmd(), healthcheckCmd(), versionCmd())
+	cmd.AddCommand(serveCmd(), inviteCmd(), recoverCmd(), tokenCmd(), sweepCmd(), healthcheckCmd(), versionCmd())
 	return cmd
 }
 
