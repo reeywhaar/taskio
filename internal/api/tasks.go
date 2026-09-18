@@ -22,6 +22,7 @@ type taskBody struct {
 	CreatedAt   int64    `json:"created_at"`
 	UpdatedAt   int64    `json:"updated_at"`
 	DoneAt      *int64   `json:"done_at"`
+	DeletedAt   *int64   `json:"deleted_at"`
 }
 
 func renderTask(t *store.Task) taskBody {
@@ -43,6 +44,10 @@ func renderTask(t *store.Task) taskBody {
 	if t.DoneAt != nil {
 		at := t.DoneAt.Unix()
 		body.DoneAt = &at
+	}
+	if t.DeletedAt != nil {
+		at := t.DeletedAt.Unix()
+		body.DeletedAt = &at
 	}
 	return body
 }

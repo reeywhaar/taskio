@@ -105,10 +105,15 @@ func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter
 	case StatusTodo, "":
 		where += " AND tasks.done_at IS NULL"
 	case StatusDone:
+		// Deleted tasks are in here too, because deleting stamps done_at: finished with is
+		// finished with, and the one place somebody looks for a task they have just thrown
+		// away is the list of things that are over.
 		where += " AND tasks.done_at IS NOT NULL"
+	case StatusDeleted:
+		where += " AND tasks.deleted_at IS NOT NULL"
 	case StatusAll:
 	default:
-		return nil, Invalid("status is todo, done or all.")
+		return nil, Invalid("status is todo, done, deleted or all.")
 	}
 	if q.Pinned != nil {
 		where += " AND tasks.pinned = ?"
@@ -273,7 +278,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 
 // scanTasks reads rows and attaches each task's tags.
 // taskColumns is the row every read of a task selects, in the order scanTasks reads it.
-const taskColumns = "seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at"
+const taskColumns = "seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at, deleted_at"
 
 // cursorKeys reads the sort values off the last row of a page, in the order they sort.
 func cursorKeys(columns []string, t *Task) []int64 {
@@ -311,10 +316,10 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 		var (
 			t                Task
 			created, updated int64
-			done             sql.NullInt64
+			done, deleted    sql.NullInt64
 		)
 		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done); err != nil {
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
 		t.CreatedAt = time.Unix(created, 0).UTC()
@@ -322,6 +327,10 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 		if done.Valid {
 			at := time.Unix(done.Int64, 0).UTC()
 			t.DoneAt = &at
+		}
+		if deleted.Valid {
+			at := time.Unix(deleted.Int64, 0).UTC()
+			t.DeletedAt = &at
 		}
 		out = append(out, &t)
 	}
@@ -351,13 +360,12 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 	var (
 		t                Task
 		created, updated int64
-		done             any
+		done, deleted    any
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at
-		   FROM tasks WHERE seq = ?`, seq).
+		`SELECT `+taskColumns+` FROM tasks WHERE seq = ?`, seq).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)
 	}
@@ -366,6 +374,10 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 	if v, ok := done.(int64); ok {
 		at := time.Unix(v, 0).UTC()
 		t.DoneAt = &at
+	}
+	if v, ok := deleted.(int64); ok {
+		at := time.Unix(v, 0).UTC()
+		t.DeletedAt = &at
 	}
 	t.Tags, err = loadTags(ctx, q, t.Seq)
 	return &t, err

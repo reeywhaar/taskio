@@ -22,11 +22,15 @@ const (
 	BulkMax        = 500
 )
 
-// Status values, rendered from done_at rather than stored beside it.
+// Status values, rendered from the two timestamps rather than stored beside them.
 const (
 	StatusTodo = "todo"
 	StatusDone = "done"
-	StatusAll  = "all"
+	// StatusDeleted is a task somebody threw away. It is a kind of finished rather than a
+	// fourth thing: it carries done_at as well, so it leaves the todo list, turns up in the
+	// finished one where it can be put back, and is swept on the same thirty days.
+	StatusDeleted = "deleted"
+	StatusAll     = "all"
 )
 
 // Task is one row, with its tags.
@@ -45,12 +49,20 @@ type Task struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DoneAt    *time.Time
+	// DeletedAt is when it was thrown away, and implies DoneAt.
+	DeletedAt *time.Time
 }
 
-// Status renders done_at. One fact, one column: a status column beside a timestamp is two
-// facts that can disagree.
+// Status renders the timestamps. One fact, one column: a status column beside a timestamp is
+// two facts that can disagree.
+//
+// Deleted wins over done because it is the more particular answer: every deleted task is also
+// done, and "deleted" is the word for how it got that way.
 func (t *Task) Status() string {
-	if t.DoneAt != nil {
+	switch {
+	case t.DeletedAt != nil:
+		return StatusDeleted
+	case t.DoneAt != nil:
 		return StatusDone
 	}
 	return StatusTodo
@@ -284,6 +296,10 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 // Marking an already-done task done is a success and does not move done_at: two agents, or an
 // agent and a person, finishing the same thing is not an error, and re-stamping it would reset
 // the thirty-day sweep.
+//
+// Undone puts a deleted task back as well. There is no third verb for that and there should not
+// be: what somebody means by taking a task out of the finished list is the same thing whichever
+// way it got there, and a task that is on the list again is not deleted by any reading.
 func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) (*Task, error) {
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
@@ -295,7 +311,7 @@ func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) 
 	if err != nil {
 		return nil, err
 	}
-	if (task.DoneAt != nil) == done {
+	if (task.DoneAt != nil) == done && (done || task.DeletedAt == nil) {
 		return task, nil
 	}
 
@@ -304,8 +320,11 @@ func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) 
 	if done {
 		at = unix(now)
 	}
+	// deleted_at goes with it: undone means back on the list, and a task on the list is not a
+	// deleted one. Marking one done leaves the mark alone — it is already both.
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE tasks SET done_at = ?, updated_at = ? WHERE seq = ?`, at, unix(now), task.Seq); err != nil {
+		`UPDATE tasks SET done_at = ?, deleted_at = CASE WHEN ? THEN deleted_at END, updated_at = ?
+		  WHERE seq = ?`, at, done, unix(now), task.Seq); err != nil {
 		return nil, fmt.Errorf("set done: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -317,20 +336,38 @@ func (s *Store) SetDone(ctx context.Context, principalID, id string, done bool) 
 		task.DoneAt = &now
 	} else {
 		task.DoneAt = nil
+		task.DeletedAt = nil
 	}
 	task.UpdatedAt = now
 	return task, nil
 }
 
-// DeleteTask removes one outright. Its tags, assets and mentions go by cascade.
+// DeleteTask marks one deleted, which is a kind of finished rather than an absence.
+//
+// It stamps done_at too where there is none, and that is what makes the rest of the program need
+// no changes: the task drops out of the todo list, appears at the top of the finished one where
+// somebody can put it back, and is collected by the thirty-day sweep on the same terms as
+// anything else that is over.
+//
+// Deleting an already-deleted task is a success and moves nothing, on the same reasoning as
+// marking a done task done: two agents doing it is not an error, and re-stamping would reset
+// the sweep on a task that has been sitting there for a month.
 func (s *Store) DeleteTask(ctx context.Context, principalID, id string) error {
+	now := unix(s.Now())
 	res, err := s.writer.ExecContext(ctx,
-		`DELETE FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id)
+		`UPDATE tasks
+		    SET deleted_at = ?, done_at = COALESCE(done_at, ?), updated_at = ?
+		  WHERE principal_id = ? AND id = ? AND deleted_at IS NULL`,
+		now, now, now, principalID, id)
 	if err != nil {
 		return fmt.Errorf("delete task: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return NotFound("There is no task %s.", id)
+		// Nothing moved: either there is no such task, or it was already thrown away.
+		if _, err := loadTask(ctx, s.reader, principalID, id); err != nil {
+			return err
+		}
+		return nil
 	}
 	s.changed(principalID)
 	return nil
@@ -392,13 +429,12 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 	var (
 		t                Task
 		created, updated int64
-		done             sql.NullInt64
+		done, deleted    sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
-		`SELECT seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at
-		   FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
+		`SELECT `+taskColumns+` FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not
 		// the caller's business either way.
@@ -412,6 +448,10 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 	if done.Valid {
 		at := time.Unix(done.Int64, 0).UTC()
 		t.DoneAt = &at
+	}
+	if deleted.Valid {
+		at := time.Unix(deleted.Int64, 0).UTC()
+		t.DeletedAt = &at
 	}
 	t.Tags, err = loadTags(ctx, q, t.Seq)
 	return &t, err

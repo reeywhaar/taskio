@@ -171,3 +171,48 @@ func TestDryRunCountsWhatASweepWouldTake(t *testing.T) {
 		t.Errorf("dry run said %d and the sweep took %d", counts.Tasks, n)
 	}
 }
+
+/**
+ * A task thrown away is collected on the same thirty days as one that was finished, because it
+ * carries done_at too. That is the whole reason deleting could stop removing the row: there is
+ * already a mechanism that clears out what is over, and nothing had to be taught about a second
+ * kind of over.
+ */
+func TestTheSweepCollectsADeletedTaskTheSameWay(t *testing.T) {
+	st := openStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 18, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
+
+	binned, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Thrown away long ago"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Thrown away just now"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteTask(ctx, p.ID, binned.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	now = now.Add(DoneRetention + time.Hour)
+	if err := st.DeleteTask(ctx, p.ID, fresh.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := st.SweepDoneTasks(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("swept %d, want only the one that had been in the bin a month", n)
+	}
+	if _, err := st.Task(ctx, p.ID, binned.ID); err == nil {
+		t.Error("the month-old one is still there")
+	}
+	if _, err := st.Task(ctx, p.ID, fresh.ID); err != nil {
+		t.Errorf("the one thrown away just now went with it: %v", err)
+	}
+}

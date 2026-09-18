@@ -8,8 +8,10 @@ import (
 
 // How long things are kept.
 const (
-	// DoneRetention is how long a finished task stays before it is deleted outright. The only
-	// delete in the program nobody asked for.
+	// DoneRetention is how long a finished task stays before it is removed outright. The only
+	// removal in the program nobody asked for — and, since deleting is a mark rather than a
+	// removal, the only one there is: a task thrown away carries done_at too, and goes on these
+	// same thirty days.
 	DoneRetention = 30 * 24 * time.Hour
 
 	// AssetGrace is how long an unreferenced asset is left alone.

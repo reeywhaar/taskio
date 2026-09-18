@@ -83,11 +83,58 @@ func TestBulkDelete(t *testing.T) {
 	if resp := c.do("POST", "/api/tasks/bulk/delete", body); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("bulk delete = %s", resp.Status)
 	}
-	if resp := c.do("GET", "/api/tasks/"+first, ""); resp.StatusCode != http.StatusNotFound {
-		t.Errorf("deleted task = %s, want 404", resp.Status)
+
+	// Marked, not gone: it is still readable, and it says how it ended.
+	got := c.json(c.do("GET", "/api/tasks/"+first, ""))
+	if got["status"] != "deleted" {
+		t.Errorf("status = %v, want deleted", got["status"])
+	}
+	if got["deleted_at"] == nil || got["done_at"] == nil {
+		t.Errorf("a deleted task carries %v and %v", got["deleted_at"], got["done_at"])
 	}
 	if resp := c.do("GET", "/api/tasks/"+second, ""); resp.StatusCode != http.StatusOK {
 		t.Errorf("the one not named = %s", resp.Status)
+	}
+
+	// Off the todo list, and in with the finished ones, which is where it can be put back from.
+	if got := titles(c.list("?status=todo")); len(got) != 1 || got[0] != "Renew the passport" {
+		t.Errorf("todo = %v", got)
+	}
+	if got := titles(c.list("?status=done")); len(got) != 1 || got[0] != "Fix the tap" {
+		t.Errorf("done = %v", got)
+	}
+	if got := titles(c.list("?status=deleted")); len(got) != 1 || got[0] != "Fix the tap" {
+		t.Errorf("deleted = %v", got)
+	}
+}
+
+/**
+ * Deleting is a mark now, so there is a way back: the same verb that takes a task out of the
+ * finished list takes it out of the bin, because a task on the list again is not a deleted one
+ * by any reading.
+ */
+func TestADeletedTaskCanBePutBack(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+
+	if resp := c.do("DELETE", "/api/tasks/"+id, ""); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete = %s", resp.Status)
+	}
+	// Twice is a success and moves nothing, on the same reasoning as finishing a done task.
+	if resp := c.do("DELETE", "/api/tasks/"+id, ""); resp.StatusCode != http.StatusNoContent {
+		t.Errorf("deleting twice = %s", resp.Status)
+	}
+
+	if resp := c.do("POST", "/api/tasks/"+id+"/todo", ""); resp.StatusCode != http.StatusOK {
+		t.Fatalf("todo = %s", resp.Status)
+	}
+	got := c.json(c.do("GET", "/api/tasks/"+id, ""))
+	if got["status"] != "todo" || got["deleted_at"] != nil || got["done_at"] != nil {
+		t.Errorf("after putting it back = %v", got)
+	}
+	if got := titles(c.list("?status=todo")); len(got) != 1 {
+		t.Errorf("todo = %v", got)
 	}
 }
 

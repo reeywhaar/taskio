@@ -28,6 +28,7 @@ var all = []Migration{
 	groupOrder,
 	taskColor,
 	recoveryLinks,
+	taskDeleted,
 }
 
 // exec runs a statement block as one migration.

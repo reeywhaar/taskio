@@ -16,8 +16,10 @@ import { TextField } from "@app/components/TextField";
 /**
  * A sticky bar, one request per action.
  *
- * Delete asks for confirmation and nothing else does: the others are visible and reversible in
- * one tap, and delete is neither.
+ * Delete asks for confirmation and nothing else does. It is reversible now — a deleted task
+ * goes to the finished list and can be put back from there — but it is still the one action
+ * here that takes a row off the screen, and a whole selection disappearing on a mis-tap is
+ * worth one question.
  *
  * The status button follows the view, which fixes the status every selected task has, so it is
  * always the one that moves them — the pinned view is todos, so it finishes them. Pinning gets
@@ -166,7 +168,7 @@ export function BulkBar({
               onClick={() => {
                 if (
                   window.confirm(
-                    `Delete ${ids.length} tasks? This cannot be undone.`,
+                    `Delete ${ids.length} tasks? They go to the finished list, where you can put them back.`,
                   )
                 ) {
                   void run(() => postTasksBulkDelete(ids));

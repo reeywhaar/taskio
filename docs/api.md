@@ -154,7 +154,7 @@ there. A task already at that value is not written: `updated_at` does not move f
 | --- | --- | --- |
 | `tags` | — | A filter, above |
 | `q` | — | Search. An id or a prefix of one wins outright; then the title, forgivingly; then the tags and the description, exactly |
-| `status` | `todo` | `todo`, `done` or `all` |
+| `status` | `todo` | `todo`, `done`, `deleted` or `all`. `done` is everything finished with, deleted ones included; `deleted` is only those |
 | `pinned` | — | `true` or `false`. Unset asks about neither |
 | `limit` | `1000` | 1 to 1000. The default is the maximum |
 | `cursor` | — | From a previous response's `next_cursor` |
@@ -164,13 +164,24 @@ there. A task already at that value is not written: `updated_at` does not move f
   "tasks": [ { "id": "8qw4tz9k", "title": "Fix the tap", "description": "It drips.",
                "tags": ["home","repair"], "status": "todo",
                "priority": 0, "pinned": false, "color": "",
-               "created_at": 1789343452, "updated_at": 1789343452, "done_at": null } ],
+               "created_at": 1789343452, "updated_at": 1789343452,
+               "done_at": null, "deleted_at": null } ],
   "total": 1
 }
 ```
 
 **`status` defaults to `todo`.** Ask for `all` if you want finished tasks too, or you will
 summarise the wrong list.
+
+**`DELETE` marks a task deleted; it does not remove it.** The row keeps its id, its text and its
+tags, its `status` becomes `deleted`, and it carries `done_at` as well as `deleted_at` — so it
+leaves the todo list and joins the finished one, where `POST /api/tasks/{id}/todo` puts it back.
+The thirty-day sweep collects it on the same terms as anything else that is over, which is the
+only removal left in the program. Deleting a task twice is a success and moves nothing.
+
+This is the one place to be careful when summarising: `status=done` counts tasks somebody
+finished **and** tasks somebody threw away. Ask for `deleted` to tell them apart, or read each
+task's own `status`.
 
 `total` is how many match the filter, before `limit`. `next_cursor` is present only when there
 is another page — a search never has one, because results are ranked.

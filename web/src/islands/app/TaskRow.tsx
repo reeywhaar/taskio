@@ -57,7 +57,12 @@ export function TaskRow({
   onToggleDone?: (task: Task) => void;
   onTogglePinned?: (task: Task) => void;
 }) {
-  const done = task.status === "done";
+  // Finished with, whichever way it got there: both leave the todo list, both are struck
+  // through, and both offer the way back rather than the way forward.
+  const finished = task.status !== "todo";
+  const binned = task.status === "deleted";
+  // The one control on the right, and the three things it can mean.
+  const mark = binned ? "Restore" : finished ? "Mark as todo" : "Mark done";
   const pieces = excerpt(task.description);
 
   /**
@@ -72,7 +77,7 @@ export function TaskRow({
    */
   const since = Date.now() / 1000 - task.updated_at;
   const age =
-    done || since < WEEK
+    finished || since < WEEK
       ? "text-faint"
       : since < MONTH
         ? "text-warn"
@@ -122,7 +127,11 @@ export function TaskRow({
           <TaskId id={task.id} />
         </span>
 
-        {/* The exact time is in the tooltip and nowhere else: nobody reads a timestamp and
+        {/* A task in the bin says so here rather than saying how long it has been sitting
+            there: the number is what a live task is judged by, and a deleted one is not waiting
+            for anybody. The date it went is still in the tooltip.
+
+            The exact time is in the tooltip and nowhere else: nobody reads a timestamp and
             thinks "six weeks", they read the number and then do the arithmetic, if they
             bother.
 
@@ -132,11 +141,20 @@ export function TaskRow({
             margin below it is the gap the column used to carry uniformly — the date belongs to
             the id above it, and the number and the pin below are their own pair. */}
         <time
-          dateTime={new Date(task.updated_at * 1000).toISOString()}
-          title={`Last changed ${new Date(task.updated_at * 1000).toLocaleString()}`}
-          className={`mt-0.5 mb-2 text-[9px] leading-3 whitespace-nowrap ${age}`}
+          dateTime={new Date(
+            (binned ? (task.deleted_at ?? task.updated_at) : task.updated_at) *
+              1000,
+          ).toISOString()}
+          title={
+            binned
+              ? `Deleted ${new Date((task.deleted_at ?? task.updated_at) * 1000).toLocaleString()}`
+              : `Last changed ${new Date(task.updated_at * 1000).toLocaleString()}`
+          }
+          className={`mt-0.5 mb-2 text-[9px] leading-3 whitespace-nowrap ${
+            binned ? "text-accent" : age
+          }`}
         >
-          {ago(task.updated_at)}
+          {binned ? "deleted" : ago(task.updated_at)}
         </time>
 
         {/* Under the id, where the column is already as wide as eight characters and nothing
@@ -189,7 +207,7 @@ export function TaskRow({
         <button
           type="button"
           className={`block w-full cursor-pointer text-left text-base leading-6 ${
-            done ? "text-muted line-through" : ""
+            finished ? "text-muted line-through" : ""
           }`}
         >
           {task.title}
@@ -261,9 +279,9 @@ export function TaskRow({
         <button
           type="button"
           hidden={!onToggleDone}
-          aria-label={done ? "Mark as todo" : "Mark done"}
-          title={done ? "Mark as todo" : "Mark done"}
-          aria-pressed={done}
+          aria-label={mark}
+          title={mark}
+          aria-pressed={finished}
           onClick={(e) => {
             e.stopPropagation();
             onToggleDone?.(task);
@@ -273,10 +291,10 @@ export function TaskRow({
           // for, so under one it is simply there — which is the same rule as the pin above,
           // read from the other end.
           className={`flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line ${
-            done ? "text-brand" : "text-muted hover:text-fg"
+            finished ? "text-brand" : "text-muted hover:text-fg"
           }`}
         >
-          {done ? <UndoIcon /> : <CheckIcon />}
+          {finished ? <UndoIcon /> : <CheckIcon />}
         </button>
       )}
     </li>

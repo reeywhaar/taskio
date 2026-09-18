@@ -16,6 +16,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   created_at: 0,
   updated_at: 0,
   done_at: null,
+  deleted_at: null,
   ...over,
 });
 
@@ -91,6 +92,26 @@ describe("TaskRow", () => {
 
     row({ updated_at: now - 70 * day });
     expect(screen.getByText("2 months ago").className).toContain("text-accent");
+  });
+
+  /**
+   * A task in the bin says so where a live one says how long it has been sitting there: the
+   * number is what a live task is judged by, and a deleted one is not waiting for anybody.
+   */
+  it("says deleted in place of the age, and offers the way back", () => {
+    const now = Math.floor(Date.now() / 1000);
+    row({
+      status: "deleted",
+      updated_at: now - 60 * 24 * 60 * 60,
+      done_at: now,
+      deleted_at: now,
+    });
+
+    const label = screen.getByText("deleted");
+    expect(label.className).toContain("text-accent");
+    expect(screen.queryByText(/months ago/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
   });
 
   // A finished task is never late, however long ago it was finished.

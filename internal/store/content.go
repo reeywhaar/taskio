@@ -205,8 +205,14 @@ type Mentions struct {
 
 // TaskMentions reads both directions, scoped the way everything else is.
 //
-// Backlinks are a query and never stored text: nothing writes one, nothing keeps one in step,
-// and a deleted task leaves everybody's backlink list by cascade.
+// Backlinks are a query and never stored text: nothing writes one and nothing keeps one in
+// step.
+//
+// A task somebody threw away names nothing. Its row survives now — deleting is a mark rather
+// than a removal — but a backlink from the bin is a link to a thing whose owner has said they
+// are finished with it, and the list of what points at this task is a list of work, not of
+// history. It comes back if the task does. The other direction is left alone: what this task's
+// own words say is what they say, whatever state the task at the other end is in.
 func (s *Store) TaskMentions(ctx context.Context, principalID string, seq int64) (*Mentions, error) {
 	out := &Mentions{Mentions: []*Task{}, MentionedBy: []*Task{}}
 	for _, dir := range []struct {
@@ -233,6 +239,9 @@ func (s *Store) TaskMentions(ctx context.Context, principalID string, seq int64)
 		for _, other := range seqs {
 			task, err := loadTaskBySeq(ctx, s.reader, other)
 			if err != nil || task.PrincipalID != principalID {
+				continue
+			}
+			if dir.into == &out.MentionedBy && task.DeletedAt != nil {
 				continue
 			}
 			*dir.into = append(*dir.into, task)

@@ -262,6 +262,27 @@ measures 63, and the id under it is 58. An id is a fixed number of characters an
 words, so without a width every row would set its own left margin and the titles would come out
 ragged down the list.
 
+## Deleting is a mark, not a removal
+
+Delete used to remove the row. That is the one operation in the program with nothing behind it:
+a mistyped id, a bulk selection off by one, a confirmation answered by reflex, and the task is
+gone with its description, its tags and everything that mentioned it.
+
+So it is a mark. A deleted task carries `done_at` as well as `deleted_at`, which is what makes
+the rest of the program need no changes at all: it drops off the todo list, appears among the
+finished where it can be put back, and the thirty-day sweep collects it on exactly the mechanics
+that already collect a done task.
+
+On the row it says `deleted` in accent where a live task says how long it has been sitting there
+— the number is what a live task is judged by, and one in the bin is not waiting for anybody —
+and the mark on the right reads Restore. There is no third verb for that: the same action that
+takes a task out of the finished list takes it out of the bin, because a task on the list again
+is not a deleted one by any reading.
+
+It leaves everybody's backlink list while it is there. What points at a task is a list of work
+rather than of history, and a link from the bin is a link to something its owner has said they
+are finished with. It comes back if the task does.
+
 ## A row's two marks are on opposite sides
 
 Selection is on the left and finishing is on the right.

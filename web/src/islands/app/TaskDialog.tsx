@@ -49,6 +49,15 @@ export function TaskDialog({
     });
   }, [task.data]);
 
+  /**
+   * One reading of the status, used by the button's word and by what the button does.
+   *
+   * Two readings is how they disagree: while the task is still loading the footer already draws
+   * a button, and a label computed one way beside an action computed another way is a button
+   * that says Mark done and marks it todo.
+   */
+  const status = task.data?.status ?? "todo";
+
   const invalidate = () => {
     client.invalidateQueries({ queryKey: qk.tasks });
     client.invalidateQueries({ queryKey: qk.tags });
@@ -71,11 +80,10 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  // Only a todo goes forward; done and deleted both come back.
   const toggleDone = useMutation({
     mutationFn: () =>
-      task.data?.status === "done"
-        ? postTasksByIdTodo(id)
-        : postTasksByIdDone(id),
+      status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id),
     onSuccess: () => invalidate(),
   });
 
@@ -87,8 +95,6 @@ export function TaskDialog({
     },
   });
 
-  const done = task.data?.status === "done";
-
   return (
     <Dialog
       open
@@ -97,15 +103,23 @@ export function TaskDialog({
       title={task.data ? "Task" : "Loading"}
       footer={
         <>
-          <Button variant="danger" onClick={() => remove.mutate()}>
-            Delete
-          </Button>
+          {/* Not shown on a task already in the bin: there is nothing further to do to it
+              from here, and a Delete that does nothing is worse than no Delete. */}
+          {status === "deleted" ? null : (
+            <Button variant="danger" onClick={() => remove.mutate()}>
+              Delete
+            </Button>
+          )}
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere. "Finish" sits where a
               dialog's dismiss button lives and reads as finishing the editing — which is the one
               thing it does not do. */}
           <Button onClick={() => toggleDone.mutate()}>
-            {done ? "Mark as todo" : "Mark done"}
+            {
+              { todo: "Mark done", done: "Mark as todo", deleted: "Restore" }[
+                status
+              ]
+            }
           </Button>
           <Button
             variant="solid"
@@ -129,7 +143,12 @@ export function TaskDialog({
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex items-center gap-2">
             <TaskId id={task.data.id} />
-            {done ? <span className="text-xs text-muted">finished</span> : null}
+            {status === "done" ? (
+              <span className="text-xs text-muted">finished</span>
+            ) : null}
+            {status === "deleted" ? (
+              <span className="text-xs text-accent">deleted</span>
+            ) : null}
           </div>
 
           <TaskForm draft={draft} onChange={setDraft} />

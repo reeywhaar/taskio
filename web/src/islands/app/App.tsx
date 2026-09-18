@@ -187,15 +187,17 @@ function List({
 
   // Both draw the answer first and send it after: one bit, and a button that waits a round
   // trip to show it is a button somebody presses twice.
+  // Only a todo goes forward; done and deleted both come back. There is no verb for putting
+  // a deleted task in the done pile, because nobody has ever wanted one.
   const toggleDone = useMutation({
     mutationFn: (task: Task) =>
-      task.status === "done"
-        ? postTasksByIdTodo(task.id)
-        : postTasksByIdDone(task.id),
+      task.status === "todo"
+        ? postTasksByIdDone(task.id)
+        : postTasksByIdTodo(task.id),
     onMutate: (task) =>
       optimisticTask(client, task.id, (t) => ({
         ...t,
-        status: t.status === "done" ? "todo" : "done",
+        status: t.status === "todo" ? "done" : "todo",
       })),
     onError: (_err, _task, before) => before && restoreTasks(client, before),
     onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
