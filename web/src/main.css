@@ -123,23 +123,25 @@
 }
 
 /*
- * Further off the page than raised, for the one thing that floats over the list rather than
- * sitting in it.
+ * Fog rather than a cast, for the one thing that floats over the list rather than sitting in it.
  *
- * Same light from the same place, and the same three-layer falloff — what changes is the throw.
- * raised is a card on a desk, a couple of millimetres up, and a bar stuck to the foot of the
- * screen with rows sliding underneath it needs to read as being in front of them rather than as
- * one more row that happens to be last. The lit side barely moves: a thing higher up catches no
- * more light, it only casts further.
+ * A directional shadow was the obvious thing and it was the wrong thing: the bar is stuck to the
+ * foot of the screen and rows slide underneath its top edge, which is exactly the edge a shadow
+ * thrown down and to the right leaves bare. So this one has no offset — it darkens the ground
+ * evenly all round, and what passes under the bar goes under something rather than behind it.
+ *
+ * Its own color at its own strength, not a fraction of --cast. Measured through a screenshot,
+ * cast at this radius moved the ground by three levels out of 255, which is a shadow nobody can
+ * see; this moves it by eighteen. The lit side is the raised one unchanged: a thing higher up
+ * catches no more light, it only casts further.
  */
 .aloft {
   background-image: var(--sheen);
   box-shadow:
     -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
     -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
-    2px 3px 5px color-mix(in srgb, var(--cast) 70%, transparent),
-    4px 8px 16px color-mix(in srgb, var(--cast) 45%, transparent),
-    8px 16px 32px color-mix(in srgb, var(--cast) 28%, transparent);
+    0 0 16px var(--fog),
+    0 0 40px color-mix(in srgb, var(--fog) 55%, transparent);
 }
 
 .sunken {
@@ -210,6 +212,9 @@
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
   --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02);
+  /* What the floating bar lays over the page. Stronger than the cast because it has no offset
+     to concentrate it: the same darkness spread all the way round is thinner everywhere. */
+  --fog: rgb(0 0 0 / 0.22);
   --sheen: linear-gradient(0deg, var(--sheen-stops));
   --sheen-in: linear-gradient(180deg, var(--sheen-stops));
   /* Named once, because focus draws it again with a line on top. */
@@ -231,6 +236,8 @@
     /* A dark ground has nothing to bounce, so the pale end is a hint and the dark end does the
        separating. */
     --sheen-stops: rgb(255 255 255 / 0.05), rgb(0 0 0 / 0.12);
+    /* Further, because black on a dark ground has less left to take. */
+    --fog: rgb(0 0 0 / 0.55);
   }
 }
 
