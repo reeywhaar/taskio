@@ -319,8 +319,10 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
 }
+/* fill, like the inline code it is a block of. surface is the rail's warm beige now, and a
+   description is read on a card or in a dialog, both of which are cool. */
 .prose pre {
-  background: var(--color-surface);
+  background: var(--color-fill);
   border-radius: 0.375rem;
   padding: 0.75em;
   overflow-x: auto;

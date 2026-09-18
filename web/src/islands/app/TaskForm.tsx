@@ -62,6 +62,7 @@ export function TaskForm({
       <Editor
         value={draft.description}
         onChange={(description) => set({ description })}
+        title={draft.title}
         limits={{ assetMax: 10 << 20 }}
       />
 

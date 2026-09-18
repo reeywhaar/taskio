@@ -7,14 +7,23 @@ this says why they are shaped that way, and what was turned down.
 
 Markdown is the storage format. A rich-text surface would have to round-trip it — parse on the
 way in, serialise on the way out — and every round trip is a chance to lose a construct nobody
-tested. A textarea and a Write/Preview switch is the shape anybody who has left a code-review
-comment already knows.
+tested. So it is a textarea, and what you type is what is stored.
+
+**The preview opens; it does not swap.** It was a second tab, which is the shape anybody who has
+left a code-review comment already knows — and it made the preview the same size and shape as
+the box it replaced, which is the one thing a preview should not be. A description is read at
+the width of a page, not in a ten-row well with an Attach button over it. So Preview is a
+button, what it opens is a dialog with nothing in it but the words, and it is named after the
+task rather than the field, because on a phone it is the whole screen and the editor behind it
+is not there to say which task this is. It appears only once there is something to look at.
+
+The editor then has one state instead of two: nothing to leave the wrong way round, and no way
+to be typing into a box that is not there.
 
 **It is set in the proportional face, not a monospace one.** A description is prose with some
 marks in it rather than code. Monospace sets prose wide and heavy: the same words take more
-room and read as a listing. The preview beside it is proportional, and the two tabs are the
-same text — so they are the same face and the same size, and switching between them changes
-nothing about how the writing looks.
+room and read as a listing. The preview is proportional too, so one text reads the same way in
+both.
 
 Alignment is the case monospace is for — tables, fixed-width diagrams — and it loses to prose
 here because a description is mostly sentences.
