@@ -243,9 +243,15 @@ row saying there is nothing to see. From a week it is `warn`, from a month `acce
 task stays grey however old it is, because red on a thing that is done says it needs attention,
 which is the one thing it does not.
 
-The column is a fixed 88px — the longest thing the vocabulary can say is "11 months ago", which
-measures 81. An id is a fixed number of characters and an age is words, so without a width every
-row would set its own left margin and the titles would come out ragged down the list.
+It is drawn smaller than anything else on the row, tucked under the id, with the gap below it
+rather than around it: the date belongs to the id above, and the number and the pin below are
+their own pair. At the size of the text beside it, a date on every row is a second column of
+writing competing with the titles — this is a thing to notice, not a thing to read.
+
+The column is a fixed 68px — the longest thing the vocabulary can say is "11 months ago", which
+measures 63, and the id under it is 58. An id is a fixed number of characters and an age is
+words, so without a width every row would set its own left margin and the titles would come out
+ragged down the list.
 
 ## A row's two marks are on opposite sides
 

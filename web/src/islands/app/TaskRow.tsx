@@ -112,10 +112,10 @@ export function TaskRow({
           without this each row would set its own left margin and the titles would come out
           ragged down the list.
 
-          88px because the longest thing this vocabulary can say is "11 months ago", measured at
-          81 in the font it is drawn in. */}
+          68px: the longest thing this vocabulary can say is "11 months ago", measured at 63 in
+          the face and size it is drawn in, and the id under it is 58. */}
       <span
-        className="flex w-22 shrink-0 flex-col items-start gap-1"
+        className="flex w-17 shrink-0 flex-col items-start"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="flex h-6 items-center">
@@ -124,11 +124,17 @@ export function TaskRow({
 
         {/* The exact time is in the tooltip and nowhere else: nobody reads a timestamp and
             thinks "six weeks", they read the number and then do the arithmetic, if they
-            bother. */}
+            bother.
+
+            Smaller than anything else on the row and tucked under the id, because it is a
+            thing to notice rather than a thing to read: at the size of the text beside it, a
+            date on every row is a second column of writing competing with the titles. The
+            margin below it is the gap the column used to carry uniformly — the date belongs to
+            the id above it, and the number and the pin below are their own pair. */}
         <time
           dateTime={new Date(task.updated_at * 1000).toISOString()}
           title={`Last changed ${new Date(task.updated_at * 1000).toLocaleString()}`}
-          className={`text-xs whitespace-nowrap ${age}`}
+          className={`mt-0.5 mb-2 text-[9px] leading-3 whitespace-nowrap ${age}`}
         >
           {ago(task.updated_at)}
         </time>
