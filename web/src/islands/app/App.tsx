@@ -18,6 +18,7 @@ import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
 import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
+import { Segmented } from "@app/components/Segmented";
 import { CrossIcon, SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
 import { Nav } from "@app/islands/app/Nav";
@@ -348,25 +349,14 @@ function List({
           doing something to it. Side by side they read as four of a kind. */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <div className="sunken inline-flex min-h-9 gap-1 rounded-md p-1 text-sm pointer-coarse:min-h-10">
-              {(["pinned", "todo", "done"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={filters.view === value}
-                  onClick={() =>
-                    onGo({ ...location, filters: { ...filters, view: value } })
-                  }
-                  className={`flex items-center rounded-md px-2 capitalize sm:px-3 ${
-                    filters.view === value
-                      ? "raised wash"
-                      : "text-muted hover:text-fg"
-                  }`}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label="Which list"
+              value={filters.view}
+              options={["pinned", "todo", "done"] as const}
+              onChange={(next) =>
+                onGo({ ...location, filters: { ...filters, view: next } })
+              }
+            />
 
             <Button
               size="bar"

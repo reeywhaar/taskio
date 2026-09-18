@@ -20,3 +20,18 @@ if (typeof HTMLDialogElement !== "undefined") {
   HTMLDialogElement.prototype.showModal ??= showModal;
   HTMLDialogElement.prototype.close ??= close;
 }
+
+/**
+ * jsdom has no ResizeObserver, and Segmented watches its track with one.
+ *
+ * A stub that observes nothing is the honest stand-in: jsdom lays nothing out, so every box it
+ * could report would be zero anyway. Where the backdrop actually lands is a question for a
+ * browser, and it is measured in one.
+ */
+class NoResize {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver ??= NoResize as unknown as typeof ResizeObserver;
