@@ -16,6 +16,35 @@ export const getAuthInvitesByToken = (token: string) =>
     `/api/auth/invites/${encodeURIComponent(token)}`,
   );
 
+/** What the login form may know before anybody has proved anything. */
+export const getAuthInstance = () =>
+  request<{ recovery: boolean }>("/api/auth/instance");
+
+/** Answers the same whether or not the address is one of ours, which is the point of it. */
+export const postAuthRecoveries = (body: { email: string }) =>
+  request<void>("/api/auth/recoveries", { method: "POST", body });
+
+export type Recovery = {
+  username: string;
+  expires_at: number;
+  usable: boolean;
+  used: boolean;
+  voided: boolean;
+  expired: boolean;
+};
+
+export const getAuthRecoveriesByToken = (token: string) =>
+  request<Recovery>(`/api/auth/recoveries/${encodeURIComponent(token)}`);
+
+export const postAuthRecoveriesByTokenAccept = (
+  token: string,
+  body: { password: string },
+) =>
+  request<void>(`/api/auth/recoveries/${encodeURIComponent(token)}/accept`, {
+    method: "POST",
+    body,
+  });
+
 export const postAuthInvitesByTokenAccept = (
   token: string,
   body: { username: string; password: string },

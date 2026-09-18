@@ -134,8 +134,9 @@ GET    /api/assets/{id}
 ```
 
 **Routes not listed here belong to the browser** — groups, the tag arrangement, sessions,
-tokens, the event stream. They exist, and they answer a token with `401`: a credential does not
-manage credentials, and a saved filter is not part of working the list.
+tokens, the event stream, and getting back into an account without a password. They exist, and
+they answer a token with `401`: a credential does not manage credentials, and a saved filter is
+not part of working the list.
 
 ### The bulk routes
 

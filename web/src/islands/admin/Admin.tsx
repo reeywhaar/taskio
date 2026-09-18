@@ -7,6 +7,7 @@ import {
   getAdminRelay,
   getAdminUsers,
   postAdminInvites,
+  postAdminUsersByIdRecovery,
 } from "@app/api/actions/admin";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
@@ -44,13 +45,37 @@ function Heading({ children }: { children: React.ReactNode }) {
 
 function Users() {
   const users = useQuery({ queryKey: qk.adminUsers, queryFn: getAdminUsers });
-  const [link, setLink] = useState("");
+  const [shown, setShown] = useState<{ url: string; note: string } | null>(
+    null,
+  );
   const [role, setRole] = useState("user");
 
   const invite = useMutation({
     mutationFn: () => postAdminInvites({ role }),
     // Readable exactly once, so a lost link is reissued rather than recovered.
-    onSuccess: (result) => setLink(result.link),
+    onSuccess: (result) =>
+      setShown({ url: result.link, note: "An invitation, shown once." }),
+  });
+
+  /**
+   * A way back in for somebody who has lost their password, handed over rather than mailed.
+   *
+   * Not sent from here even where a relay works: this is the path for somebody standing in
+   * front of you or on a call, and an administrator who could both mail a link and read it
+   * would hold a way into every account. The one that goes to an inbox is the account's own to
+   * ask for, at the login form.
+   *
+   * Issuing it changes nothing — nobody is signed out, no password moves, and the account
+   * holder is not told — so it can be answered without locking out somebody who turns out to
+   * have been fine.
+   */
+  const recovery = useMutation({
+    mutationFn: (id: string) => postAdminUsersByIdRecovery(id),
+    onSuccess: (result) =>
+      setShown({
+        url: result.url,
+        note: `A way back into ${result.username}'s account, shown once. Nothing has changed until it is used.`,
+      }),
   });
 
   return (
@@ -66,6 +91,14 @@ function Users() {
             <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
               {user.role}
             </span>
+            <Button
+              size="bar"
+              className="ml-auto"
+              disabled={recovery.isPending}
+              onClick={() => recovery.mutate(user.id)}
+            >
+              Recovery link
+            </Button>
           </li>
         ))}
       </ul>
@@ -84,11 +117,11 @@ function Users() {
         </Button>
       </div>
 
-      {link ? (
+      {shown ? (
         <div className="mt-3 rounded-md border border-warn/40 bg-shade p-3">
-          <p className="text-sm text-warn">This link is shown once.</p>
+          <p className="text-sm text-warn">{shown.note}</p>
           <code className="mt-1 block break-all font-mono text-sm select-all">
-            {link}
+            {shown.url}
           </code>
         </div>
       ) : null}
@@ -113,8 +146,10 @@ function RelayPanel() {
     <section>
       <Heading>Mail relay</Heading>
       <p className="mb-3 text-sm text-muted">
-        taskio hands a message to a relay you already have. One thing sends
-        today: the code that proves a recovery address.
+        taskio hands a message to a relay you already have. Two things send: the
+        code that proves a recovery address, and the link somebody who has
+        forgotten their password asks for. Without a relay the login page offers
+        no way back in, and the way in is a link from here.
       </p>
 
       <p className="text-sm">

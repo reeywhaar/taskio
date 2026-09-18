@@ -68,6 +68,26 @@ data lives. Inventing one would be taskio guessing at that, quietly and wrongly.
 `:80` inside the container, not configurable. Remap it with `-p`. A port number inside a
 container is not a thing an operator should have to think about twice.
 
+## Getting back in
+
+Three ways, and the last one needs nothing but a shell on the host:
+
+```
+docker exec taskio taskio invite --role admin   # a link that makes an account
+docker exec taskio taskio recover <username>    # a link that sets a password on one
+```
+
+`recover` prints a link to `/recover/<token>`, good for a week and usable once. It changes
+nothing when it is issued — the account carries on with the password it has until somebody
+walks through the link — so it is safe to mint for somebody who turns out to have been fine.
+Spending one ends every session that account had, which is the point: the likeliest reason to
+be here is that somebody else has one.
+
+The same link can be issued from the admin page, per person, and read once. Where a relay is
+configured, somebody locked out can also ask for one themselves at the login form; it goes to
+the address their account has proved, and nowhere else. An instance with no relay offers
+nothing there, and the two commands above are the whole of it.
+
 ## The image
 
 Multi-stage, and the stages do not depend on each other.

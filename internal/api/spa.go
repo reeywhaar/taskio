@@ -59,6 +59,9 @@ func NewSPA(fsys fs.FS) (*SPA, error) {
 			// account starts, and whoever is signed in already is not necessarily whoever the
 			// link was sent to.
 			{prefix: "/invite", doc: "login.html", public: true},
+			// And a link back into an account for the same reason: whoever is holding it
+			// cannot sign in, and may be signed in here as somebody else entirely.
+			{prefix: "/recover", doc: "login.html", public: true},
 			{prefix: "/admin", doc: "admin.html"},
 			{prefix: "/", doc: "index.html"},
 		},

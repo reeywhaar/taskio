@@ -540,6 +540,34 @@ first labelable thing inside it — which here is the decrease button, not the f
 stepper takes the caption form and the name comes down as a prop: the field is "Priority" and
 the buttons either side are "Decrease Priority" and "Increase Priority".
 
+## Getting back in is a link, not a question
+
+Somebody who has forgotten their password cannot sign in, so every route here is
+unauthenticated, and each one is shaped by that.
+
+**The forgotten-password form says the same thing whatever was typed into it.** "If that address
+is on an account here, a link is on its way." Telling somebody their address is unknown turns
+the form into a way to ask the instance who has an account and what address they use, which is
+exactly the list a stranger must not be able to build. The mail carries the correction instead:
+it names the account, so a link arriving for a name you do not recognise is its own answer, and
+nothing arriving is the other one.
+
+**The form is only offered where mail can be sent.** The login page asks the instance, and where
+no relay is configured it offers nothing — a form that says "check your inbox" on an instance
+that cannot send is lying. On those, and on any instance at all, an administrator hands a link
+over instead, from the admin page or from `taskio recover` on the host.
+
+**A link says which kind of dead it is.** Set a password, sign in with the one you already set,
+use the newer link, ask for another — four states somebody acts on differently, and one refusal
+for all four leaves every one of them doing the same useless thing. The page also names the
+account the link opens: whoever holds the token could take it, so the name gives up nothing, and
+it is the one thing that makes the page checkable.
+
+**Setting a password does not sign anybody in.** That is the difference from accepting an
+invitation, where somebody has just chosen the password for an account that did not exist a
+moment ago. Here the account existed, the link may have reached the wrong person, and typing the
+new password at the login form once is the cheapest confirmation that the right one has it.
+
 ## The checkbox is ours
 
 `appearance: none`, then the field's border weight and color, the brand when it is ticked, and

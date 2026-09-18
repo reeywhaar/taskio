@@ -32,6 +32,13 @@ export const postAdminInvites = (body: { role: string }) =>
     },
   );
 
+/** Read once, like an invitation: what is stored is the hash, so a lost link is reissued. */
+export const postAdminUsersByIdRecovery = (id: string) =>
+  request<{ url: string; expires_at: number; username: string }>(
+    `/api/admin/users/${encodeURIComponent(id)}/recovery`,
+    { method: "POST" },
+  );
+
 export const getAdminRelay = () => request<Relay>("/api/admin/relay");
 
 /** An empty password keeps the stored one, which is what lets a port be corrected without
