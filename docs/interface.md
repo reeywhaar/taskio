@@ -312,6 +312,21 @@ columns of boxes meaning different things — one of them "this task is done", t
 task is picked" — a foot apart and identical. Splitting them by side means the left column
 appears only while selecting and the right one always does the same thing.
 
+## A search that found nothing is usually a task
+
+The empty state offers to write one, with what was searched for as its title and whatever pills
+are lit already on it. Somebody types a task into the search box often enough that the shortest
+way from there to a task is worth a button; the words are already typed.
+
+The search is cleared when a task is actually written, not when the dialog opens. Somebody who
+changes their mind and shuts it has their words back, and somebody who goes through with it is
+not left filtering the list by the title of the one task they just made.
+
+**Clearing takes away one thing.** The button beside it said "Clear the search and the tags" and
+did exactly that, which threw away the part of the filter somebody had set deliberately along
+with the part they had mistyped. It clears the search where there is one, and the tags only when
+there is nothing else to clear.
+
 ## The bulk bar offers one status action and both pin actions
 
 The list is filtered to one status, so every task in a selection has it, and a button for the
@@ -335,11 +350,16 @@ one side and casts on the other, and it is behind because the same light falls o
 it. `raised` is a card, a button, a pill; `sunken` is a field, a trough, anything meant to be
 filled; pressed is raised turned inside out, which is what a finger on a real button does.
 
-`aloft` is the one thing that floats over the list rather than sitting in it. Same light, same
-falloff, longer throw — a bar stuck to the foot of the screen with rows sliding underneath it
-has to read as being in front of them, and at a card's height it read as one more row that
-happened to be last. The lit side barely moves: a thing higher up catches no more light, it
-only casts further.
+`aloft` is the one thing that floats over the list rather than sitting in it, and what it casts
+is fog rather than a shadow: no offset at all, an even darkening all the way round. A directional
+cast was the obvious answer and the wrong one — the bar is stuck to the foot of the screen and
+rows slide under its *top* edge, which is exactly the edge a shadow thrown down and to the right
+leaves bare.
+
+It has its own color at its own strength rather than a fraction of `cast`. Measured through a
+screenshot, `cast` at this radius moved the ground by three levels out of 255, which is a shadow
+nobody can see; the fog moves it by eighteen. The lit side is the raised one unchanged: a thing
+higher up catches no more light, it only casts further.
 
 The shadow is three layers a side rather than one. A single `box-shadow` is one blur with an even
 falloff, and an even falloff is what makes a thing look like a sticker with a grey smudge behind

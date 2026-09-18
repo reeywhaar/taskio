@@ -17,29 +17,36 @@ import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
  *
  * It opens with whatever tags are lit on the list. Somebody filtered to `home` and pressing
  * new task means a home task, and typing the word again to say so is work the screen already
- * knows the answer to.
+ * knows the answer to. The title arrives the same way when there is one — a search that matched
+ * nothing is usually a task somebody has just written into the wrong box.
  */
 export function NewTaskDialog({
   open,
   tags,
+  title = "",
   onClose,
+  onCreated,
 }: {
   open: boolean;
   /** The lit pills, which a new task starts with. */
   tags: string[];
+  /** What it opens with in the title, where somebody has already typed it somewhere else. */
+  title?: string;
   onClose: () => void;
+  /** Only when a task was actually written, which is not the same as the dialog closing. */
+  onCreated?: () => void;
 }) {
   const client = useQueryClient();
-  const [draft, setDraft] = useState<Draft>(emptyDraft(tags));
+  const [draft, setDraft] = useState<Draft>(emptyDraft(tags, title));
   const [error, setError] = useState("");
 
   // Emptied when it opens, not when it closes: a dialog cleared on the way out shows what was
   // typed for as long as it takes to close.
   useEffect(() => {
     if (!open) return;
-    setDraft(emptyDraft(tags));
+    setDraft(emptyDraft(tags, title));
     setError("");
-  }, [open, tags]);
+  }, [open, tags, title]);
 
   const create = useMutation({
     mutationFn: () =>
@@ -56,6 +63,7 @@ export function NewTaskDialog({
     onSuccess: () => {
       client.invalidateQueries({ queryKey: qk.tasks });
       client.invalidateQueries({ queryKey: qk.tags });
+      onCreated?.();
       onClose();
     },
     onError: (err) =>

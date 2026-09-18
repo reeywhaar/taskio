@@ -104,7 +104,8 @@ function List({
   const { filters, route } = location;
   const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
-  const [writing, setWriting] = useState(false);
+  /** The new-task dialog: null when shut, and otherwise the title it opens with. */
+  const [writing, setWriting] = useState<string | null>(null);
 
   // The screen's three choices are two questions to the API: pinned is a property of a todo,
   // so the pinned view is the todo list narrowed rather than a third status.
@@ -369,7 +370,7 @@ function List({
             </Button>
           </div>
 
-          <Button variant="solid" size="bar" onClick={() => setWriting(true)}>
+          <Button variant="solid" size="bar" onClick={() => setWriting("")}>
             New task
           </Button>
         </div>
@@ -407,6 +408,7 @@ function List({
             <Empty
               filters={filters}
               onClear={(next) => onGo({ ...location, filters: next })}
+              onWrite={(title) => setWriting(title)}
             />
           ) : (
             <ul className="mt-4 flex flex-col gap-2">
@@ -491,11 +493,19 @@ function List({
       ) : null}
 
       {/* Opened with whatever pills are lit: filtering to home and pressing new task means a
-          home task, and typing the word again is work the screen knows the answer to. */}
+          home task, and typing the word again is work the screen knows the answer to. The
+          title comes the same way from a search that found nothing.
+
+          The search is cleared when a task is actually written, not when the dialog opens:
+          somebody who changes their mind and closes it has their words back, and somebody who
+          goes through with it is not left filtering the list by the title of the one task they
+          just made. */}
       <NewTaskDialog
-        open={writing}
+        open={writing !== null}
         tags={filters.tags}
-        onClose={() => setWriting(false)}
+        title={writing ?? ""}
+        onClose={() => setWriting(null)}
+        onCreated={() => onGo({ ...location, filters: { ...filters, q: "" } })}
       />
 
       {route.name === "task" ? (
@@ -524,9 +534,12 @@ function List({
 function Empty({
   filters,
   onClear,
+  onWrite,
 }: {
   filters: Filters;
   onClear: (next: Filters) => void;
+  /** What was searched for, on its way to being the title of a task instead. */
+  onWrite: (title: string) => void;
 }) {
   const searching = filters.q !== "";
   const tagged = filters.tags.length > 0;
@@ -543,12 +556,10 @@ function Empty({
     );
   }
 
-  // The label says what pressing it takes away, so nobody has to press it to find out.
-  const what = searching
-    ? tagged
-      ? "the search and the tags"
-      : "the search"
-    : "the tags";
+  // The label says what pressing it takes away, so nobody has to press it to find out — and
+  // it takes away one thing. Clearing the tags as well threw away the part of the filter
+  // somebody had set deliberately along with the part they had just mistyped.
+  const what = searching ? "the search" : "the tags";
 
   return (
     <div className="mt-8 flex flex-col items-center gap-3">
@@ -558,9 +569,27 @@ function Empty({
         {searching && tagged ? " under " : null}
         {tagged ? <b className="text-fg">{filters.tags.join(", ")}</b> : null}.
       </p>
-      <Button onClick={() => onClear({ ...filters, q: "", tags: [] })}>
-        Clear {what}
-      </Button>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {/* A search that matched nothing is usually a task somebody has written into the
+            wrong box. The words are already typed; this is the shortest way from there to a
+            task, and it carries the lit tags along like any other new task. */}
+        {searching ? (
+          <Button variant="solid" onClick={() => onWrite(filters.q)}>
+            Create a task
+          </Button>
+        ) : null}
+        <Button
+          onClick={() =>
+            onClear({
+              ...filters,
+              q: "",
+              tags: searching ? filters.tags : [],
+            })
+          }
+        >
+          Clear {what}
+        </Button>
+      </div>
     </div>
   );
 }

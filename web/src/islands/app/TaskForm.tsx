@@ -21,8 +21,8 @@ export type Draft = {
   color: string;
 };
 
-export const emptyDraft = (tags: string[] = []): Draft => ({
-  title: "",
+export const emptyDraft = (tags: string[] = [], title = ""): Draft => ({
+  title,
   description: "",
   priority: "0",
   tags,
