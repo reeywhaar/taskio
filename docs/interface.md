@@ -356,10 +356,16 @@ cast was the obvious answer and the wrong one — the bar is stuck to the foot o
 rows slide under its *top* edge, which is exactly the edge a shadow thrown down and to the right
 leaves bare.
 
-It has its own color at its own strength rather than a fraction of `cast`. Measured through a
-screenshot, `cast` at this radius moved the ground by three levels out of 255, which is a shadow
-nobody can see; the fog moves it by eighteen. The lit side is the raised one unchanged: a thing
-higher up catches no more light, it only casts further.
+It has its own color at its own strength rather than a fraction of `cast`, and the color is warm
+— black fog on a beige rail greys it, and taking the color out of a ground is the one thing
+nothing here is allowed to do. Measured through a screenshot, `cast` at this radius moved the
+ground by three levels out of 255, which is a shadow nobody can see; the fog moves it by ten in
+light and eight in dark, on grounds of 229 and 38. The lit side is the raised one unchanged: a
+thing higher up catches no more light, it only casts further.
+
+**It docks rather than floats.** Flush with the bottom edge at either width, and square where it
+meets it: a rounded corner sitting twelve pixels above the foot of the screen is a card somebody
+left there, and a bar that runs into the edge is a thing attached to it.
 
 The shadow is three layers a side rather than one. A single `box-shadow` is one blur with an even
 falloff, and an even falloff is what makes a thing look like a sticker with a grey smudge behind

@@ -212,9 +212,13 @@
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
   --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02);
-  /* What the floating bar lays over the page. Stronger than the cast because it has no offset
-     to concentrate it: the same darkness spread all the way round is thinner everywhere. */
-  --fog: rgb(0 0 0 / 0.22);
+  /* What the floating bar lays over the page.
+     
+     Warm rather than black, because the grounds are: black fog on a beige rail greys it, and
+     the one thing on the screen that is allowed to take the color out of a ground is nothing.
+     It has no offset to concentrate it, so it is spread thinner everywhere than a cast — and
+     15% of a brown reads as further separation than 22% of black did. */
+  --fog: #51382726;
   --sheen: linear-gradient(0deg, var(--sheen-stops));
   --sheen-in: linear-gradient(180deg, var(--sheen-stops));
   /* Named once, because focus draws it again with a line on top. */

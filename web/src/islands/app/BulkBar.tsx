@@ -84,12 +84,16 @@ export function BulkBar({
     // of the last row, and nothing has to reserve space for it. Above the breakpoint the list
     // has its own scrolling box and the bar is already outside it, in view the whole time.
     //
+    // Flush with the bottom edge at either width, and square where it meets it. A rounded
+    // corner floating twelve pixels above the foot of the screen is a card that has been left
+    // there; a bar that runs into the edge is something docked, which is what this is.
+    //
     // Two elements, because the bar has to line up with the cards above it and they are inside
     // the list's padding. One element carrying both the width and the ground drew a bar hanging
     // six pixels past the rows on either side — the outer one is the list's box, the inner one
     // is the bar, and they are the same width now by construction rather than by arithmetic.
-    <div className="sticky bottom-3 z-30 mx-auto mb-4 w-full max-w-3xl shrink-0 px-3 md:static md:px-6">
-      <div className="aloft flex flex-wrap items-center gap-2 rounded-lg bg-bg px-3 py-2">
+    <div className="sticky bottom-0 z-30 mx-auto w-full max-w-3xl shrink-0 px-3 md:static md:px-6">
+      <div className="aloft flex flex-wrap items-center gap-2 rounded-t-lg bg-bg px-3 py-2">
         {/* It counts what is in front of somebody, which is a different thing from a workload
           number pinned to a tab. */}
         <span className="text-sm text-muted">{ids.length} selected</span>
