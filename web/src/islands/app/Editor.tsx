@@ -132,7 +132,11 @@ export function Editor({
           <button
             type="button"
             onClick={() => setShowing(true)}
-            className="rounded-md px-2 py-1 text-muted hover:text-fg"
+            // Flush with the field below it, not indented from it. The padding was left over
+            // from being a tab, where it was the shape of the lit one; nothing is lit here, so
+            // it was 8px of nothing pushing the only word on this line out of line with the
+            // writing, the title above and Attach across from it.
+            className="py-1 text-muted hover:text-fg"
           >
             Preview
           </button>
