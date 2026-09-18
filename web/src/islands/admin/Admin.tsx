@@ -63,7 +63,7 @@ function Users() {
             className="flex items-center gap-2 border-b border-line py-2 text-sm"
           >
             <span>{user.username}</span>
-            <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
+            <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
               {user.role}
             </span>
           </li>
@@ -85,7 +85,7 @@ function Users() {
       </div>
 
       {link ? (
-        <div className="mt-3 rounded-md border border-warn/40 bg-surface p-3">
+        <div className="mt-3 rounded-md border border-warn/40 bg-shade p-3">
           <p className="text-sm text-warn">This link is shown once.</p>
           <code className="mt-1 block break-all font-mono text-sm select-all">
             {link}

@@ -163,7 +163,7 @@ export function Nav({
             setOpen(false);
             setEditing("new");
           }}
-          className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-fill hover:text-fg"
+          className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-shade hover:text-fg"
         >
           <PlusIcon /> New group
         </button>
@@ -190,7 +190,7 @@ export function Nav({
           anything. */}
       <li className="mt-auto">
         <a
-          className="block rounded-md px-3 py-2 text-sm text-muted hover:bg-fill hover:text-fg"
+          className="block rounded-md px-3 py-2 text-sm text-muted hover:bg-shade hover:text-fg"
           href="/docs"
         >
           Docs
@@ -206,7 +206,7 @@ export function Nav({
           type="button"
           aria-label="Menu"
           aria-expanded={open}
-          className="rounded-md p-2 text-lg hover:bg-surface"
+          className="rounded-md p-2 text-lg hover:bg-shade"
           onClick={() => setOpen(true)}
         >
           <BurgerIcon />
@@ -255,7 +255,7 @@ export function Nav({
               <button
                 type="button"
                 aria-label="Close menu"
-                className="rounded-md p-1 hover:bg-fill"
+                className="rounded-md p-1 hover:bg-shade"
                 onClick={() => setOpen(false)}
               >
                 <CrossIcon />
@@ -359,8 +359,8 @@ function Item({
           onOver ? "touch-none" : ""
         } ${carried ? "opacity-40" : ""} ${
           lit
-            ? "bg-fill font-medium text-brand"
-            : "text-muted hover:bg-fill hover:text-fg"
+            ? "bg-shade font-medium text-brand"
+            : "text-muted hover:bg-shade hover:text-fg"
         }`}
       >
         {label}
@@ -370,7 +370,7 @@ function Item({
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${label}`}
-          className="rounded-md p-1.5 text-faint opacity-0 hover:bg-fill hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
+          className="rounded-md p-1.5 text-faint opacity-0 hover:bg-shade hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
         >
           <PencilIcon />
         </button>

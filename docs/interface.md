@@ -274,10 +274,21 @@ difference you can see without hunting for an edge. Measured down the middle of 
 it runs 239 at the top to 235 at the bottom in light and 49 to 37 in dark, against a card running
 234 to 240 and 40 to 52 the other way.
 
-**Two grounds, a hair apart.** The page is the lighter and the rail is the darker, and that is the
-only thing dividing them now that the rail draws no line. A thing standing on the page takes the
-page's ground; a chip inside a card takes `fill`, because it cannot be the color of the thing it
-sits on.
+**Warm grounds, cool things standing on them.** `page` is a warm grey and `surface`, the rail, is
+a warm beige. `bg` — a card, a field, a pill, a dialog — is the cool near-white it has always
+been. The cards then look white, which is what they are meant to look like, and the rail is
+divided from the page by temperature as well as by a shade of lightness.
+
+This is a departure from the rest of this section. Soft UI usually says a thing is the color of
+whatever it sits on and only the light tells them apart, which is what two grounds a hair apart
+was. Saying it twice — with light and with temperature — is the version that looks right, and
+the light still does the work at the edges, where the shadows are.
+
+A chip inside a card takes `fill`, because it cannot be the color of the thing it sits on, and
+`fill` is cool like the card. A patch on a warm ground takes `shade` instead: black at six
+percent in light, white at seven in dark. It has no color of its own, so it darkens the beige of
+the rail and the grey of the page without either turning cool — which is what the current row in
+the rail used to do, as the one place the two temperatures met.
 
 **A lit thing wears the brand, plainly.** `wash` is the class, and it is a fill: the brand as its
 own color, with `brand-ink` on top. It was a radial gradient of the brand for a while — pale in

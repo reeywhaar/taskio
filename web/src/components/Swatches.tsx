@@ -68,7 +68,7 @@ export function Swatches({
           title={none}
           aria-pressed={value === ""}
           onClick={() => onChange("")}
-          className={`size-5 rounded border-[1.5px] border-dashed border-line ring-offset-2 ring-offset-surface ${
+          className={`size-5 rounded border-[1.5px] border-dashed border-line ring-offset-2 ring-offset-bg ${
             value === "" ? "ring-2 ring-fg" : ""
           }`}
         />
@@ -86,7 +86,7 @@ export function Swatches({
             aria-label={!none && swatch === BRAND ? "The brand color" : swatch}
             aria-pressed={on}
             onClick={() => onChange(held)}
-            className={`size-5 rounded ring-offset-2 ring-offset-surface ${
+            className={`size-5 rounded ring-offset-2 ring-offset-bg ${
               on ? "ring-2 ring-fg" : ""
             }`}
             style={{ background: swatch }}
@@ -102,7 +102,7 @@ export function Swatches({
         aria-label="Another color"
         title="Another color"
         onClick={() => setPicking(true)}
-        className={`flex size-5 items-center justify-center rounded ring-offset-2 ring-offset-surface ${
+        className={`flex size-5 items-center justify-center rounded ring-offset-2 ring-offset-bg ${
           value ? "" : "border-[1.5px] border-line"
         } ${custom ? "ring-2 ring-fg" : ""}`}
         style={value ? { background: value, color: ink(value) } : undefined}

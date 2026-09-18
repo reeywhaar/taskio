@@ -210,7 +210,7 @@ function Storage() {
         </span>{" "}
         used · up to {mb(max)} per file
       </p>
-      <div className="mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-fill">
+      <div className="mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-shade">
         <div
           className={`h-full ${share > 0.9 ? "bg-warn" : "bg-faint"}`}
           style={{ width: `${Math.max(2, share * 100)}%` }}
@@ -330,7 +330,7 @@ function Tokens() {
           >
             <span className="font-mono text-xs text-faint">{token.id}</span>
             <span>{token.label}</span>
-            <span className="rounded-full bg-fill px-2 py-0.5 text-xs text-muted">
+            <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
               {token.scope || "the whole account"}
             </span>
             {token.revoked_at ? (
