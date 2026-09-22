@@ -53,8 +53,20 @@ A nonced value may also travel as `?token=…`, which a raw one may not.
 ### A token can retire itself
 
 One may be minted to stop working after a day, a week or a month unused — counted from its last
-use, or from minting if it never had one. A token that lapses answers `401` like any other, and
-the account's settings say when each was last used and from where.
+use, or from minting if it never had one — and, separately, on a date whether it is used or not.
+A token that lapses answers `401` like any other, and the account's settings say when each was
+last used and from where.
+
+### Everything but the secret can be changed
+
+Its name, what it reaches and both clocks, from the settings page, without reissuing it: the
+value in somebody's config keeps working and sees the change on its next request. A field left
+out of the edit is left alone.
+
+**An edit never stops a live token working.** An end date already past, or an idle limit it has
+already gone beyond, is refused and says to revoke it instead — renaming a token is not how an
+agent's credential should die. One that has already lapsed can be given longer, which brings it
+back.
 
 ## Ids
 

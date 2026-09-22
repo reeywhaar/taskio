@@ -22,7 +22,8 @@ import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
 import { PasswordDialog } from "@app/islands/app/PasswordDialog";
 import { RecoveryDialog } from "@app/islands/app/RecoveryDialog";
 import { TokenDialog } from "@app/islands/app/TokenDialog";
-import { TokenScopeDialog } from "@app/islands/app/TokenScopeDialog";
+import { TokenEditDialog } from "@app/islands/app/TokenEditDialog";
+import { lengthName } from "@app/islands/app/TokenFields";
 
 /**
  * One route with panels inside it rather than four routes side by side: they are all this
@@ -240,12 +241,6 @@ function Heading({ children }: { children: React.ReactNode }) {
  * jumps as each section settles.
  */
 /** The three lengths the mint dialog offers, said in words. */
-function idleName(seconds: number): string {
-  if (seconds <= 86400) return "a day";
-  if (seconds <= 604800) return "a week";
-  return "a month";
-}
-
 function Panel({
   title,
   state,
@@ -359,13 +354,21 @@ function Tokens() {
             </span>
             {token.idle_seconds > 0 ? (
               <span className="text-xs text-faint">
-                retires after {idleName(token.idle_seconds)} unused
+                retires after {lengthName(token.idle_seconds)} unused
+              </span>
+            ) : null}
+            {/* The other clock, which nothing on this row said anything about: a token minted
+                with an end date looked exactly like one that would run for ever. */}
+            {token.expires_at && !token.revoked_at ? (
+              <span className="text-xs text-faint">
+                {token.expires_at * 1000 > Date.now() ? "stops" : "stopped"} on{" "}
+                {new Date(token.expires_at * 1000).toLocaleDateString()}
               </span>
             ) : null}
             {!token.revoked_at ? (
               <>
                 <Button variant="link" onClick={() => setEditing(token)}>
-                  Change scope
+                  Edit
                 </Button>
                 <Button variant="link" onClick={() => revoke.mutate(token.id)}>
                   Revoke
@@ -377,7 +380,7 @@ function Tokens() {
       </ul>
 
       <TokenDialog open={minting} onClose={() => setMinting(false)} />
-      <TokenScopeDialog token={editing} onClose={() => setEditing(null)} />
+      <TokenEditDialog token={editing} onClose={() => setEditing(null)} />
     </Panel>
   );
 }

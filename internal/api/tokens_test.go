@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -555,5 +556,130 @@ func TestAForwardedAddressIsTheCaller(t *testing.T) {
 	// The last hop is the one the nearest proxy appended; the peer is 192.0.2.1 in httptest.
 	if got := list[0].(map[string]any)["last_ip"]; got != "10.0.0.2" {
 		t.Errorf("last_ip = %v, want 10.0.0.2", got)
+	}
+}
+
+// Everything but the secret can be changed after minting, and a field left out is left alone.
+func TestATokenCanBeRenamedAndGivenAnExpiry(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 23, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "and(work)", nil, 7*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	later := now.Add(30 * 24 * time.Hour).Unix()
+	got := c.json(c.do("PATCH", "/api/tokens/"+tok.ID,
+		fmt.Sprintf(`{"label":"  the laptop  ","expires_at":%d}`, later)))
+	if got["label"] != "the laptop" {
+		t.Errorf("label = %v, want it trimmed", got["label"])
+	}
+	if got["expires_at"] != float64(later) {
+		t.Errorf("expires_at = %v, want %d", got["expires_at"], later)
+	}
+	// Named in neither, so both stay what they were.
+	if got["scope"] != "work" || got["idle_seconds"] != float64(7*24*3600) {
+		t.Errorf("scope = %v, idle = %v, want both untouched", got["scope"], got["idle_seconds"])
+	}
+
+	// The same secret, still working.
+	caller := &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("the renamed token = %s", resp.Status)
+	}
+
+	// Nought takes the expiry away again.
+	got = c.json(c.do("PATCH", "/api/tokens/"+tok.ID, `{"expires_at":0,"idle_seconds":0}`))
+	if got["expires_at"] != nil || got["idle_seconds"] != float64(0) {
+		t.Errorf("expires_at = %v, idle = %v, want neither", got["expires_at"], got["idle_seconds"])
+	}
+
+	if resp := c.do("PATCH", "/api/tokens/"+tok.ID, `{"label":"   "}`); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("an empty label = %s, want 400", resp.Status)
+	}
+}
+
+// Renaming a token must not be the way an agent's credential dies without anybody meaning it
+// to. Revoke says that on purpose.
+func TestAnEditNeverStopsALiveToken(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 23, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	past := now.Add(-time.Hour).Unix()
+	if resp := c.do("PATCH", "/api/tokens/"+tok.ID, fmt.Sprintf(`{"expires_at":%d}`, past)); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("an expiry already past = %s, want 400", resp.Status)
+	}
+
+	// Minted three days ago and never used: a day's grace would retire it on the spot.
+	now = now.Add(3 * 24 * time.Hour)
+	if resp := c.do("PATCH", "/api/tokens/"+tok.ID, `{"idle_seconds":86400}`); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("an idle limit it is already past = %s, want 400", resp.Status)
+	}
+
+	caller := &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("after two refused edits the token = %s, want it still working", resp.Status)
+	}
+}
+
+// One that has already lapsed is not stuck: given longer, it works again.
+func TestALapsedTokenCanBeGivenLonger(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 23, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	soon := now.Add(time.Hour)
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "", &soon, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now = now.Add(2 * time.Hour)
+	caller := &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("an expired token = %s, want 401", resp.Status)
+	}
+
+	later := now.Add(24 * time.Hour).Unix()
+	if resp := c.do("PATCH", "/api/tokens/"+tok.ID, fmt.Sprintf(`{"expires_at":%d}`, later)); resp.StatusCode != http.StatusOK {
+		t.Fatalf("extending it = %s", resp.Status)
+	}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("the extended token = %s, want it working again", resp.Status)
+	}
+}
+
+// A save that sets what is already there is not a change, and the backup loop is not told
+// one happened.
+func TestSavingATokenUnchangedIsNoChange(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	tok, _, err := st.CreateToken(ctx, p.ID, "claude", "and(work)", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	before := st.Changes()
+	if resp := c.do("PATCH", "/api/tokens/"+tok.ID, `{"label":"claude","scope":"work","idle_seconds":0}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("patch = %s", resp.Status)
+	}
+	if st.Changes() != before {
+		t.Error("an identical save counted as a change")
 	}
 }

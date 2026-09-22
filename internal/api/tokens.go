@@ -93,27 +93,46 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{"token": body, "secret": secret})
 }
 
-type tokenScopeRequest struct {
-	Scope string `json:"scope"`
+type patchTokenRequest struct {
+	Label *string `json:"label"`
+	Scope *string `json:"scope"`
+	// ExpiresAt is a unix time, and 0 clears it so the token never expires.
+	ExpiresAt *int64 `json:"expires_at"`
+	// IdleSeconds retires it after that long unused. 0 is never.
+	IdleSeconds *int64 `json:"idle_seconds"`
 }
 
-// patchToken changes a token's scope without reissuing it.
+// patchToken changes what a token is called, what it reaches and when it stops working,
+// without reissuing it. Absent leaves a field alone.
 //
 // The value in somebody's config does not change, which is the whole point: narrowing an
 // agent's reach otherwise means revoking, minting, and finding every place the old one was
 // pasted. Logged like minting, because it is the same question asked later — what this
-// credential can reach.
+// credential can reach, and for how long.
 func (s *Server) patchToken(w http.ResponseWriter, r *http.Request) {
-	var req tokenScopeRequest
+	var req patchTokenRequest
 	if !decode(w, r, &req) {
 		return
 	}
-	tok, err := s.store.SetTokenScope(r.Context(), principalOf(r).ID, r.PathValue("id"), req.Scope)
+	change := store.TokenChange{Label: req.Label, Scope: req.Scope}
+	if req.ExpiresAt != nil {
+		var at time.Time
+		if *req.ExpiresAt != 0 {
+			at = time.Unix(*req.ExpiresAt, 0).UTC()
+		}
+		change.Expires = &at
+	}
+	if req.IdleSeconds != nil {
+		idle := time.Duration(*req.IdleSeconds) * time.Second
+		change.Idle = &idle
+	}
+	tok, err := s.store.UpdateToken(r.Context(), principalOf(r).ID, r.PathValue("id"), change)
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	s.log.Info("token scope changed", "principal", principalOf(r).ID, "token", tok.ID, "scope", tok.Scope)
+	s.log.Info("token changed", "principal", principalOf(r).ID, "token", tok.ID,
+		"scope", tok.Scope, "expires", tok.ExpiresAt, "idle", tok.IdleTTL)
 	writeJSON(w, http.StatusOK, renderToken(tok))
 }
 

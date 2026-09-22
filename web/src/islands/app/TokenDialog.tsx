@@ -7,10 +7,12 @@ import { ApiError } from "@app/api/transport";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
-import { Field, Group } from "@app/components/Field";
-import { Select } from "@app/components/Select";
-import { TextField } from "@app/components/TextField";
-import { TagCloud } from "@app/islands/app/TagCloud";
+import {
+  blankToken,
+  expiresAt,
+  TokenFields,
+  type TokenForm,
+} from "@app/islands/app/TokenFields";
 import { printAnd } from "@app/islands/app/route";
 
 /**
@@ -29,17 +31,13 @@ export function TokenDialog({
 }) {
   const client = useQueryClient();
   const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
-  const [label, setLabel] = useState("");
-  /** Seconds of disuse before it retires itself. "0" is never. */
-  const [idle, setIdle] = useState("0");
-  const [scope, setScope] = useState<string[]>([]);
+  const [form, setForm] = useState<TokenForm>(blankToken);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setLabel("");
-    setScope([]);
+    setForm(blankToken);
     setSecret("");
     setError("");
   }, [open]);
@@ -47,9 +45,10 @@ export function TokenDialog({
   const mint = useMutation({
     mutationFn: () =>
       postTokens({
-        label,
-        scope: printAnd(scope) || undefined,
-        idle_seconds: Number(idle),
+        label: form.label,
+        scope: printAnd(form.scope) || undefined,
+        idle_seconds: Number(form.idle),
+        expires_at: expiresAt(form.expires) || undefined,
       }),
     onSuccess: (result) => {
       setSecret(result.secret);
@@ -76,7 +75,7 @@ export function TokenDialog({
               type="submit"
               form="mint-token"
               variant="solid"
-              disabled={!label.trim() || mint.isPending}
+              disabled={!form.label.trim() || mint.isPending}
             >
               {mint.isPending ? "Minting…" : "Mint"}
             </Button>
@@ -99,56 +98,14 @@ export function TokenDialog({
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (label.trim()) mint.mutate();
+            if (form.label.trim()) mint.mutate();
           }}
         >
-          <Field label="What is it for">
-            <TextField
-              data-autofocus
-              className="w-full"
-              placeholder="claude"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-            />
-          </Field>
-
-          {/* A credential nobody has used for a month is one still open on a machine
-              nobody remembers. Counted from its last use, or from minting if it never had
-              one. */}
-          <Field label="Retire it if unused for">
-            <Select value={idle} onChange={(e) => setIdle(e.target.value)}>
-              <option value="0">never</option>
-              <option value="86400">a day</option>
-              <option value="604800">a week</option>
-              <option value="2592000">a month</option>
-            </Select>
-          </Field>
-
-          {/*
-           * A scope is an unnested and() of tags, which is a set of pills — the same control
-           * the list and the editor use. Asking somebody to type the grammar would be asking
-           * them to learn it for the one case that does not need it.
-           */}
-          <Group
-            label="Confine it to"
-            hint={
-              scope.length === 0
-                ? "Nothing selected: it reaches the whole account."
-                : `It sees only tasks carrying ${scope.join(" and ")}, and gives them to everything it creates.`
-            }
-          >
-            <TagCloud
-              tags={tags.data?.tags ?? []}
-              selected={scope}
-              onToggle={(slug) =>
-                setScope((current) =>
-                  current.includes(slug)
-                    ? current.filter((s) => s !== slug)
-                    : [...current, slug],
-                )
-              }
-            />
-          </Group>
+          <TokenFields
+            value={form}
+            onChange={setForm}
+            tags={tags.data?.tags ?? []}
+          />
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </form>

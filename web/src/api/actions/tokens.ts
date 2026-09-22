@@ -15,8 +15,18 @@ export const postTokens = (body: {
     body,
   });
 
-/** Changes what a token reaches. The token itself does not change. */
-export const patchTokensById = (id: string, body: { scope: string }) =>
+/**
+ * Changes everything about a token but its secret. A field left out is left alone, and an
+ * expires_at of 0 takes the expiry away.
+ */
+export type TokenPatch = {
+  label?: string;
+  scope?: string;
+  expires_at?: number;
+  idle_seconds?: number;
+};
+
+export const patchTokensById = (id: string, body: TokenPatch) =>
   request<Token>(`/api/tokens/${id}`, { method: "PATCH", body });
 
 export const deleteTokensById = (id: string) =>

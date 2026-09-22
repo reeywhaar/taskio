@@ -91,15 +91,12 @@ func (t *Token) ScopeFilter() (*filter.Node, error) {
 
 // CreateToken mints one and returns it with the secret, readable exactly once.
 func (s *Store) CreateToken(ctx context.Context, principalID, label, scope string, expires *time.Time, idle time.Duration) (*Token, string, error) {
-	label = strings.TrimSpace(label)
-	if label == "" {
-		return nil, "", Invalid("A token needs a label, so it can be recognised later.")
-	}
-	if len(label) > 64 {
-		return nil, "", Invalid("That label is longer than 64 characters.")
+	label, err := cleanLabel(label)
+	if err != nil {
+		return nil, "", err
 	}
 
-	scope, err := canonicalScope(scope)
+	scope, err = canonicalScope(scope)
 	if err != nil {
 		return nil, "", err
 	}
@@ -190,43 +187,120 @@ func canonicalScope(scope string) (string, error) {
 	return filter.Print(parsed), nil
 }
 
-// SetTokenScope changes what a token reaches, without reissuing it.
+// cleanLabel is the one rule for what a token may be called, minted or renamed.
+func cleanLabel(label string) (string, error) {
+	label = strings.TrimSpace(label)
+	if label == "" {
+		return "", Invalid("A token needs a label, so it can be recognised later.")
+	}
+	if len(label) > 64 {
+		return "", Invalid("That label is longer than 64 characters.")
+	}
+	return label, nil
+}
+
+// TokenChange is what an edit asks for. A nil field is left as it is.
+type TokenChange struct {
+	Label *string
+	Scope *string
+	// Expires set to the zero time clears it: the token stops expiring.
+	Expires *time.Time
+	Idle    *time.Duration
+}
+
+// UpdateToken changes everything about a token but its secret: what it is called, what it
+// reaches, and when it stops working.
 //
-// The token itself does not change, so whatever holds it keeps working and starts seeing the
-// new scope on its next request. That is the point: the alternative is revoke and mint, which
-// means finding every place the old value was pasted.
+// The value itself does not change, so whatever holds it keeps working and sees the change on
+// its next request. That is the point: the alternative is revoke and mint, which means finding
+// every place the old value was pasted.
+//
+// An edit never stops a live token working. An expiry already past, or an idle limit it has
+// already gone beyond, is refused — renaming a token must not be the way an agent's credential
+// dies without anybody meaning it to. Revoke says that on purpose. A token that has already
+// lapsed can still be edited, and given longer, which brings it back.
 //
 // A revoked token is refused rather than quietly updated. It reaches nothing either way, and
 // succeeding would report a change that changes nothing.
-func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string) (*Token, error) {
-	scope, err := canonicalScope(scope)
+func (s *Store) UpdateToken(ctx context.Context, principalID, id string, change TokenChange) (*Token, error) {
+	was, err := s.token(ctx, principalID, id)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.writer.ExecContext(ctx,
-		`UPDATE tokens SET scope = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL`,
-		scope, principalID, id)
-	if err != nil {
-		return nil, fmt.Errorf("set token scope: %w", err)
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
+	if was.RevokedAt != nil {
 		return nil, NotFound("There is no such token.")
 	}
-	s.changed(principalID)
 
-	// Read back rather than returned from what was sent: the stored spelling is the canonical
-	// one, and the rest of the row is what the caller is about to redraw.
+	now := s.Now()
+	tok := *was
+	if change.Label != nil {
+		if tok.Label, err = cleanLabel(*change.Label); err != nil {
+			return nil, err
+		}
+	}
+	if change.Scope != nil {
+		if tok.Scope, err = canonicalScope(*change.Scope); err != nil {
+			return nil, err
+		}
+	}
+	if change.Expires != nil {
+		switch {
+		case change.Expires.IsZero():
+			tok.ExpiresAt = nil
+		case !change.Expires.After(now):
+			return nil, Invalid("That moment has already passed. To stop it working now, revoke it.")
+		default:
+			at := change.Expires.UTC().Truncate(time.Second)
+			tok.ExpiresAt = &at
+		}
+	}
+	if change.Idle != nil {
+		if *change.Idle < 0 {
+			return nil, Invalid("That is not a length of time.")
+		}
+		tok.IdleTTL = *change.Idle
+		if was.Live(now) && tok.Idle(now) {
+			return nil, Invalid("It has already gone unused for longer than that. To stop it working now, revoke it.")
+		}
+	}
+
+	var exp any
+	if tok.ExpiresAt != nil {
+		exp = unix(*tok.ExpiresAt)
+	}
+	idle := int64(tok.IdleTTL / time.Second)
+	// The comparison in the WHERE clause is what makes an identical save no change at all: no
+	// row, no notification, and nothing for the backup loop to count.
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tokens SET label = ?, scope = ?, expires_at = ?, idle_ttl = ?
+		  WHERE principal_id = ? AND id = ? AND revoked_at IS NULL
+		    AND (label <> ? OR scope <> ? OR expires_at IS NOT ? OR idle_ttl <> ?)`,
+		tok.Label, tok.Scope, exp, idle, principalID, id, tok.Label, tok.Scope, exp, idle)
+	if err != nil {
+		return nil, fmt.Errorf("update token: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		s.changed(principalID)
+	}
+	return &tok, nil
+}
+
+// token reads one of an account's tokens, revoked or not.
+func (s *Store) token(ctx context.Context, principalID, id string) (*Token, error) {
 	tok := &Token{PrincipalID: principalID, ID: id}
 	var created, idle int64
 	var expires, used, revoked sql.NullInt64
-	err = s.reader.QueryRowContext(ctx,
+	err := s.reader.QueryRowContext(ctx,
 		`SELECT label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
 		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&tok.Label, &tok.Hint, &tok.Scope, &created, &expires, &used, &revoked,
 			&tok.LastIP, &tok.LastAgent, &idle)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, NotFound("There is no such token.")
+	}
 	if err != nil {
-		return nil, fmt.Errorf("read token back: %w", err)
+		return nil, fmt.Errorf("read token: %w", err)
 	}
 	tok.CreatedAt = time.Unix(created, 0).UTC()
 	tok.ExpiresAt = nullTime(expires)
