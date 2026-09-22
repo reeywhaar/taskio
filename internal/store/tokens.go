@@ -53,11 +53,32 @@ type Token struct {
 	ExpiresAt   *time.Time
 	LastUsedAt  *time.Time
 	RevokedAt   *time.Time
+	// LastIP and LastAgent are where it was used from, for the one question a token raises:
+	// used by what, from where.
+	LastIP    string
+	LastAgent string
+	// IdleTTL is how long it may go unused before it stops working. Zero is never.
+	IdleTTL time.Duration
+}
+
+// Idle reports whether this token has gone too long unused. Counted from the last use, or from
+// the day it was minted if it has never been used at all.
+func (t *Token) Idle(now time.Time) bool {
+	if t.IdleTTL <= 0 {
+		return false
+	}
+	since := t.CreatedAt
+	if t.LastUsedAt != nil {
+		since = *t.LastUsedAt
+	}
+	return now.Sub(since) > t.IdleTTL
 }
 
 // Live reports whether this token would authenticate now.
 func (t *Token) Live(now time.Time) bool {
-	return t.RevokedAt == nil && (t.ExpiresAt == nil || t.ExpiresAt.After(now))
+	return t.RevokedAt == nil &&
+		(t.ExpiresAt == nil || t.ExpiresAt.After(now)) &&
+		!t.Idle(now)
 }
 
 // ScopeFilter parses the scope, or nil for a token that reaches the whole account.
@@ -69,7 +90,7 @@ func (t *Token) ScopeFilter() (*filter.Node, error) {
 }
 
 // CreateToken mints one and returns it with the secret, readable exactly once.
-func (s *Store) CreateToken(ctx context.Context, principalID, label, scope string, expires *time.Time) (*Token, string, error) {
+func (s *Store) CreateToken(ctx context.Context, principalID, label, scope string, expires *time.Time, idle time.Duration) (*Token, string, error) {
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return nil, "", Invalid("A token needs a label, so it can be recognised later.")
@@ -97,15 +118,20 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 		Scope:       scope,
 		CreatedAt:   s.Now(),
 		ExpiresAt:   expires,
+		IdleTTL:     idle,
+	}
+	if idle < 0 {
+		return nil, "", Invalid("That is not a length of time.")
 	}
 	var exp any
 	if expires != nil {
 		exp = unix(*expires)
 	}
 	_, err = s.writer.ExecContext(ctx,
-		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, scope, created_at, expires_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		tok.ID, principalID, label, tokenKey(value), tok.Hint, scope, unix(tok.CreatedAt), exp)
+		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, scope, created_at, expires_at, idle_ttl)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		tok.ID, principalID, label, tokenKey(value), tok.Hint, scope, unix(tok.CreatedAt), exp,
+		int64(idle/time.Second))
 	if err != nil {
 		return nil, "", fmt.Errorf("create token: %w", err)
 	}
@@ -116,7 +142,8 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 // Tokens lists one account's, newest first.
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		`SELECT id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE principal_id = ? ORDER BY created_at DESC`, principalID)
 	if err != nil {
 		return nil, fmt.Errorf("list tokens: %w", err)
@@ -126,12 +153,13 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 	out := []*Token{}
 	for rows.Next() {
 		tok := &Token{PrincipalID: principalID}
-		var created int64
+		var created, idle int64
 		var expires, used, revoked sql.NullInt64
 		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &tok.Scope, &created,
-			&expires, &used, &revoked); err != nil {
+			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle); err != nil {
 			return nil, err
 		}
+		tok.IdleTTL = time.Duration(idle) * time.Second
 		tok.CreatedAt = time.Unix(created, 0).UTC()
 		tok.ExpiresAt = nullTime(expires)
 		tok.LastUsedAt = nullTime(used)
@@ -189,12 +217,14 @@ func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string
 	// Read back rather than returned from what was sent: the stored spelling is the canonical
 	// one, and the rest of the row is what the caller is about to redraw.
 	tok := &Token{PrincipalID: principalID, ID: id}
-	var created int64
+	var created, idle int64
 	var expires, used, revoked sql.NullInt64
 	err = s.reader.QueryRowContext(ctx,
-		`SELECT label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		`SELECT label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
-		Scan(&tok.Label, &tok.Hint, &tok.Scope, &created, &expires, &used, &revoked)
+		Scan(&tok.Label, &tok.Hint, &tok.Scope, &created, &expires, &used, &revoked,
+			&tok.LastIP, &tok.LastAgent, &idle)
 	if err != nil {
 		return nil, fmt.Errorf("read token back: %w", err)
 	}
@@ -202,6 +232,7 @@ func (s *Store) SetTokenScope(ctx context.Context, principalID, id, scope string
 	tok.ExpiresAt = nullTime(expires)
 	tok.LastUsedAt = nullTime(used)
 	tok.RevokedAt = nullTime(revoked)
+	tok.IdleTTL = time.Duration(idle) * time.Second
 	return tok, nil
 }
 
@@ -327,11 +358,13 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 	tok := &Token{}
 	var created int64
 	var expires, used, revoked sql.NullInt64
+	var idle int64
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT id, principal_id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at
+		`SELECT id, principal_id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE secret_hash = ?`, key).
 		Scan(&tok.ID, &tok.PrincipalID, &tok.Label, &tok.Hint, &tok.Scope, &created,
-			&expires, &used, &revoked)
+			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -342,13 +375,19 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 	tok.ExpiresAt = nullTime(expires)
 	tok.LastUsedAt = nullTime(used)
 	tok.RevokedAt = nullTime(revoked)
+	tok.IdleTTL = time.Duration(idle) * time.Second
 
 	if !tok.Live(now) {
 		return nil, ErrNotFound
 	}
-	// Stamping last-used is the process noticing itself, so it does not mark the database
+	// Stamping what was seen is the process noticing itself, so it does not mark the database
 	// changed and does not schedule a backup.
-	s.writer.ExecContext(ctx, `UPDATE tokens SET last_used_at = ? WHERE id = ?`, unix(now), tok.ID)
+	seen := seenFrom(ctx)
+	s.writer.ExecContext(ctx,
+		`UPDATE tokens SET last_used_at = ?, last_ip = ?, last_agent = ? WHERE id = ?`,
+		unix(now), seen.IP, seen.Agent, tok.ID)
+	tok.LastUsedAt = &now
+	tok.LastIP, tok.LastAgent = seen.IP, seen.Agent
 	return tok, nil
 }
 
@@ -397,4 +436,26 @@ func nullTime(v sql.NullInt64) *time.Time {
 	}
 	at := time.Unix(v.Int64, 0).UTC()
 	return &at
+}
+
+// Seen is where a request came from, carried on the context so the token read can write it down
+// without the store learning what an HTTP request is.
+type Seen struct {
+	IP    string
+	Agent string
+}
+
+type seenKey struct{}
+
+// WithSeen puts the caller's address on a context. The API does this once, at the door.
+func WithSeen(ctx context.Context, seen Seen) context.Context {
+	return context.WithValue(ctx, seenKey{}, seen)
+}
+
+func seenFrom(ctx context.Context) Seen {
+	seen, _ := ctx.Value(seenKey{}).(Seen)
+	if len(seen.Agent) > 200 {
+		seen.Agent = seen.Agent[:200]
+	}
+	return seen
 }

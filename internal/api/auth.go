@@ -154,7 +154,12 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			return
 		}
 
-		tok, err := s.store.AuthenticateToken(r.Context(), presented)
+		// Where it was used from, written down by the read that proves it.
+		ctx := store.WithSeen(r.Context(), store.Seen{
+			IP:    clientOf(r),
+			Agent: r.UserAgent(),
+		})
+		tok, err := s.store.AuthenticateToken(ctx, presented)
 		if err != nil {
 			if refusal, ok := store.AsNonceRefusal(err); ok {
 				// The log says which, for the value's own shape and timestamp only. It never

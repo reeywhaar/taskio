@@ -50,6 +50,12 @@ tok="tkc_$ts.$id.$(printf '%s.%s.%s' "$ts" "$id" "$key" | shasum -a 256 | cut -d
 
 A nonced value may also travel as `?token=…`, which a raw one may not.
 
+### A token can retire itself
+
+One may be minted to stop working after a day, a week or a month unused — counted from its last
+use, or from minting if it never had one. A token that lapses answers `401` like any other, and
+the account's settings say when each was last used and from where.
+
 ## Ids
 
 A task id is **eight lowercase characters**: `8qw4tz9k`.

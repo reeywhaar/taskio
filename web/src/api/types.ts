@@ -72,6 +72,11 @@ export type Token = {
   expires_at: number | null;
   last_used_at: number | null;
   revoked_at: number | null;
+  /** Where it was last used from. Empty until it has been used once. */
+  last_ip: string;
+  last_agent: string;
+  /** Seconds of disuse before it stops working. 0 is never. */
+  idle_seconds: number;
 };
 
 export type Asset = {

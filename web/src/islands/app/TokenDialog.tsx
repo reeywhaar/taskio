@@ -8,6 +8,7 @@ import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { Field, Group } from "@app/components/Field";
+import { Select } from "@app/components/Select";
 import { TextField } from "@app/components/TextField";
 import { TagCloud } from "@app/islands/app/TagCloud";
 import { printAnd } from "@app/islands/app/route";
@@ -29,6 +30,8 @@ export function TokenDialog({
   const client = useQueryClient();
   const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
   const [label, setLabel] = useState("");
+  /** Seconds of disuse before it retires itself. "0" is never. */
+  const [idle, setIdle] = useState("0");
   const [scope, setScope] = useState<string[]>([]);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
@@ -43,7 +46,11 @@ export function TokenDialog({
 
   const mint = useMutation({
     mutationFn: () =>
-      postTokens({ label, scope: printAnd(scope) || undefined }),
+      postTokens({
+        label,
+        scope: printAnd(scope) || undefined,
+        idle_seconds: Number(idle),
+      }),
     onSuccess: (result) => {
       setSecret(result.secret);
       setError("");
@@ -103,6 +110,18 @@ export function TokenDialog({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
+          </Field>
+
+          {/* A credential nobody has used for a month is one still open on a machine
+              nobody remembers. Counted from its last use, or from minting if it never had
+              one. */}
+          <Field label="Retire it if unused for">
+            <Select value={idle} onChange={(e) => setIdle(e.target.value)}>
+              <option value="0">never</option>
+              <option value="86400">a day</option>
+              <option value="604800">a week</option>
+              <option value="2592000">a month</option>
+            </Select>
           </Field>
 
           {/*

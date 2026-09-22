@@ -51,7 +51,16 @@ func tokenCreateCmd() *cobra.Command {
 				at = &t
 			}
 
-			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label, scope, at)
+			var idleFor time.Duration
+			if idle, _ := cmd.Flags().GetString("idle"); idle != "" {
+				d, err := time.ParseDuration(idle)
+				if err != nil || d <= 0 {
+					return fmt.Errorf("--idle wants a duration like 720h")
+				}
+				idleFor = d
+			}
+
+			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label, scope, at, idleFor)
 			if err != nil {
 				return err
 			}
@@ -73,6 +82,7 @@ func tokenCreateCmd() *cobra.Command {
 	cmd.Flags().String("label", "", "what it is for")
 	cmd.Flags().String("scope", "", "confine it, e.g. and(work)")
 	cmd.Flags().String("expires", "", "how long it lasts, e.g. 720h")
+	cmd.Flags().String("idle", "", "retire it after this long unused, e.g. 168h")
 	cmd.MarkFlagRequired("user")
 	cmd.MarkFlagRequired("label")
 	return cmd

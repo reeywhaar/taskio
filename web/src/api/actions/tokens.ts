@@ -8,6 +8,7 @@ export const postTokens = (body: {
   label: string;
   scope?: string;
   expires_at?: number;
+  idle_seconds?: number;
 }) =>
   request<{ token: Token; secret: string }>("/api/tokens", {
     method: "POST",

@@ -43,6 +43,7 @@ describe("TokenDialog", () => {
       expect(postTokens).toHaveBeenCalledWith({
         label: "claude",
         scope: undefined,
+        idle_seconds: 0,
       }),
     );
   });
@@ -62,7 +63,26 @@ describe("TokenDialog", () => {
       expect(postTokens).toHaveBeenCalledWith({
         label: "claude",
         scope: "and(home,work)",
+        idle_seconds: 0,
       }),
+    );
+  });
+
+  // A credential nobody has used for a month is one still open on a machine nobody remembers.
+  it("mints one that retires itself if it is left alone", async () => {
+    mount(<TokenDialog open onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("What is it for"), {
+      target: { value: "claude" },
+    });
+    fireEvent.change(screen.getByLabelText("Retire it if unused for"), {
+      target: { value: "604800" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+
+    await waitFor(() =>
+      expect(postTokens).toHaveBeenCalledWith(
+        expect.objectContaining({ idle_seconds: 604800 }),
+      ),
     );
   });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { ago } from "@app/ago";
 import { deleteAccountRecovery, getAccount } from "@app/api/actions/account";
 import { getAuthMe, postAuthLogout } from "@app/api/actions/auth";
 import {
@@ -238,6 +239,13 @@ function Heading({ children }: { children: React.ReactNode }) {
  * The heading stays through all three states, so the page keeps its outline and nothing below
  * jumps as each section settles.
  */
+/** The three lengths the mint dialog offers, said in words. */
+function idleName(seconds: number): string {
+  if (seconds <= 86400) return "a day";
+  if (seconds <= 604800) return "a week";
+  return "a month";
+}
+
 function Panel({
   title,
   state,
@@ -337,6 +345,23 @@ function Tokens() {
               <span className="text-xs text-faint">revoked</span>
             ) : null}
             <span className="flex-1" />
+            {/* Used by what, from where — the question a token raises when it looks wrong. */}
+            <span
+              className="text-xs text-faint"
+              title={
+                token.last_agent ||
+                (token.last_used_at ? "" : "It has never been used.")
+              }
+            >
+              {token.last_used_at
+                ? `used ${ago(token.last_used_at)}${token.last_ip ? ` from ${token.last_ip}` : ""}`
+                : "never used"}
+            </span>
+            {token.idle_seconds > 0 ? (
+              <span className="text-xs text-faint">
+                retires after {idleName(token.idle_seconds)} unused
+              </span>
+            ) : null}
             {!token.revoked_at ? (
               <>
                 <Button variant="link" onClick={() => setEditing(token)}>

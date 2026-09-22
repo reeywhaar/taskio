@@ -268,7 +268,7 @@ func TestAnExpiredTokenStopsWorking(t *testing.T) {
 
 	p, _ := st.Authenticate(ctx, "misha", "a good password")
 	past := time.Now().Add(-time.Hour)
-	_, secret, err := st.CreateToken(ctx, p.ID, "expired", "", &past)
+	_, secret, err := st.CreateToken(ctx, p.ID, "expired", "", &past, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,5 +468,63 @@ func TestATokenCannotForgetRevokedTokens(t *testing.T) {
 
 	if resp := a.do("DELETE", "/api/tokens/revoked", ""); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("a token forgetting revoked tokens = %s, want 401", resp.Status)
+	}
+}
+
+// A credential nobody has used for a month is one still open on a machine nobody remembers.
+func TestATokenLeftAloneStopsWorking(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 22, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	_, secret, err := st.CreateToken(ctx, p.ID, "idle", "", nil, 7*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = c
+
+	caller := &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Fatalf("a fresh token = %s", resp.Status)
+	}
+
+	// Used once, so the clock runs from there rather than from minting.
+	now = now.Add(6 * 24 * time.Hour)
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("a token used six days ago = %s", resp.Status)
+	}
+
+	now = now.Add(8 * 24 * time.Hour)
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a token left alone for eight days = %s, want 401", resp.Status)
+	}
+}
+
+// Used by what, from where: the question a token raises when it looks wrong.
+func TestATokenRecordsWhereItWasUsedFrom(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	_, secret, err := st.CreateToken(ctx, p.ID, "agent", "", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	caller := &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Fatalf("token request = %s", resp.Status)
+	}
+
+	list := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
+	got := list[0].(map[string]any)
+	if got["last_used_at"] == nil {
+		t.Error("a token that was just used says it never was")
+	}
+	if got["last_ip"] == "" {
+		t.Errorf("last_ip = %q", got["last_ip"])
 	}
 }
