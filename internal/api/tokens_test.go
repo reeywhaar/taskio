@@ -528,3 +528,32 @@ func TestATokenRecordsWhereItWasUsedFrom(t *testing.T) {
 		t.Errorf("last_ip = %q", got["last_ip"])
 	}
 }
+
+// Behind a proxy the peer is the proxy, so both the address a token records and the bucket the
+// rate limiter spends were the same for every caller.
+func TestAForwardedAddressIsTheCaller(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	ctx := context.Background()
+	c := signIn(t, s, st)
+	p, _ := st.PrincipalNamed(ctx, "misha")
+	_, secret, err := st.CreateToken(ctx, p.ID, "agent", "", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := httptest.NewRequest("GET", "/api/tasks", nil)
+	r.ContentLength = 0
+	r.Header.Set("Authorization", "Bearer "+secret)
+	r.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.2")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, r)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("request = %s", w.Result().Status)
+	}
+
+	list := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
+	// The last hop is the one the nearest proxy appended; the peer is 192.0.2.1 in httptest.
+	if got := list[0].(map[string]any)["last_ip"]; got != "10.0.0.2" {
+		t.Errorf("last_ip = %v, want 10.0.0.2", got)
+	}
+}

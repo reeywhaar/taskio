@@ -28,6 +28,16 @@ placeholder page, so a checkout that never builds the frontend runs perfectly we
 which would make a bare `go run .` impossible without somewhere to point it. The variable exists
 for that, and for tests.
 
+## Behind a proxy
+
+`X-Real-IP`, then the last hop of `X-Forwarded-For`, is the caller. Two things read that address:
+the rate limiters, which bucket on it, and a token, which records where it was last used. Without
+the headers both see the proxy — every caller shares one bucket and every token says the same
+address.
+
+The last hop rather than the first, because that is the one the nearest proxy appended; anything
+before it is whatever the caller sent.
+
 ## `TASKIO_PUBLIC_URL`
 
 Required, validated at startup, and never inferred from a request. `Host` and

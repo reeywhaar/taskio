@@ -149,14 +149,14 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			s.requireSession(next).ServeHTTP(w, r)
 			return
 		}
-		if !s.tokenAuth.allow(clientOf(r)) {
+		if !s.tokenAuth.allow(s.clientOf(r)) {
 			refuse(w, http.StatusTooManyRequests, CodeRateLimited, "Too many attempts. Wait a minute.")
 			return
 		}
 
 		// Where it was used from, written down by the read that proves it.
 		ctx := store.WithSeen(r.Context(), store.Seen{
-			IP:    clientOf(r),
+			IP:    s.clientOf(r),
 			Agent: r.UserAgent(),
 		})
 		tok, err := s.store.AuthenticateToken(ctx, presented)
@@ -186,8 +186,29 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 	})
 }
 
-// clientOf names who to rate limit, which for a token is where it came from.
-func clientOf(r *http.Request) string {
+// clientOf is who the request came from: what a proxy in front says it accepted, or the peer.
+//
+// It is what the rate limiters bucket on and what a token records, so behind a proxy both were
+// wrong in the same way — every caller sharing the proxy's address shares one bucket, and every
+// token records the proxy.
+//
+// The last hop of X-Forwarded-For rather than the first: that is the one the nearest proxy
+// appended, and everything before it is whatever the caller sent.
+func (s *Server) clientOf(r *http.Request) string {
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
+			return ip
+		}
+	}
+	return peerOf(r)
+}
+
+// peerOf is the address the connection itself came from.
+func peerOf(r *http.Request) string {
 	host, _, ok := strings.Cut(r.RemoteAddr, ":")
 	if !ok {
 		return r.RemoteAddr
