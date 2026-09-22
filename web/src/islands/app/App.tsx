@@ -104,6 +104,15 @@ function List({
   const { filters, route } = location;
   const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
+  /**
+   * How much room the bulk bar needs at the end of the list.
+   *
+   * It docks over the foot of the screen, so without this the last rows cannot be scrolled out
+   * from under it — the list ends behind the bar and there is nothing to do about it. The bar
+   * measures itself and says; a number written here would be the height it had the day somebody
+   * looked.
+   */
+  const [barHeight, setBarHeight] = useState(0);
   /** The new-task dialog: null when shut, and otherwise the title it opens with. */
   const [writing, setWriting] = useState<string | null>(null);
 
@@ -450,6 +459,15 @@ function List({
               the foot is where the rows end, whether there were twenty of them or none. */}
           <div ref={foot} aria-hidden="true" />
 
+          {/* Room for the bar, and only where it is standing on the list: above the breakpoint
+              it sits below the scrolling box rather than over it, and a gap there would be a
+              gap at the end of every list somebody is picking from. */}
+          <div
+            aria-hidden="true"
+            className="md:hidden"
+            style={{ height: barHeight }}
+          />
+
           {filters.q ? (
             <Elsewhere
               found={wider.data?.tasks ?? []}
@@ -484,6 +502,7 @@ function List({
         <BulkBar
           ids={selection}
           view={filters.view}
+          onHeight={setBarHeight}
           onDone={() => {
             setSelection(null);
             client.invalidateQueries({ queryKey: qk.tasks });

@@ -467,6 +467,37 @@ input[type="checkbox"]:focus-visible {
 }
 
 /*
+ * The bulk bar arriving.
+ *
+ * It docks at the foot of the screen, so it comes from below: a bar that is simply there the
+ * frame after a tap reads as the screen having changed rather than as something having been
+ * brought in. Short, because it is in the way of the list until it lands.
+ *
+ * On the way in only. A transition cannot run on an element React has already unmounted, and
+ * keeping it mounted to slide out means holding its space on the layout where it takes any.
+ */
+@keyframes dock {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.dock {
+  animation: dock 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock {
+    animation: none;
+  }
+}
+
+/*
  * Where something went.
  *
  * A row that has travelled up a list looks like every other row when it arrives, so it says so

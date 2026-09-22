@@ -367,6 +367,18 @@ has no direction to contradict — a white line along the top-left edge of a doc
 edge on the one side rows slide under, drawn straight across the fog that is there to separate
 them.
 
+**The list leaves room for it.** It docks over the foot of the screen, so without a spacer at
+the end of the list the last rows cannot be scrolled out from under it — the list ends behind
+the bar and there is nothing to do about it. The bar measures itself and says how tall it is,
+because it wraps to two rows on a phone and back again on a turn; a number written down here
+would be the height it had the day somebody looked. The spacer is drawn only below the
+breakpoint, where the bar stands on the list rather than under it.
+
+**It arrives from below**, in 180ms. A bar that is simply there the frame after a tap reads as
+the screen having changed rather than as something having been brought in. On the way in only: a
+transition cannot run on an element React has already unmounted, and keeping it mounted to slide
+out means holding its space on the layout where it takes any.
+
 **It docks rather than floats.** Flush with the bottom edge at either width, and square where it
 meets it: a rounded corner sitting twelve pixels above the foot of the screen is a card somebody
 left there, and a bar that runs into the edge is a thing attached to it.

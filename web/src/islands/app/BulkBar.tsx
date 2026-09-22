@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   postTasksBulkDelete,
@@ -30,10 +30,14 @@ export function BulkBar({
   ids,
   view,
   onDone,
+  onHeight,
 }: {
   ids: string[];
   view: Filters["view"];
   onDone: () => void;
+  /** How tall it is, so the list can leave room to scroll its last row clear of it. Measured
+   *  rather than assumed: it wraps to two rows on a phone, and back again on a turn. */
+  onHeight?: (px: number) => void;
 }) {
   // One prompt at a time: tagging and setting a number both ask for something typed, and two
   // fields in a bar this size is a bar nobody can find the buttons in.
@@ -56,6 +60,27 @@ export function BulkBar({
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1200);
   };
+
+  /**
+   * What the list has to make room for.
+   *
+   * Reported rather than known: the bar wraps at narrow widths, and a number written down here
+   * would be the height it happened to have on the day somebody measured it.
+   */
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !onHeight) return;
+    const tell = () => onHeight(el.getBoundingClientRect().height);
+    tell();
+    const watch = new ResizeObserver(tell);
+    watch.observe(el);
+    return () => {
+      watch.disconnect();
+      // Gone, so the room it needed goes with it.
+      onHeight(0);
+    };
+  }, [onHeight]);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -92,7 +117,10 @@ export function BulkBar({
     // the list's padding. One element carrying both the width and the ground drew a bar hanging
     // six pixels past the rows on either side — the outer one is the list's box, the inner one
     // is the bar, and they are the same width now by construction rather than by arithmetic.
-    <div className="sticky bottom-0 z-30 mx-auto w-full max-w-3xl shrink-0 px-3 md:static md:px-6">
+    <div
+      ref={box}
+      className="dock sticky bottom-0 z-30 mx-auto w-full max-w-3xl shrink-0 px-3 md:static md:px-6"
+    >
       <div className="aloft flex flex-wrap items-center gap-2 rounded-t-lg bg-bg px-3 py-2">
         {/* It counts what is in front of somebody, which is a different thing from a workload
           number pinned to a tab. */}
