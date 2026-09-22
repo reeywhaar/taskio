@@ -106,7 +106,9 @@ export function TaskRow({
         if (selectable) onSelect?.(task.id);
         else onOpen(task.id);
       }}
-      className={`raised group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-lg bg-bg py-2.5 pr-3 pl-3 ${
+      // Three columns wide, two rows narrow: on a phone the column and the mark took 100px of
+      // 390 and left the title a four-line ribbon. Placed rather than duplicated.
+      className={`raised group relative grid cursor-pointer grid-cols-[1fr_auto] items-start gap-x-3 gap-y-1 overflow-hidden rounded-lg bg-bg py-2.5 pr-3 pl-3 sm:grid-cols-[auto_1fr_auto] sm:gap-y-0 ${
         apart ? "mt-4" : ""
       }`}
     >
@@ -124,40 +126,24 @@ export function TaskRow({
         />
       ) : null}
 
-      {/* A width, so every row's title starts in the same place. The column used to be as wide
-          as an id and nothing else, which is a fixed number of characters; an age is words, and
-          without this each row would set its own left margin and the titles would come out
-          ragged down the list.
-
-          68px: the longest thing this vocabulary can say is "11 months ago", measured at 63 in
-          the face and size it is drawn in, and the id under it is 58. */}
+      {/* 68px above the breakpoint, so every title starts in the same place: "11 months ago"
+          measures 63 and the id under it 58. A row across the top below it. */}
       <span
-        className="flex w-17 shrink-0 flex-col items-start"
+        className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 sm:w-17 sm:shrink-0 sm:flex-col sm:items-start sm:gap-0"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="flex h-6 items-center">
           <TaskId id={task.id} />
         </span>
 
-        {/* A task in the bin says so here rather than saying how long it has been sitting
-            there: the number is what a live task is judged by, and a deleted one is not waiting
-            for anybody. The date it went is still in the tooltip.
-
-            The exact time is in the tooltip and nowhere else: nobody reads a timestamp and
-            thinks "six weeks", they read the number and then do the arithmetic, if they
-            bother.
-
-            Smaller than anything else on the row and tucked under the id, because it is a
-            thing to notice rather than a thing to read: at the size of the text beside it, a
-            date on every row is a second column of writing competing with the titles. The
-            margin below it is the gap the column used to carry uniformly — the date belongs to
-            the id above it, and the number and the pin below are their own pair. */}
+        {/* Small and tucked under the id: a thing to notice, not to read. One in the bin
+            says so instead — it is not waiting for anybody. Exact time in the tooltip. */}
         <time
           dateTime={new Date(at * 1000).toISOString()}
           title={`${
             binned ? "Deleted" : finished ? "Done" : "Last changed"
           } ${new Date(at * 1000).toLocaleString()}`}
-          className={`mt-0.5 mb-2 text-[9px] leading-3 whitespace-nowrap ${
+          className={`text-[9px] leading-3 whitespace-nowrap sm:mt-0.5 sm:mb-2 ${
             binned ? "text-accent" : age
           }`}
         >
@@ -207,7 +193,8 @@ export function TaskRow({
         </span>
       </span>
 
-      <div className="min-w-0 flex-1">
+      {/* The whole width on a phone, the middle column above that. */}
+      <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
         {/* A button, so the keyboard and a screen reader have something to land on and
             announce. Its click reaches the card like any other, which is what opens the
             task — one way in, by mouse and by keyboard. */}
@@ -271,7 +258,7 @@ export function TaskRow({
           reports a second one and the row toggles back to where it started. */}
       {selectable ? (
         <span
-          className="flex h-6 w-8 shrink-0 items-center justify-center"
+          className="col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center sm:col-start-3"
           onClick={(e) => e.stopPropagation()}
         >
           <input
@@ -297,7 +284,7 @@ export function TaskRow({
           // column of marks down a list is a column of marks. A finger has no hover to wait
           // for, so under one it is simply there — which is the same rule as the pin above,
           // read from the other end.
-          className={`flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line ${
+          className={`col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line sm:col-start-3 ${
             finished ? "text-brand" : "text-muted hover:text-fg"
           }`}
         >
