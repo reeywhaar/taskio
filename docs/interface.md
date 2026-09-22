@@ -622,6 +622,22 @@ editor's three buttons are Delete, Mark done and Save, none of which is "not thi
 So the close is on the dialog rather than in each footer: one control, always drawn, next to the
 title. It closes without saving, which is the whole point of it.
 
+## Every button that does something to a task writes the fields first
+
+Delete and Mark done save what is in the fields before they do anything else — only when the
+fields say something new, and a save the server refuses stops the rest and says why.
+
+A verdict is often the last thing written on a task, why it is done or why it is not worth doing,
+and the next press is one of those two. Both used to leave the verdict in the fields. Delete then
+threw the fields away with the task; Mark done refetched the task and seeded the fields over the
+verdict, so it was gone before Save could have been pressed at all.
+
+That second one is also why the fields are seeded only over a draft nobody has touched. The task
+is fetched again whenever anything invalidates it — a status change, an edit arriving from
+elsewhere — and seeding over what somebody has typed since is the dialog throwing it away.
+
+The close is still the one way out that writes nothing.
+
 ## A dialog is the whole screen on a phone
 
 A centred card on a phone spends its margins on the page behind it, which nobody is reading,

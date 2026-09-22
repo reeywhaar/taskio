@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -9,13 +9,37 @@ import {
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
-import type { TaskStub } from "@app/api/types";
+import type { TaskDetail, TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { Dummy } from "@app/components/Dummy";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { TaskId } from "@app/islands/app/TaskId";
+
+/** The fields as the server has them. */
+function seed(task: TaskDetail): Draft {
+  return {
+    title: task.title,
+    description: task.description,
+    priority: String(task.priority),
+    tags: task.tags,
+    color: task.color,
+  };
+}
+
+/** Whether the fields say something the server copy does not. Tags as a set: a pill pressed
+ *  off and on again has moved to the end of the list, which is not a change to the task. */
+function differs(draft: Draft, task: TaskDetail): boolean {
+  return (
+    draft.title !== task.title ||
+    draft.description !== task.description ||
+    (Number(draft.priority) || 0) !== task.priority ||
+    draft.color !== task.color ||
+    draft.tags.length !== task.tags.length ||
+    draft.tags.some((tag) => !task.tags.includes(tag))
+  );
+}
 
 /**
  * A modal at every size. The editor is a route, so the system back gesture closes it rather
@@ -39,15 +63,23 @@ export function TaskDialog({
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [error, setError] = useState("");
 
+  /**
+   * Seeded from the server copy — but over a draft nobody has touched, and only that.
+   *
+   * The task is fetched again whenever anything invalidates it: marking it done does, and so
+   * does an edit arriving from elsewhere. Seeding over the fields each time was the dialog
+   * throwing away what somebody had typed since — a verdict written and then the task marked
+   * done came back as an empty description, with Save still there to press and nothing left to
+   * save.
+   */
+  const seededFrom = useRef<TaskDetail | undefined>(undefined);
   useEffect(() => {
     if (!task.data) return;
-    setDraft({
-      title: task.data.title,
-      description: task.data.description,
-      priority: String(task.data.priority),
-      tags: task.data.tags,
-      color: task.data.color,
-    });
+    const was = seededFrom.current;
+    seededFrom.current = task.data;
+    setDraft((current) =>
+      was && differs(current, was) ? current : seed(task.data),
+    );
   }, [task.data]);
 
   /**
@@ -64,15 +96,17 @@ export function TaskDialog({
     client.invalidateQueries({ queryKey: qk.tags });
   };
 
+  const write = () =>
+    patchTasksById(id, {
+      title: draft.title,
+      description: draft.description,
+      tags: draft.tags,
+      priority: Number(draft.priority) || 0,
+      color: draft.color,
+    });
+
   const save = useMutation({
-    mutationFn: () =>
-      patchTasksById(id, {
-        title: draft.title,
-        description: draft.description,
-        tags: draft.tags,
-        priority: Number(draft.priority) || 0,
-        color: draft.color,
-      }),
+    mutationFn: write,
     onSuccess: () => {
       invalidate();
       onClose();
@@ -81,19 +115,41 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  /**
+   * What is in the fields, written first if it says anything new — by every button that does
+   * something to the task, not only by Save.
+   *
+   * A verdict is often the last thing written on a task, why it is done or why it is not worth
+   * doing, and the next press is Mark done or Delete. Either one used to leave the verdict in
+   * the fields, and the fields were then thrown away. A save the server refuses stops the rest
+   * and says why, rather than losing the words a second way.
+   */
+  const flush = async () => {
+    if (task.data && differs(draft, task.data)) await write();
+  };
+
   // Only a todo goes forward; done and deleted both come back.
   const toggleDone = useMutation({
-    mutationFn: () =>
-      status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id),
+    mutationFn: async () => {
+      await flush();
+      await (status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id));
+    },
     onSuccess: () => invalidate(),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteTasksById(id),
+    mutationFn: async () => {
+      await flush();
+      await deleteTasksById(id);
+    },
     onSuccess: () => {
       invalidate();
       onClose();
     },
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
   return (
