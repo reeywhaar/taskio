@@ -419,9 +419,9 @@ percent in light, white at seven in dark. It has no color of its own, so it dark
 the rail and the grey of the page without either turning cool — which is what the current row in
 the rail used to do, as the one place the two temperatures met.
 
-**`faint` is not for words somebody has to read.** It is about 2.2:1 on any of the grounds,
-which is a shape rather than a sentence: an id to be copied, a placeholder, an icon waiting for
-a pointer. Every small uppercase caption in the application was drawn in it, which made the
+**`faint` is the third tier, not an invisible one.** 3.5:1 on the page against muted's 4.5 and
+fg's 10. It was 2.2, which is a shape rather than a sentence — and an id, a user agent and the
+age on a row are all words somebody reads. Every small uppercase caption in the application was drawn in it, which made the
 headings of the settings page the palest text on the page — so a section heading is `fg` and a
 caption over a short list is `muted`, at 10.3 and 4.5 against the page. The rule the palette
 follows: `fg` for what is being said, `muted` for what is said about it, `faint` for what is

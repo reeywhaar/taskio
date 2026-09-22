@@ -35,7 +35,9 @@
   --color-surface: #eae5df;
   --color-fg: #2f3540;
   --color-muted: #616a7a;
-  --color-faint: #98a1b0;
+  /* 3.5:1 on the page, against muted's 4.5 and fg's 10. It was 2.2, which is a shape rather
+     than a word — and ids, user agents and the age on a row are all words. */
+  --color-faint: #747d8c;
   --color-line: #d3d8e0;
   --color-fill: #dfe3ea;
   /*
@@ -70,7 +72,7 @@
     --color-surface: #232120;
     --color-fg: #e7e9ee;
     --color-muted: #a2a8b4;
-    --color-faint: #767d8a;
+    --color-faint: #848b98;
     --color-line: #34373e;
     --color-fill: #33373f;
     /* White rather than black: a dark ground has nothing left to darken, and the row somebody is
