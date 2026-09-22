@@ -112,16 +112,15 @@ function List({
    * nothing left to slide anywhere.
    */
   const [leaving, setLeaving] = useState(false);
-  const stopPicking = () => setLeaving(true);
   /**
-   * How much room the bulk bar needs at the end of the list.
+   * How much room the list keeps at the end of itself for the bar standing over it.
    *
-   * It docks over the foot of the screen, so without this the last rows cannot be scrolled out
-   * from under it — the list ends behind the bar and there is nothing to do about it. The bar
-   * measures itself and says; a number written here would be the height it had the day somebody
-   * looked.
+   * The bar floats: the list runs the full height of the window and its rows pass under it, so
+   * without this the last of them cannot be scrolled out from under it. Reported by the bar
+   * rather than written down here, because it wraps at narrow widths.
    */
   const [barHeight, setBarHeight] = useState(0);
+  const stopPicking = () => setLeaving(true);
   /** The new-task dialog: null when shut, and otherwise the title it opens with. */
   const [writing, setWriting] = useState<string | null>(null);
 
@@ -319,7 +318,7 @@ function List({
   }, [tasks]);
 
   return (
-    <div className="flex flex-col md:min-h-0 md:flex-1">
+    <div className="relative flex flex-col md:min-h-0 md:flex-1">
       {/*
         What asks the question stays put and what answers it scrolls. The head is short and is
         needed at any point in a long list — it is the query that produced what is under it.
@@ -497,17 +496,15 @@ function List({
           ) : null}
 
           {/* Room for the bar, at the very end of what scrolls and nowhere else.
-              
-              It was above the results from elsewhere and the Load more button, which are content
-              like any other: a search with the bar up put rows under it that no amount of
-              scrolling could reach. Above the breakpoint there is nothing to reserve — the bar
-              sits below the scrolling box rather than over it, and a gap there would be a gap at
-              the end of every list somebody is picking from. */}
+
+              It sat above the results from elsewhere and the Load more button, which are content
+              like any other: a search made with the bar up put rows below it that no amount of
+              scrolling could reach. */}
           <div
             aria-hidden="true"
             // Closing over the same 180ms the bar takes to go, so the list comes up to meet it
-            // rather than snapping shut once it has gone.
-            className="transition-[height] duration-[180ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none md:hidden"
+            // rather than finding the room gone once it has left.
+            className="transition-[height] duration-[180ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none"
             style={{ height: barHeight }}
           />
         </div>
@@ -519,12 +516,12 @@ function List({
           chosen={tasks.filter((task) => selection.includes(task.id))}
           tags={tags.data?.tags ?? []}
           view={filters.view}
-          onHeight={setBarHeight}
           leaving={leaving}
           onLeft={() => {
             setLeaving(false);
             setSelection(null);
           }}
+          onHeight={setBarHeight}
           onCancel={stopPicking}
           onDone={() => {
             stopPicking();

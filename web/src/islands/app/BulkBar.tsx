@@ -15,7 +15,7 @@ import { BulkPriorityDialog } from "@app/islands/app/BulkPriorityDialog";
 import { BulkTagDialog } from "@app/islands/app/BulkTagDialog";
 
 /**
- * A sticky bar, one request per action.
+ * A bar under the list, one request per action.
  *
  * Delete asks for confirmation and nothing else does. It is reversible now — a deleted task
  * goes to the finished list and can be put back from there — but it is still the one action
@@ -50,8 +50,8 @@ export function BulkBar({
    *  is set and takes it away when onLeft says the animation is over. */
   leaving?: boolean;
   onLeft?: () => void;
-  /** How tall it is, so the list can leave room to scroll its last row clear of it. Measured
-   *  rather than assumed: it wraps to two rows on a phone, and back again on a turn. */
+  /** How tall it is, so the list can put that much room at the end of itself and scroll its
+   *  last row out from under this. Measured rather than assumed: it wraps at narrow widths. */
   onHeight?: (px: number) => void;
 }) {
   // One prompt at a time, and both of them are dialogs. See the note on the bar below.
@@ -74,14 +74,11 @@ export function BulkBar({
   };
 
   /**
-   * What the list has to make room for.
+   * How much room the list has to keep at the end of itself.
    *
-   * Reported rather than known: the bar wraps at narrow widths, and a number written down here
-   * would be the height it happened to have on the day somebody measured it.
-   *
-   * Nothing, once it is leaving. The bar still measures its full height all the way out — it is
-   * sliding, not shrinking — so the room kept for it stayed behind as a band of empty ground
-   * under the last row until the unmount took it away in one step.
+   * Nothing, once it is leaving: the bar slides rather than shrinks, so it measures its full
+   * height all the way out, and the room kept for it stayed behind as a band of empty ground
+   * under the last row until the unmount took it in one step.
    */
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -119,20 +116,23 @@ export function BulkBar({
     // grew the bar and shuffled the list underneath it. Both prompts are dialogs, and the bar is
     // one height for as long as it is on screen.
     //
-    // It casts further than a card does, because it is in front of the list rather than part
-    // of it: rows slide under this, and at the same height as the things it is covering it read
-    // as one more row that happened to be last.
+    // It casts further than a card does, because it is the thing at the foot of the screen
+    // rather than one more row: at the same height as what is above it, it reads as a card
+    // somebody left at the end of the list.
     //
-    // Stuck to the foot of the screen below the breakpoint, where the window is what scrolls:
-    // the bar was the last thing in the document, so picking a task at the top of a long list
-    // meant scrolling to the bottom of it to do anything with the task. Sticky rather than
-    // fixed — at the end of the list it comes to rest in its own place, so it never sits on top
-    // of the last row, and nothing has to reserve space for it. Above the breakpoint the list
-    // has its own scrolling box and the bar is already outside it, in view the whole time.
+    // Over the list, at either width, and never in the flow beside it. Above the breakpoint it
+    // used to stand below the scrolling box, which took its height off the list: the rows ended
+    // where the bar began, and that is the list being cut short by it. The list runs to the foot
+    // of the page now and its rows pass under this, with as much room at the end as the bar is
+    // tall so the last of them can still be scrolled out from under it.
     //
-    // Flush with the bottom edge at either width, and square where it meets it. A rounded
-    // corner floating twelve pixels above the foot of the screen is a card that has been left
-    // there; a bar that runs into the edge is something docked, which is what this is.
+    // Sticky below the breakpoint, where the window is what scrolls, and absolute above it,
+    // where the list has a scrolling box of its own and the foot of the page is the foot of that
+    // box's container rather than of the document.
+    //
+    // Flush with the bottom edge, and square where it meets it. A rounded corner floating twelve
+    // pixels above the foot of the screen is a card that has been left there; a bar that runs
+    // into the edge is something docked, which is what this is.
     //
     // Two elements, because the bar has to line up with the cards above it and they are inside
     // the list's padding. One element carrying both the width and the ground drew a bar hanging
@@ -147,26 +147,9 @@ export function BulkBar({
       }}
       className={`${
         leaving ? "undock" : "dock"
-      } sticky bottom-0 z-30 mx-auto w-full max-w-3xl shrink-0 px-3 md:static md:px-6`}
+      } sticky inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl px-3 md:absolute md:px-6`}
     >
       <div className="aloft flex flex-wrap items-center gap-2 rounded-t-lg bg-bg px-3 py-2">
-        {/* Leading the count rather than trailing the row: it is the one control here that
-            does nothing to the selection, and the far end of that row is Delete. */}
-        <button
-          type="button"
-          aria-label="Stop selecting"
-          title="Stop selecting"
-          onClick={onCancel}
-          className="-ml-1 flex size-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-line hover:text-fg"
-        >
-          <CrossIcon />
-        </button>
-
-        {/* It counts what is in front of somebody, which is a different thing from a workload
-          number pinned to a tab. */}
-        <span className="text-sm text-muted">{ids.length} selected</span>
-        <span className="flex-1" />
-
         <Button
           size="bar"
           disabled={busy || ids.length === 0}
@@ -232,6 +215,25 @@ export function BulkBar({
         >
           Delete
         </Button>
+
+        <span className="flex-1" />
+
+        {/* What the row is about, at the end of it and out of the way of the hands: every
+            control here is reached from the left, and the two things that are not controls at
+            all sit past them. It counts what is in front of somebody, which is a different
+            thing from a workload number pinned to a tab. */}
+        <span className="text-sm text-muted">{ids.length} selected</span>
+
+        {/* Where a close goes. It is the one thing here that does nothing to the selection. */}
+        <button
+          type="button"
+          aria-label="Stop selecting"
+          title="Stop selecting"
+          onClick={onCancel}
+          className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-line hover:text-fg"
+        >
+          <CrossIcon />
+        </button>
       </div>
 
       <BulkPriorityDialog

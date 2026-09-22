@@ -130,11 +130,14 @@ describe("BulkBar", () => {
   });
 
   /**
-   * The bar slides out rather than vanishing, and it measures its full height the whole way —
-   * it is sliding, not shrinking. Reporting that height while it goes left the room kept for it
-   * behind as a band of empty ground under the last row, until the unmount took it in one step.
+   * The list runs the full height of the window and its rows pass under the bar, so the room it
+   * asks for at the end is what lets the last of them be scrolled out from under it.
+   *
+   * None, once it is leaving: it slides rather than shrinks, so it measures its full height all
+   * the way out, and the room stayed behind as a band of empty ground under the last row until
+   * the unmount took it in one step.
    */
-  it("asks for no room once it is leaving", () => {
+  it("asks for room at the end of the list, and for none once it is leaving", () => {
     const onHeight = vi.fn();
     const props = {
       ids,
@@ -146,6 +149,7 @@ describe("BulkBar", () => {
       onHeight,
     };
     const { rerender } = mount(<BulkBar {...props} />);
+    expect(onHeight).toHaveBeenCalled();
     onHeight.mockClear();
 
     rerender(<BulkBar {...props} leaving />);

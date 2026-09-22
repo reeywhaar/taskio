@@ -375,9 +375,9 @@ A tag that starts half-lit has three stops for that reason, all → none → hal
 everybody or nobody carries has the two it always had, since there is no arrangement to return
 to.
 
-**The bar closes with a cross of its own**, at the head of the row rather than the end of it. It
-is the one control here that does nothing to the selection, and the far end of that row is
-Delete.
+**The row reads the other way round**: the actions, then the gap, then what the row is about —
+the count and a cross to close it. Every control here is reached from the left, and the two
+things that are not controls at all sit past them.
 
 **It slides out the way it came in.** A bar that vanishes the frame after a press reads as the
 screen having changed rather than as something having been put away — so the list holds the
@@ -388,9 +388,7 @@ the list comes up to meet it.
 
 **The room goes at the very end of what scrolls, and nowhere else.** It sat above the results
 from elsewhere and the Load more button, which are content like any other — so a search made
-with the bar up put rows below it that no amount of scrolling could reach. Above the breakpoint
-there is no room to keep at all: the bar sits below the scrolling box rather than over it, and a
-gap there would be a gap at the end of every list somebody is picking from.
+with the bar up put rows below it that no amount of scrolling could reach.
 
 ## Light says what a thing is, not a border
 
@@ -416,12 +414,20 @@ has no direction to contradict — a white line along the top-left edge of a doc
 edge on the one side rows slide under, drawn straight across the fog that is there to separate
 them.
 
-**The list leaves room for it.** It docks over the foot of the screen, so without a spacer at
-the end of the list the last rows cannot be scrolled out from under it — the list ends behind
-the bar and there is nothing to do about it. The bar measures itself and says how tall it is,
-because it wraps to two rows on a phone and back again on a turn; a number written down here
-would be the height it had the day somebody looked. The spacer is drawn only below the
-breakpoint, where the bar stands on the list rather than under it.
+**The bar stands over the list, and the list leaves room for it.** The rows run to the foot of
+the page and pass under the bar; the room is a spacer as tall as the bar at the end of what
+scrolls, so the last of them can still be scrolled out from under it.
+
+It was the other way round above the breakpoint: the bar sat in the flow below the scrolling
+box, which took its height off the list. The rows then ended where the bar began — the list cut
+short by it, with the bottom of the screen given to a bar rather than to the thing being read.
+Over it at either width now, sticky below the breakpoint where the window is what scrolls and
+absolute above it where the list has a box of its own.
+
+The bar measures itself and says how tall it is, because it wraps to two rows on a phone and
+back again on a turn; a number written down here would be the height it had the day somebody
+looked. It asks for nothing while it is leaving, or the room would sit there as a band of empty
+ground under the last row for as long as the animation lasted.
 
 **It arrives from below**, in 180ms. A bar that is simply there the frame after a tap reads as
 the screen having changed rather than as something having been brought in. On the way in only: a
