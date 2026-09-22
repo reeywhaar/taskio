@@ -272,7 +272,7 @@ function Panel({
   );
 }
 
-function Tokens() {
+export function Tokens() {
   const client = useQueryClient();
   const tokens = useQuery({ queryKey: qk.tokens, queryFn: getTokens });
   const [minting, setMinting] = useState(false);
@@ -370,7 +370,20 @@ function Tokens() {
                 <Button variant="link" onClick={() => setEditing(token)}>
                   Edit
                 </Button>
-                <Button variant="link" onClick={() => revoke.mutate(token.id)}>
+                {/* Asked, because it is the one thing on this row that cannot be taken back:
+                    whatever holds the token stops working on its next request, and the only
+                    way on is a new token pasted into every place the old one was. */}
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Revoke "${token.label}"? Whatever uses it stops working at once, and it cannot be undone.`,
+                      )
+                    )
+                      revoke.mutate(token.id);
+                  }}
+                >
                   Revoke
                 </Button>
               </>

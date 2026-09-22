@@ -99,35 +99,42 @@ export function TokenFields({
         />
       </Field>
 
-      {/* A credential nobody has used for a month is one still open on a machine nobody
-          remembers. Counted from its last use, or from minting if it never had one. */}
-      <Field label="Retire it if unused for">
-        <Select
-          value={value.idle}
-          onChange={(e) => set({ idle: e.target.value })}
-        >
-          {idle.map(([v, name]) => (
-            <option key={v} value={v}>
-              {name}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {/* The two clocks, side by side at one width: they are one question asked twice — when
+          does this stop — and stacked, each select was only as wide as its longest option, so
+          they sat one under the other at two different widths.
 
-      {/* The other clock: a date it stops on whether or not it is being used, for a token
-          handed to something that should only have it for a while. */}
-      <Field label="Stop working">
-        <Select
-          value={value.expires}
-          onChange={(e) => set({ expires: e.target.value })}
-        >
-          {expires.map(([v, name]) => (
-            <option key={v} value={v}>
-              {name}
-            </option>
-          ))}
-        </Select>
-      </Field>
+          Unused for: a credential nobody has used for a month is one still open on a machine
+          nobody remembers, counted from its last use or from minting. Stop working: a date it
+          stops on whether or not it is used, for something that should only have it a while. */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Retire it if unused for">
+          <Select
+            className="w-full"
+            value={value.idle}
+            onChange={(e) => set({ idle: e.target.value })}
+          >
+            {idle.map(([v, name]) => (
+              <option key={v} value={v}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Stop working">
+          <Select
+            className="w-full"
+            value={value.expires}
+            onChange={(e) => set({ expires: e.target.value })}
+          >
+            {expires.map(([v, name]) => (
+              <option key={v} value={v}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
 
       {/*
        * A scope is an unnested and() of tags, which is a set of pills — the same control the
