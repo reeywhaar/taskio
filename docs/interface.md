@@ -131,6 +131,21 @@ A task's own chips come back in that same order, because the chips on a row and 
 it are the same tags: sorted two different ways they read as two different sets, and the eye goes
 looking for the difference.
 
+## A pill has three states, and the third is not one you can ask for
+
+Lit, unlit, and half of each: the tag is carried by some of what the cloud stands for and not by
+the rest. It only arises where a cloud stands for more than one task, which today is the bulk
+bar's and tomorrow will be a filter saying a tag is shut out rather than merely unlit.
+
+The half state is the brand mixed half and half into the ground the pill already had, not the
+brand at half strength and not half the pill painted in it. A split under the words needs one
+ink legible on both halves, and in dark there is none — the ground is near-black and the brand a
+pale indigo. A blend has one ground and one answer: the page's own ink, which measures 8.6:1 on
+the light blend and 5.1 on the dark, where brand-ink would be 2.0 and 3.0.
+
+It reports itself as `aria-pressed="mixed"`, which also keeps it out of the pressed-in shadow a
+fully lit pill wears.
+
 ## The current row in the rail is the whole row
 
 The ground belongs to the row, not to the name inside it. On the name it stopped short of the
@@ -342,6 +357,40 @@ todo list and never unpinned from it.
 selection somebody made by eye: eleven ids picked out of ninety rows is a filter nothing can
 express, and reading them off the screen one at a time is how it gets done otherwise. It says
 so for a moment afterwards, because a copy that reports nothing is a copy nobody trusts.
+
+**Nothing is asked for in the bar itself.** Tags and priority both open a dialog. A prompt that
+stood in the bar's own row was a field and two buttons at the field height, which is taller than
+the bar-sized buttons it replaced — so opening one grew the bar and shuffled the list underneath
+it. The bar is one height for as long as it is on screen.
+
+Tagging needs the room for its own reasons: a cloud has no width it can be relied on to fit, and
+an account with a dozen tags wrapped the bar to three rows that the list then had to reserve. It
+is also the only thing here that composes a change rather than firing one, so it wants a Save, an
+Escape, and the whole screen on a phone.
+
+**A tag is saved, not applied as it is pressed.** A press is a note about what to do: pressed by
+mistake, it is pressed back. A tag nobody pressed is named in neither list when Save runs, so
+each task keeps its own answer — which is the only way a half-lit tag survives being looked at.
+A tag that starts half-lit has three stops for that reason, all → none → half again; one that
+everybody or nobody carries has the two it always had, since there is no arrangement to return
+to.
+
+**The bar closes with a cross of its own**, at the head of the row rather than the end of it. It
+is the one control here that does nothing to the selection, and the far end of that row is
+Delete.
+
+**It slides out the way it came in.** A bar that vanishes the frame after a press reads as the
+screen having changed rather than as something having been put away — so the list holds the
+selection until the bar reports its animation over, because a component cannot delay its own
+unmount. The room kept for it closes over those same 180ms: the bar measures its full height all
+the way out, since it is sliding rather than shrinking, so it reports nothing while leaving and
+the list comes up to meet it.
+
+**The room goes at the very end of what scrolls, and nowhere else.** It sat above the results
+from elsewhere and the Load more button, which are content like any other — so a search made
+with the bar up put rows below it that no amount of scrolling could reach. Above the breakpoint
+there is no room to keep at all: the bar sits below the scrolling box rather than over it, and a
+gap there would be a gap at the end of every list somebody is picking from.
 
 ## Light says what a thing is, not a border
 

@@ -8,6 +8,36 @@ import type { Tag } from "@app/api/types";
 /** How long a press has to last to mean "only this one". */
 const HOLD = 450;
 
+/**
+ * What a pill says about its tag.
+ *
+ * A union rather than a boolean because one cloud answers several questions. On a task a tag is
+ * carried or it is not; across a selection it can be carried by some of it; and a filter or a
+ * token scope will want to say a tag is shut out rather than merely unlit. One tone each, below,
+ * so a fourth state is one entry and one rule.
+ */
+export type TagState = "off" | "some" | "on";
+
+/**
+ * The ink and ground for each.
+ *
+ * `some` is the brand mixed half and half into the ground a pill already had, so it reads as
+ * between the two rather than as a third color. It carries the page's own ink rather than
+ * brand-ink, which a half-strength ground is too light for in one theme and too dark for in the
+ * other — see main.css.
+ */
+const TONE: Record<TagState, string> = {
+  off: "bg-bg text-muted hover:text-fg",
+  some: "wash-some",
+  on: "wash",
+};
+
+const PRESSED: Record<TagState, "true" | "false" | "mixed"> = {
+  off: "false",
+  some: "mixed",
+  on: "true",
+};
+
 /** The bar that says where a carried pill would land. */
 const MARKER =
   "before:absolute before:top-0 before:h-full before:w-0.5 before:rounded-full before:bg-fg before:content-['']";
@@ -29,7 +59,7 @@ const MARKER =
  */
 function Pill({
   slug,
-  on,
+  state,
   carried,
   mark,
   onToggle,
@@ -38,7 +68,7 @@ function Pill({
   onDrop,
 }: {
   slug: string;
-  on: boolean;
+  state: TagState;
   /** The pill being carried, drawn as one that has left its place. */
   carried: boolean;
   /** Which side of this pill the carried one would land on, if either. */
@@ -68,7 +98,7 @@ function Pill({
     <button
       type="button"
       data-slug={slug}
-      aria-pressed={on}
+      aria-pressed={PRESSED[state]}
       onPointerDown={(e) => {
         carry.press(e);
         if (!onHold) return;
@@ -106,7 +136,7 @@ function Pill({
         mark ? MARKER : ""
       } ${mark === "before" ? "before:-left-1" : ""} ${
         mark === "after" ? "before:-right-1" : ""
-      } raised ${on ? "wash" : "bg-bg text-muted hover:text-fg"}`}
+      } raised ${TONE[state]}`}
     >
       {slug}
     </button>
@@ -123,6 +153,7 @@ function Pill({
 export function TagCloud({
   tags,
   selected,
+  partial,
   onToggle,
   onCreate,
   onOnly,
@@ -130,6 +161,9 @@ export function TagCloud({
 }: {
   tags: Tag[];
   selected: string[];
+  /** Carried by some of what this stands for and not the rest — a selection of tasks, where
+   *  the one answer the cloud can give is that there is no one answer. */
+  partial?: string[];
   onToggle: (slug: string) => void;
   /** Only the editor's cloud offers this: a tag exists once a task carries it, so inventing
    *  one on the filter screen would narrow the list to nothing. */
@@ -151,8 +185,11 @@ export function TagCloud({
   // A tag lit but carried by nothing still shows, or the filter would have a pill missing.
   const shown = [
     ...tags.map((t) => t.slug),
-    ...selected.filter((s) => !known.has(s)),
+    ...[...selected, ...(partial ?? [])].filter((s) => !known.has(s)),
   ];
+
+  const stateOf = (slug: string): TagState =>
+    selected.includes(slug) ? "on" : partial?.includes(slug) ? "some" : "off";
 
   const over = (slug: string) => (it: string | null) => {
     setCarrying(slug);
@@ -190,7 +227,7 @@ export function TagCloud({
         <Pill
           key={slug}
           slug={slug}
-          on={selected.includes(slug)}
+          state={stateOf(slug)}
           carried={carrying === slug}
           mark={markFor(slug)}
           onToggle={() => onToggle(slug)}

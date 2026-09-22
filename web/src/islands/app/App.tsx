@@ -105,6 +105,15 @@ function List({
   const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
   /**
+   * The bar is on its way out.
+   *
+   * It cannot delay its own unmount, so the selection is held here until the bar reports its
+   * animation over — otherwise the element is gone the frame after the press and there is
+   * nothing left to slide anywhere.
+   */
+  const [leaving, setLeaving] = useState(false);
+  const stopPicking = () => setLeaving(true);
+  /**
    * How much room the bulk bar needs at the end of the list.
    *
    * It docks over the foot of the screen, so without this the last rows cannot be scrolled out
@@ -372,7 +381,7 @@ function List({
 
             <Button
               size="bar"
-              onClick={() => setSelection(selection ? null : [])}
+              onClick={() => (selection ? stopPicking() : setSelection([]))}
               aria-pressed={selection !== null}
             >
               {selection ? "Cancel" : "Select"}
@@ -459,15 +468,6 @@ function List({
               the foot is where the rows end, whether there were twenty of them or none. */}
           <div ref={foot} aria-hidden="true" />
 
-          {/* Room for the bar, and only where it is standing on the list: above the breakpoint
-              it sits below the scrolling box rather than over it, and a gap there would be a
-              gap at the end of every list somebody is picking from. */}
-          <div
-            aria-hidden="true"
-            className="md:hidden"
-            style={{ height: barHeight }}
-          />
-
           {filters.q ? (
             <Elsewhere
               found={wider.data?.tasks ?? []}
@@ -495,16 +495,39 @@ function List({
               </Button>
             </div>
           ) : null}
+
+          {/* Room for the bar, at the very end of what scrolls and nowhere else.
+              
+              It was above the results from elsewhere and the Load more button, which are content
+              like any other: a search with the bar up put rows under it that no amount of
+              scrolling could reach. Above the breakpoint there is nothing to reserve — the bar
+              sits below the scrolling box rather than over it, and a gap there would be a gap at
+              the end of every list somebody is picking from. */}
+          <div
+            aria-hidden="true"
+            // Closing over the same 180ms the bar takes to go, so the list comes up to meet it
+            // rather than snapping shut once it has gone.
+            className="transition-[height] duration-[180ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none md:hidden"
+            style={{ height: barHeight }}
+          />
         </div>
       </div>
 
       {selection ? (
         <BulkBar
           ids={selection}
+          chosen={tasks.filter((task) => selection.includes(task.id))}
+          tags={tags.data?.tags ?? []}
           view={filters.view}
           onHeight={setBarHeight}
-          onDone={() => {
+          leaving={leaving}
+          onLeft={() => {
+            setLeaving(false);
             setSelection(null);
+          }}
+          onCancel={stopPicking}
+          onDone={() => {
+            stopPicking();
             client.invalidateQueries({ queryKey: qk.tasks });
             client.invalidateQueries({ queryKey: qk.tags });
           }}

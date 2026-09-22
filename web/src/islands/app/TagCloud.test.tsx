@@ -8,6 +8,9 @@ const tags = [
   { id: "b", slug: "work" },
 ];
 
+const pressed = (slug: string) =>
+  screen.getByRole("button", { name: slug }).getAttribute("aria-pressed");
+
 describe("TagCloud", () => {
   it("shows the slug itself, so the pill is what goes in the URL", () => {
     render(<TagCloud tags={tags} selected={[]} onToggle={vi.fn()} />);
@@ -44,6 +47,27 @@ describe("TagCloud", () => {
       />,
     );
     expect(screen.getByText("New tag")).toBeDefined();
+  });
+
+  /**
+   * A cloud can stand for more than one task, and then a tag is carried by some of them and not
+   * the rest. mixed is what a tri-state control says, and it is what keeps the pill out of the
+   * pressed-in look a fully lit one wears.
+   */
+  it("says mixed where a tag is carried by only some of what the cloud stands for", () => {
+    render(
+      <TagCloud
+        tags={tags}
+        selected={["home"]}
+        partial={["work"]}
+        onToggle={vi.fn()}
+      />,
+    );
+    expect(pressed("home")).toBe("true");
+    expect(pressed("work")).toBe("mixed");
+    expect(screen.getByRole("button", { name: "work" }).className).toContain(
+      "wash-some",
+    );
   });
 
   /** A tag chosen in the editor but not yet on any task still has to be drawn. */
