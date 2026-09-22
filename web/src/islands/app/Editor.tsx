@@ -49,6 +49,15 @@ export function Editor({
   limits: { assetMax: number };
 }) {
   const [showing, setShowing] = useState(false);
+  /**
+   * What the preview is showing, which is not always what the task now says.
+   *
+   * An edit from somewhere else arrives as an event and replaces the draft under the reader —
+   * a page of prose swapping mid-sentence. This holds the text it opened with and offers the
+   * newer one as a button.
+   */
+  const [shown, setShown] = useState(value);
+  const newer = showing && shown !== value;
   const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -131,7 +140,10 @@ export function Editor({
         {value.trim() ? (
           <button
             type="button"
-            onClick={() => setShowing(true)}
+            onClick={() => {
+              setShown(value);
+              setShowing(true);
+            }}
             // Flush with the field below it, not indented from it. The padding was left over
             // from being a tab, where it was the shape of the lit one; nothing is lit here, so
             // it was 8px of nothing pushing the only word on this line out of line with the
@@ -189,6 +201,13 @@ export function Editor({
         open={showing}
         onClose={() => setShowing(false)}
         title={title?.trim() || "Description"}
+        aside={
+          newer ? (
+            <Button size="bar" onClick={() => setShown(value)}>
+              Update
+            </Button>
+          ) : null
+        }
         wide
       >
         {/* A floor under it, because a description of two lines in a box of two lines is a
@@ -204,7 +223,7 @@ export function Editor({
         <div
           ref={preview}
           className="prose shrink-0 text-sm sm:min-h-50"
-          dangerouslySetInnerHTML={{ __html: render(value) }}
+          dangerouslySetInnerHTML={{ __html: render(shown) }}
         />
       </Dialog>
     </div>

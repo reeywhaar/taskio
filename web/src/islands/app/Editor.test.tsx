@@ -13,6 +13,9 @@ const editor = (value: string, title?: string) =>
     />,
   );
 
+/** The rendered copy, not the textarea holding the same words. */
+const prose = () => document.querySelector(".prose")!.textContent!.trim();
+
 describe("Editor", () => {
   it("offers no preview of nothing", () => {
     editor("   ");
@@ -46,9 +49,28 @@ describe("Editor", () => {
   it("does not let the preview shrink below its own words", () => {
     editor("# Hello");
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    const prose = document.querySelector(".prose")!;
-    expect(prose.className).toContain("shrink-0");
-    expect(prose.className).toContain("min-h-50");
+    const box = document.querySelector(".prose")!;
+    expect(box.className).toContain("shrink-0");
+    expect(box.className).toContain("min-h-50");
+  });
+
+  /** An edit from elsewhere should not swap a page of prose mid-sentence. */
+  it("holds the preview steady, and offers the newer text as a button", () => {
+    const { rerender } = editor("first words");
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(prose()).toBe("first words");
+
+    rerender(
+      <Editor
+        value="second words"
+        onChange={vi.fn()}
+        limits={{ assetMax: 1 << 20 }}
+      />,
+    );
+    expect(prose()).toBe("first words");
+
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect(prose()).toBe("second words");
   });
 
   it("falls back to naming the field when the task has no title yet", () => {
