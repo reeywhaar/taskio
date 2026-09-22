@@ -13,6 +13,7 @@ import type { TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
+import { Dummy } from "@app/components/Dummy";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { TaskId } from "@app/islands/app/TaskId";
 
@@ -150,6 +151,23 @@ export function TaskDialog({
             ? task.error.message
             : "That task could not be read."}
         </p>
+      ) : null}
+
+      {/* The shape of the form, not an empty dialog: the fields arrive in place rather than
+          appearing where nothing was. */}
+      {!task.data && !task.isError ? (
+        <div className="flex flex-col gap-4">
+          <Dummy className="h-10 w-full sm:h-11" />
+          <div className="flex flex-col gap-2">
+            <Dummy className="h-4 w-14" />
+            <Dummy className="h-40 w-full" />
+          </div>
+          <div className="flex items-start justify-between gap-6">
+            <Dummy className="h-11 w-40" />
+            <Dummy className="h-11 w-32" />
+          </div>
+          <Dummy className="h-7 w-52" />
+        </div>
       ) : null}
 
       {task.data ? (
