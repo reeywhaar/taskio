@@ -11,7 +11,7 @@ import { ApiError } from "@app/api/transport";
 import { addCopyButtons } from "@app/codeblocks";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
-import { render } from "@app/markdown";
+import { render, toggleCheck } from "@app/markdown";
 
 function filesOf(list: FileList | null): File[] {
   return Array.from(list ?? []);
@@ -58,6 +58,20 @@ export function Editor({
    */
   const [shown, setShown] = useState(value);
   const newer = showing && shown !== value;
+
+  /** A tick in the preview is an edit to the text it was rendered from. */
+  const tick = (target: EventTarget | null) => {
+    const item =
+      target instanceof Element ? target.closest("li[data-check]") : null;
+    if (!item || !preview.current) return;
+    const index = [
+      ...preview.current.querySelectorAll("li[data-check]"),
+    ].indexOf(item);
+    if (index < 0) return;
+    const next = toggleCheck(shown, index);
+    setShown(next);
+    onChange(next);
+  };
   const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -223,6 +237,12 @@ export function Editor({
         <div
           ref={preview}
           className="prose shrink-0 text-sm sm:min-h-50"
+          onClick={(e) => tick(e.target)}
+          onKeyDown={(e) => {
+            if (e.key !== " " && e.key !== "Enter") return;
+            e.preventDefault();
+            tick(e.target);
+          }}
           dangerouslySetInnerHTML={{ __html: render(shown) }}
         />
       </Dialog>

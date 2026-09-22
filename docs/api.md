@@ -227,6 +227,20 @@ curl -X PATCH -H "Authorization: Bearer tk_…" -H "Content-Type: application/js
 
 Marking a task done twice is a success and does not move `done_at`.
 
+## Checklists
+
+A description is markdown, and `- [ ]` / `- [x]` lines render as boxes somebody can tick in the
+task's preview. Ticking one rewrites that line in the description, so the state is the text —
+there is nothing else to read or set.
+
+Write one when a task is a set of steps rather than a sentence:
+
+```md
+- [x] book the flights
+- [ ] renew the passport
+- [ ] tell the office
+```
+
 ## Images
 
 A description is markdown, and an image in it is an asset stored here.

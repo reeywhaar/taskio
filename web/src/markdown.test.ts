@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { excerpt, render } from "@app/markdown";
+import { excerpt, render, toggleCheck } from "@app/markdown";
 
 /** Breaks read back as newlines, so a test can say where the lines fall. */
 const plain = (source: string, limit?: number) =>
@@ -111,5 +111,32 @@ describe("excerpt", () => {
 
   it("is empty for an empty description", () => {
     expect(excerpt("")).toEqual([]);
+  });
+});
+
+describe("toggleCheck", () => {
+  const list = "- [ ] one\n- [x] two\n- plain\n1. [ ] three\n";
+
+  it("flips the nth box and leaves the rest alone", () => {
+    expect(toggleCheck(list, 0)).toContain("- [x] one");
+    expect(toggleCheck(list, 0)).toContain("- [x] two");
+    expect(toggleCheck(list, 1)).toContain("- [ ] two");
+    // Plain items are not boxes, so the numbered one is the third.
+    expect(toggleCheck(list, 2)).toContain("1. [x] three");
+  });
+
+  it("does nothing when there is no such box", () => {
+    expect(toggleCheck(list, 9)).toBe(list);
+  });
+});
+
+describe("render", () => {
+  it("draws a task list as something that can be ticked", () => {
+    const html = render("- [ ] one\n- [x] two\n");
+    expect(html).toContain('data-check="0"');
+    expect(html).toContain('data-check="1"');
+    expect(html).toContain('aria-checked="true"');
+    // marked's own disabled input is stripped; the box is ours.
+    expect(html).not.toContain("<input");
   });
 });

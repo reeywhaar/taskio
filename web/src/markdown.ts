@@ -10,6 +10,48 @@ import { marked, type Token } from "marked";
  */
 marked.setOptions({ gfm: true, breaks: true });
 
+/**
+ * A task list item, drawn as something that can be ticked.
+ *
+ * marked emits a disabled <input>, which the sanitiser strips — rightly, since a description is
+ * not always written by the person reading it. So the box is ours: a span the stylesheet draws,
+ * on an item that says which state it is in and where in the source it came from.
+ */
+marked.use({
+  renderer: {
+    listitem(token) {
+      const inner = this.parser
+        .parseInline(token.tokens)
+        .replace(/^<input[^>]*>\s*/, "");
+      if (!token.task) return `<li>${inner}</li>`;
+      return (
+        `<li class="check" role="checkbox" tabindex="0"` +
+        ` aria-checked="${token.checked ? "true" : "false"}"` +
+        ` data-check="${token.checked ? 1 : 0}">` +
+        `<span class="box" aria-hidden="true"></span>${inner}</li>`
+      );
+    },
+  },
+});
+
+/** Every `- [ ]` and `- [x]` in a description, in the order they are rendered in. */
+const marker = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\])/gm;
+
+/**
+ * Flips the nth checkbox in the source and gives the text back.
+ *
+ * The source is what is stored, so a tick has to be written where it was read from rather than
+ * held beside it — and by position, because two identical lines are two identical lines.
+ */
+export function toggleCheck(source: string, index: number): string {
+  let at = 0;
+  return source.replace(
+    marker,
+    (whole, lead: string, state: string, close: string) =>
+      at++ === index ? `${lead}${state === " " ? "x" : " "}${close}` : whole,
+  );
+}
+
 /** @ and a task id, turned into a chip after the markdown is rendered. */
 const mention = /(^|[^0-9A-Za-z_@>])@([0-9a-z]{8})\b/g;
 
