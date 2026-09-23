@@ -139,4 +139,22 @@ describe("render", () => {
     // marked's own disabled input is stripped; the box is ours.
     expect(html).not.toContain("<input");
   });
+
+  /** An item holding blocks used to throw, and the throw took the whole page with it. */
+  it("renders a list item holding a code block, a nested list and paragraphs", () => {
+    const html = render(
+      "1. Run it:\n\n   ```sh\n   make\n   ```\n\n2. Then:\n   - [ ] check\n\n   More.\n",
+    );
+    expect(html).toContain("<code");
+    expect(html).toContain("make");
+    expect(html).toContain('data-check="0"');
+    expect(html).toContain("More.");
+    expect(html).not.toContain("<input");
+  });
+
+  it("draws a loose task list's box without marked's input", () => {
+    const html = render("- [x] one\n\n- [ ] two\n");
+    expect(html).toContain('aria-checked="true"');
+    expect(html).not.toContain("<input");
+  });
 });

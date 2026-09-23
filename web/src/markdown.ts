@@ -19,10 +19,12 @@ marked.setOptions({ gfm: true, breaks: true });
  */
 marked.use({
   renderer: {
+    // The box below stands in for it.
+    checkbox: () => "",
     listitem(token) {
-      const inner = this.parser
-        .parseInline(token.tokens)
-        .replace(/^<input[^>]*>\s*/, "");
+      // parse, not parseInline: an item can hold blocks — a fenced code block, a nested list,
+      // paragraphs — and parseInline throws on the first one, which took the whole page down.
+      const inner = this.parser.parse(token.tokens);
       if (!token.task) return `<li>${inner}</li>`;
       return (
         `<li class="check" role="checkbox" tabindex="0"` +
