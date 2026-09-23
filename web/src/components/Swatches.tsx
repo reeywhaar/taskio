@@ -43,12 +43,15 @@ export function Swatches({
   value,
   onChange,
   none,
+  row = false,
 }: {
   /** #rrggbb, or empty. */
   value: string;
   onChange: (color: string) => void;
   /** What an empty value is called: "No color", "Default color". */
   none: string;
+  /** All ten on one line, where nothing shares it: the group dialog. */
+  row?: boolean;
 }) {
   const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
@@ -61,7 +64,9 @@ export function Swatches({
     // A fixed count rather than wrapping, because wrapping is decided by whatever width the
     // swatches happen to be given — the same control would be one row in a wide dialog and
     // three on a phone, and where it breaks would be arithmetic nobody chose.
-    <div className="grid w-fit grid-cols-5 items-center gap-1.5">
+    <div
+      className={`grid w-fit items-center gap-1.5 ${row ? "grid-cols-10" : "grid-cols-5"}`}
+    >
       <button
         type="button"
         aria-label={none}
