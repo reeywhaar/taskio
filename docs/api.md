@@ -124,6 +124,7 @@ the tags. Left out, it means:
 | caller | `?project=` left out |
 | --- | --- |
 | a signed-in browser | the default project |
+| a token reaching every project | the default project |
 | a token reaching one project | that project — so a token minted before projects keeps working |
 | a token reaching several | `400 project_required`, naming the slugs to choose from |
 
@@ -137,8 +138,9 @@ rather than as missing.
 
 ## Scopes
 
-A token reaches one or more projects, and may be confined inside each by a flat `or()` or
-`and()` of that project's tags:
+A token reaches every project, or the ones it is given — a token with none given reaches them
+all. Inside a project it is given, it may be confined by a flat `or()` or `and()` of that
+project's tags:
 
 > **A scoped token sees only tasks its scope selects, and everything it writes has to carry
 > what the scope requires.**

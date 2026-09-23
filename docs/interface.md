@@ -209,9 +209,16 @@ default project can be renamed and not deleted.
 
 ## A token is a row per project
 
-Each row is a project and that project's own tags: `+ Add project` gives a row to a project not
-already on one, and `−` takes a row away. A token keeps at least one, because a token that
-reaches nothing is a revoked one by another name.
+With no rows a token reaches every project, and that is where a new one starts: it operates
+across the account until it is given rows, and is then confined to the projects listed. Only the
+tokens migrated from before projects start out with a row, for the default project, because that
+is where everything they could reach was.
+
+Each row is a project and that project's own tags. `+ Add project` asks which project first, and
+the row then says its name rather than offering it as a field: changing which project a row is
+about is taking it away and adding another, not moving a scope's tags onto a project they may not
+exist in. `−` takes a row away, the last one included, and the button to add goes once every
+project has a row.
 
 Several pills on a row mean any of them — garden and reading is a token for both projects' work,
 not only for the tasks that happen to carry both. A token minted before that needs every tag on

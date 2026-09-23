@@ -305,3 +305,56 @@ func TestARowNamingNoProjectIsTheDefault(t *testing.T) {
 		t.Errorf("a token for the default project lists %v", got)
 	}
 }
+
+// A new token operates on every project until it is given rows. Only the tokens migrated from
+// before projects start out confined, to the default project.
+func TestANewTokenReachesEveryProject(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.project(`{"name":"Garden"}`)
+	c.task(`{"title":"Fix the tap"}`)
+	c.do("POST", "/api/tasks?project=garden", `{"title":"Plant the beans"}`)
+
+	a := mintRows(t, s, c, `[]`)
+	tok := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)[0].(map[string]any)
+	if n := len(tok["projects"].([]any)); n != 0 {
+		t.Fatalf("rows = %d, want none", n)
+	}
+
+	// Naming no project means the default, as it does for a browser.
+	if got := titles(a.json(a.do("GET", "/api/tasks", ""))); !slices.Equal(got, []string{"Fix the tap"}) {
+		t.Errorf("no project lists %v", got)
+	}
+	if got := titles(a.json(a.do("GET", "/api/tasks?project=garden", ""))); !slices.Equal(got, []string{"Plant the beans"}) {
+		t.Errorf("the other project lists %v", got)
+	}
+	if resp := a.do("POST", "/api/tasks?project=garden", `{"title":"Water them"}`); resp.StatusCode != http.StatusCreated {
+		t.Errorf("writing into another project = %s", resp.Status)
+	}
+	if rows := a.json(a.do("GET", "/api/scope", ""))["projects"].([]any); len(rows) != 2 {
+		t.Errorf("scope lists %d projects, want both", len(rows))
+	}
+
+	// Minted with nothing at all said about where, it is the same token.
+	resp := c.do("POST", "/api/tokens", `{"label":"plain"}`)
+	if n := len(c.json(resp)["token"].(map[string]any)["projects"].([]any)); n != 0 {
+		t.Errorf("a plain mint has %d rows, want none", n)
+	}
+}
+
+// Rows narrow it to what they name; taking them all away is every project again.
+func TestRowsNarrowATokenAndNoRowsWidenIt(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.project(`{"name":"Garden"}`)
+	a := mintRows(t, s, c, `[]`)
+	id := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)[0].(map[string]any)["id"].(string)
+
+	c.do("PATCH", "/api/tokens/"+id, `{"projects":[{"project":"garden"}]}`)
+	refusal(t, a.do("GET", "/api/tasks?project=main", ""), http.StatusForbidden)
+
+	c.do("PATCH", "/api/tokens/"+id, `{"projects":[]}`)
+	if resp := a.do("GET", "/api/tasks?project=main", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("with its rows taken away = %s, want every project again", resp.Status)
+	}
+}

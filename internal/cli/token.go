@@ -42,14 +42,19 @@ func tokenCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// One project, the default unless named: a token reaching several is minted from the
-			// settings page, where they can be seen side by side.
-			project, err := st.DefaultProject(cmd.Context(), p.ID)
-			if slug != "" {
-				project, err = st.ProjectBySlug(cmd.Context(), p.ID, slug)
-			}
-			if err != nil {
-				return err
+			// Every project unless it is confined: named, it reaches that one, and a scope with no
+			// project confines it inside the default. A token reaching several chosen projects is
+			// minted from the settings page, where they can be seen side by side.
+			var rows []store.TokenProject
+			if slug != "" || scope != "" {
+				project, err := st.DefaultProject(cmd.Context(), p.ID)
+				if slug != "" {
+					project, err = st.ProjectBySlug(cmd.Context(), p.ID, slug)
+				}
+				if err != nil {
+					return err
+				}
+				rows = []store.TokenProject{{ProjectID: project.ID, Scope: scope}}
 			}
 			var at *time.Time
 			if expires != "" {
@@ -70,16 +75,18 @@ func tokenCreateCmd() *cobra.Command {
 				idleFor = d
 			}
 
-			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label,
-				[]store.TokenProject{{ProjectID: project.ID, Scope: scope}}, at, idleFor)
+			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label, rows, at, idleFor)
 			if err != nil {
 				return err
 			}
 			// Printed once and never again, which is said on the line above it.
 			cmd.PrintErrln("This is the only time this token is shown.")
 			cmd.Println(secret)
-			cmd.PrintErrf("id %s  project %s", tok.ID, project.Slug)
-			if scope := tok.Projects[0].Scope; scope != "" {
+			cmd.PrintErrf("id %s", tok.ID)
+			if slug != "" {
+				cmd.PrintErrf("  project %s", slug)
+			}
+			if scope != "" {
 				cmd.PrintErrf("  scope %s", scope)
 			}
 			if at != nil {
@@ -92,7 +99,7 @@ func tokenCreateCmd() *cobra.Command {
 	cmd.Flags().String("user", "", "the account it belongs to")
 	cmd.Flags().String("label", "", "what it is for")
 	cmd.Flags().String("scope", "", "confine it inside its project, e.g. or(work,inbox)")
-	cmd.Flags().String("project", "", "the project it reaches, by slug; the default if left out")
+	cmd.Flags().String("project", "", "the one project it reaches, by slug; every project if left out")
 	cmd.Flags().String("expires", "", "how long it lasts, e.g. 720h")
 	cmd.Flags().String("idle", "", "retire it after this long unused, e.g. 168h")
 	cmd.MarkFlagRequired("user")
@@ -130,6 +137,9 @@ func tokenListCmd() *cobra.Command {
 					state = "expired"
 				}
 				reach := []string{}
+				if len(tok.Projects) == 0 {
+					reach = append(reach, "every project")
+				}
 				for _, row := range tok.Projects {
 					name := row.ProjectID
 					if pr, err := st.ProjectByID(cmd.Context(), p.ID, row.ProjectID); err == nil {

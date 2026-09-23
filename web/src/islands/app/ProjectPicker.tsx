@@ -31,8 +31,9 @@ export function ProjectSelectDialog({
 }: {
   open: boolean;
   title: string;
-  /** The slug lit when it opens: where the task is now. Empty is the default project. */
-  current: string;
+  /** The slug lit when it opens: where the task is now. Empty is the default project, and
+   *  null lights nothing — choosing one to add rather than choosing where something goes. */
+  current: string | null;
   /** Slugs that cannot be chosen here, because something else already holds them. */
   taken?: string[];
   onChoose: (project: Project) => void;
@@ -40,7 +41,7 @@ export function ProjectSelectDialog({
 }) {
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
   const list = projects.data?.projects ?? [];
-  const lit = projectNamed(list, current);
+  const lit = current === null ? undefined : projectNamed(list, current);
 
   return (
     <Dialog open={open} onClose={onClose} title={title}>

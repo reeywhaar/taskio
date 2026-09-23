@@ -103,8 +103,9 @@ type rowRequest struct {
 
 type createTokenRequest struct {
 	Label string `json:"label"`
-	// Scope alone is a token for the default project, confined there — minting as it was before
-	// projects. Projects says each project and its scope, and takes precedence.
+	// Projects says each project and its scope, and an empty list is every project. Left out,
+	// a scope alone is a token confined inside the default project — minting as it was before
+	// projects — and no scope either is a token for every project.
 	Scope     string       `json:"scope"`
 	Projects  []rowRequest `json:"projects"`
 	ExpiresAt *int64       `json:"expires_at"`
@@ -123,9 +124,20 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) {
 		at := time.Unix(*req.ExpiresAt, 0).UTC()
 		expires = &at
 	}
-	rows, ok := s.rowsOf(w, r, req.Projects, &req.Scope)
-	if !ok {
-		return
+	var rows []store.TokenProject
+	switch {
+	case req.Projects != nil:
+		var ok bool
+		if rows, ok = s.rowsOf(w, r, req.Projects); !ok {
+			return
+		}
+	case req.Scope != "":
+		p, err := s.store.DefaultProject(r.Context(), principalOf(r).ID)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		rows = []store.TokenProject{{ProjectID: p.ID, Scope: req.Scope}}
 	}
 	tok, secret, err := s.store.CreateToken(r.Context(), principalOf(r).ID, req.Label, rows,
 		expires, time.Duration(req.IdleSeconds)*time.Second)
@@ -167,21 +179,25 @@ func (s *Server) patchToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	change := store.TokenChange{Label: req.Label}
-	if req.Projects != nil || req.Scope != nil {
-		var asked []rowRequest
-		if req.Projects != nil {
-			asked = *req.Projects
-		} else {
-			var ok bool
-			if asked, ok = s.onlyRow(w, r, *req.Scope); !ok {
-				return
-			}
-		}
-		rows, ok := s.rowsOf(w, r, asked, nil)
+	switch {
+	case req.Projects != nil:
+		rows, ok := s.rowsOf(w, r, *req.Projects)
 		if !ok {
 			return
 		}
 		change.Projects = &rows
+	case req.Scope != nil:
+		asked, ok := s.onlyRow(w, r, *req.Scope)
+		if !ok {
+			return
+		}
+		if asked != nil {
+			rows, ok := s.rowsOf(w, r, asked)
+			if !ok {
+				return
+			}
+			change.Projects = &rows
+		}
 	}
 	if req.ExpiresAt != nil {
 		var at time.Time
@@ -249,20 +265,10 @@ func bearer(r *http.Request) string {
 	return ""
 }
 
-// rowsOf turns the projects a mint or an edit names, by slug, into rows. None named, with a
-// scope, is a token for the default project confined by that scope — how every token was
-// minted before projects, and how the CLI still mints one.
-func (s *Server) rowsOf(w http.ResponseWriter, r *http.Request, asked []rowRequest, legacy *string) ([]store.TokenProject, bool) {
+// rowsOf turns the projects a mint or an edit names, by slug, into rows. None is every project.
+func (s *Server) rowsOf(w http.ResponseWriter, r *http.Request, asked []rowRequest) ([]store.TokenProject, bool) {
 	ctx := r.Context()
 	principal := principalOf(r).ID
-	if len(asked) == 0 && legacy != nil {
-		p, err := s.store.DefaultProject(ctx, principal)
-		if err != nil {
-			s.fail(w, r, err)
-			return nil, false
-		}
-		return []store.TokenProject{{ProjectID: p.ID, Scope: *legacy}}, true
-	}
 	rows := make([]store.TokenProject, 0, len(asked))
 	for _, a := range asked {
 		// A row naming no project means the default one, as a URL naming none does.
@@ -282,8 +288,11 @@ func (s *Server) rowsOf(w http.ResponseWriter, r *http.Request, asked []rowReque
 	return rows, true
 }
 
-// onlyRow is a scope alone, applied to a token reaching exactly one project. One reaching
-// several has no one row it could mean, and is told to send its projects.
+// onlyRow is a scope alone, read the way minting reads one. On a token reaching one project it
+// is that row's scope. On one reaching every project it confines the token inside the default
+// project — as a scope alone does when a token is minted — and an empty one changes nothing,
+// which comes back as no rows. One reaching several has no one row it could mean, and is told
+// to send its projects.
 func (s *Server) onlyRow(w http.ResponseWriter, r *http.Request, scope string) ([]rowRequest, bool) {
 	tokens, err := s.store.Tokens(r.Context(), principalOf(r).ID)
 	if err != nil {
@@ -294,7 +303,14 @@ func (s *Server) onlyRow(w http.ResponseWriter, r *http.Request, scope string) (
 		if t.ID != r.PathValue("id") {
 			continue
 		}
-		if len(t.Projects) != 1 {
+		switch len(t.Projects) {
+		case 0:
+			if strings.TrimSpace(scope) == "" {
+				return nil, true
+			}
+			return []rowRequest{{Project: "", Scope: scope}}, true
+		case 1:
+		default:
 			refuse(w, http.StatusBadRequest, CodeInvalid,
 				"This token reaches several projects, so a scope alone could mean any of them. Send projects.")
 			return nil, false

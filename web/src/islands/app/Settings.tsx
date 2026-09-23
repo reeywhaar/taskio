@@ -333,7 +333,13 @@ export function Tokens() {
           >
             <span className="font-mono text-xs text-faint">{token.id}</span>
             <span>{token.label}</span>
-            {/* A chip per project it reaches, with what confines it there. */}
+            {/* A chip per project it reaches, with what confines it there — or one saying it
+                reaches them all, which is what a token with no rows does. */}
+            {token.projects.length === 0 ? (
+              <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
+                every project
+              </span>
+            ) : null}
             {token.projects.map((row) => (
               <span
                 key={row.project}

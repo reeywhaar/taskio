@@ -8,7 +8,11 @@ import { Button } from "@app/components/Button";
 import { Field, Group } from "@app/components/Field";
 import { Select } from "@app/components/Select";
 import { TextField } from "@app/components/TextField";
-import { projectNamed, ProjectField } from "@app/islands/app/ProjectPicker";
+import { useState } from "react";
+import {
+  projectNamed,
+  ProjectSelectDialog,
+} from "@app/islands/app/ProjectPicker";
 import { TagCloud } from "@app/islands/app/TagCloud";
 
 const DAY = 86400;
@@ -47,7 +51,8 @@ export const blankToken: TokenForm = {
   label: "",
   idle: "0",
   expires: "0",
-  rows: [{ project: "", tags: [], any: true }],
+  // None: a new token operates on every project until it is given one.
+  rows: [],
 };
 
 const IDLE: [string, string][] = [
@@ -187,9 +192,13 @@ function reach(row: ReachRow): string {
 
 /**
  * The projects a token reaches, a row each: the project, its tags, and a way to take the row
- * away. A project appears once — the picker will not offer one already on another row — and a
- * token keeps at least one, because a token that reaches nothing is a revoked one by another
- * name.
+ * away. None at all is every project — a new token operates across the account until it is
+ * given rows, and only then is it confined to the ones listed.
+ *
+ * A row is added by choosing its project first, and the project is then written on the row
+ * rather than offered as a field: changing which project a row is about is taking it away and
+ * adding another, which says what is happening instead of quietly moving a scope's tags onto a
+ * project they may not exist in.
  */
 function Rows({
   value,
@@ -198,6 +207,7 @@ function Rows({
   value: ReachRow[];
   onChange: (next: ReachRow[]) => void;
 }) {
+  const [adding, setAdding] = useState(false);
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
   const all = projects.data?.projects ?? [];
   /** The real slug of every row's project, so an empty one counts as the default it means. */
@@ -212,54 +222,58 @@ function Rows({
   return (
     <Group
       label="Reaches"
-      hint="A row per project. With no tags picked it reaches the whole project; with several, any of them."
+      hint="Every project until one is added, and then only the ones listed. With no tags picked a row reaches its whole project; with several, any of them."
     >
       <div className="flex flex-col gap-3">
+        {value.length === 0 ? (
+          <p className="text-sm text-muted">
+            Every project, and everything in each.
+          </p>
+        ) : null}
         {value.map((row, at) => (
           <Row
-            key={at}
+            key={row.project}
             row={row}
-            taken={taken.filter((_, i) => i !== at)}
+            name={projectNamed(all, row.project)?.name ?? row.project}
             onChange={(next) => put(at, next)}
-            onRemove={
-              value.length > 1
-                ? () => onChange(value.filter((_, i) => i !== at))
-                : undefined
-            }
+            onRemove={() => onChange(value.filter((_, i) => i !== at))}
           />
         ))}
+        {/* Gone once every project has a row: there would be nothing left to add. */}
         {free.length > 0 ? (
           <div>
-            <Button
-              size="bar"
-              onClick={() =>
-                onChange([
-                  ...value,
-                  { project: free[0]!.slug, tags: [], any: true },
-                ])
-              }
-            >
+            <Button size="bar" onClick={() => setAdding(true)}>
               + Add project
             </Button>
           </div>
         ) : null}
       </div>
+      <ProjectSelectDialog
+        open={adding}
+        title="Add a project"
+        current={null}
+        taken={taken}
+        onChoose={(project) => {
+          setAdding(false);
+          onChange([...value, { project: project.slug, tags: [], any: true }]);
+        }}
+        onClose={() => setAdding(false)}
+      />
     </Group>
   );
 }
 
 function Row({
   row,
-  taken,
+  name,
   onChange,
   onRemove,
 }: {
   row: ReachRow;
-  /** The other rows' projects, which this one cannot be changed to. */
-  taken: string[];
+  /** The project's name, written on the row. */
+  name: string;
   onChange: (next: ReachRow) => void;
-  /** Absent on the last row: a token keeps one. */
-  onRemove?: () => void;
+  onRemove: () => void;
 }) {
   const tags = useQuery({
     queryKey: qk.tagsOf(row.project),
@@ -276,26 +290,17 @@ function Row({
             goes when this token&apos;s projects are next saved.
           </span>
         ) : (
-          <div className="w-48">
-            <ProjectField
-              value={row.project}
-              taken={taken}
-              // Its tags are the last project's, so they do not come along.
-              onChange={(project) => onChange({ project, tags: [], any: true })}
-            />
-          </div>
+          <span className="text-sm font-medium">{name}</span>
         )}
         <span className="flex-1" />
-        {onRemove ? (
-          <Button
-            size="bar"
-            onClick={onRemove}
-            aria-label="Remove this project"
-            title="Remove this project"
-          >
-            −
-          </Button>
-        ) : null}
+        <Button
+          size="bar"
+          onClick={onRemove}
+          aria-label="Remove this project"
+          title="Remove this project"
+        >
+          −
+        </Button>
       </div>
 
       {row.deleted ? null : (

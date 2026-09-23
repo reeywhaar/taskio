@@ -90,8 +90,12 @@ type TokenProject struct {
 	Scope string
 }
 
-// Reach is what the token may touch: each project it reaches, with its scope parsed.
+// Reach is what the token may touch: each project it reaches, with its scope parsed. A token
+// with no rows reaches every project the account has, now and later, which is a nil Reach.
 func (t *Token) Reach() (Reach, error) {
+	if len(t.Projects) == 0 {
+		return nil, nil
+	}
 	reach := Reach{}
 	for _, row := range t.Projects {
 		var scope *filter.Node
@@ -106,12 +110,11 @@ func (t *Token) Reach() (Reach, error) {
 	return reach, nil
 }
 
-// cleanRows validates a token's projects: at least one, each a live project of the account
-// named once, each scope in the grammar a scope may use.
+// cleanRows validates a token's projects: each a live project of the account named once, each
+// scope in the grammar a scope may use. None at all is a token for every project — a new token
+// operates across the account until it is given rows, and only the tokens migrated from before
+// projects start out confined to the default one.
 func (s *Store) cleanRows(ctx context.Context, principalID string, rows []TokenProject) ([]TokenProject, error) {
-	if len(rows) == 0 {
-		return nil, Invalid("A token needs a project to reach.")
-	}
 	out := make([]TokenProject, 0, len(rows))
 	seen := map[string]bool{}
 	for _, row := range rows {
