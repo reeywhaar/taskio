@@ -530,6 +530,7 @@ function List({
           chosen={tasks.filter((task) => selection.includes(task.id))}
           tags={tags.data?.tags ?? []}
           view={filters.view}
+          project={filters.project}
           leaving={leaving}
           onLeft={() => {
             setLeaving(false);

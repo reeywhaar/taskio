@@ -7,6 +7,7 @@ import { NumberField } from "@app/components/NumberField";
 import { Swatches } from "@app/components/Swatches";
 import { TextField } from "@app/components/TextField";
 import { Editor } from "@app/islands/app/Editor";
+import { ProjectField } from "@app/islands/app/ProjectPicker";
 import { TagCloud } from "@app/islands/app/TagCloud";
 
 /** What a task is made of, and what either dialog is editing. */
@@ -79,37 +80,60 @@ export function TaskForm({
 
       {/* Side by side, because the space beside the number was empty and a row of swatches is
           the shape that fits it. They are unrelated: one orders the list and the other means
-          whatever the person who set it decided. */}
+          whatever the person who set it decided. The project leads, because it is the widest
+          thing a task is: everything after it — its tags included — is inside it. */}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        {/* A caption, not a label: Field wraps its child in one, and a label takes the first
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
+          {/* A caption, for the same reason as the stepper's below: the field is a button that
+              opens a dialog, and a label would name it after itself. */}
+          <Caption
+            label="Project"
+            hint={
+              <p>
+                Moving it takes its tags along: they are the new project&apos;s
+                tags from then on.
+              </p>
+            }
+          >
+            <div className="w-40">
+              <ProjectField
+                value={draft.project}
+                onChange={(project) => set({ project })}
+              />
+            </div>
+          </Caption>
+
+          {/* A caption, not a label: Field wraps its child in one, and a label takes the first
             labelable thing inside it — which here is the decrease button rather than the
             field. */}
-        <Caption
-          label="Priority"
-          hint={
-            <>
-              <p>
-                Higher sorts higher. A pin beats any number, so a pinned task
-                with nothing set still sits above an unpinned one set to nine.
-              </p>
-              <p>
-                Negative numbers sort below nought, which is where a thing goes
-                that you do not want to look at and do not want to lose either.
-              </p>
-              <p>
-                The list leaves a wider gap wherever the number changes, so the
-                bands are something to see rather than something to work out by
-                reading down the column.
-              </p>
-            </>
-          }
-        >
-          <NumberField
+          <Caption
             label="Priority"
-            value={draft.priority}
-            onChange={(priority) => set({ priority })}
-          />
-        </Caption>
+            hint={
+              <>
+                <p>
+                  Higher sorts higher. A pin beats any number, so a pinned task
+                  with nothing set still sits above an unpinned one set to nine.
+                </p>
+                <p>
+                  Negative numbers sort below nought, which is where a thing
+                  goes that you do not want to look at and do not want to lose
+                  either.
+                </p>
+                <p>
+                  The list leaves a wider gap wherever the number changes, so
+                  the bands are something to see rather than something to work
+                  out by reading down the column.
+                </p>
+              </>
+            }
+          >
+            <NumberField
+              label="Priority"
+              value={draft.priority}
+              onChange={(priority) => set({ priority })}
+            />
+          </Caption>
+        </div>
 
         <Caption
           label="Color"

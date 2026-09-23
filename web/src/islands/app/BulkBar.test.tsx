@@ -10,6 +10,7 @@ const postTasksBulkPriority = vi.fn();
 const postTasksBulkDone = vi.fn();
 const postTasksBulkTodo = vi.fn();
 const postTasksBulkTags = vi.fn();
+const postTasksBulkProject = vi.fn();
 vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkPinned: (ids: string[], pinned: boolean) =>
     postTasksBulkPinned(ids, pinned),
@@ -20,6 +21,23 @@ vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkTags: (ids: string[], add: string[], remove: string[]) =>
     postTasksBulkTags(ids, add, remove),
   postTasksBulkDelete: vi.fn(),
+  postTasksBulkProject: (ids: string[], project: string) =>
+    postTasksBulkProject(ids, project),
+}));
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
 }));
 
 const ids = ["8qw4tz9k", "kr20fj8m"];
@@ -42,6 +60,7 @@ const bar = (
       chosen={picked}
       tags={tags}
       view={view}
+      project=""
       onDone={vi.fn()}
       onCancel={vi.fn()}
     />,
@@ -121,6 +140,7 @@ describe("BulkBar", () => {
         chosen={chosen([], [])}
         tags={tags}
         view="todo"
+        project=""
         onDone={vi.fn()}
         onCancel={onCancel}
       />,
@@ -144,6 +164,7 @@ describe("BulkBar", () => {
       chosen: chosen([], []),
       tags,
       view: "todo" as const,
+      project: "",
       onDone: vi.fn(),
       onCancel: vi.fn(),
       onHeight,
@@ -280,5 +301,24 @@ describe("tagging a selection", () => {
     // And the presses go with it: opening again reads the selection afresh.
     fireEvent.click(screen.getByRole("button", { name: "Tag" }));
     expect(pill("work")).toBe("false");
+  });
+});
+
+describe("moving a selection", () => {
+  beforeEach(() =>
+    postTasksBulkProject.mockReset().mockResolvedValue(undefined),
+  );
+
+  it("moves it to the project pressed, and nowhere for the one it is in", async () => {
+    bar();
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Main" }));
+    expect(postTasksBulkProject).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Web" }));
+    await waitFor(() =>
+      expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "web"),
+    );
   });
 });

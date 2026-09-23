@@ -4,6 +4,7 @@ import {
   postTasksBulkDelete,
   postTasksBulkDone,
   postTasksBulkPinned,
+  postTasksBulkProject,
   postTasksBulkTodo,
 } from "@app/api/actions/tasks";
 import type { Filters } from "@app/islands/app/route";
@@ -13,6 +14,7 @@ import { CrossIcon } from "@app/components/icons/Icon";
 import { copy } from "@app/clipboard";
 import { BulkPriorityDialog } from "@app/islands/app/BulkPriorityDialog";
 import { BulkTagDialog } from "@app/islands/app/BulkTagDialog";
+import { ProjectSelectDialog } from "@app/islands/app/ProjectPicker";
 
 /**
  * A bar under the list, one request per action.
@@ -31,6 +33,7 @@ export function BulkBar({
   chosen,
   tags,
   view,
+  project,
   onDone,
   onCancel,
   leaving = false,
@@ -43,6 +46,8 @@ export function BulkBar({
   chosen: Task[];
   tags: Tag[];
   view: Filters["view"];
+  /** The project on screen, which is where the selection is now. Empty is the default. */
+  project: string;
   onDone: () => void;
   /** Done picking, having done nothing. */
   onCancel: () => void;
@@ -55,7 +60,9 @@ export function BulkBar({
   onHeight?: (px: number) => void;
 }) {
   // One prompt at a time, and both of them are dialogs. See the note on the bar below.
-  const [asking, setAsking] = useState<"tag" | "priority" | null>(null);
+  const [asking, setAsking] = useState<"tag" | "priority" | "project" | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -194,6 +201,13 @@ export function BulkBar({
         </Button>
         <Button
           size="bar"
+          disabled={busy || ids.length === 0}
+          onClick={() => setAsking("project")}
+        >
+          Move
+        </Button>
+        <Button
+          size="bar"
           disabled={ids.length === 0}
           onClick={() => void copyIds()}
         >
@@ -241,6 +255,20 @@ export function BulkBar({
         ids={ids}
         onClose={() => setAsking(null)}
         onSaved={onDone}
+      />
+
+      {/* A press is the move: there is one project to choose, and moving back is the same
+          press again. Choosing the one they are already in is nothing to do. */}
+      <ProjectSelectDialog
+        open={asking === "project"}
+        title="Move to project"
+        current={project}
+        onChoose={(target) => {
+          setAsking(null);
+          if (target.slug === project || (!project && target.default)) return;
+          void run(() => postTasksBulkProject(ids, target.slug));
+        }}
+        onClose={() => setAsking(null)}
       />
 
       <BulkTagDialog

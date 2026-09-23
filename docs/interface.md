@@ -202,6 +202,18 @@ agent's `?project=` working, and a new slug breaks them, which the field says. D
 every task in the project with it, so it asks for the name typed out rather than a yes. The
 default project can be renamed and not deleted.
 
+## A task is moved with a field, not a gesture
+
+The task form leads its row with the project — `[project] [priority] … [color]` — because it is
+the widest thing a task is: everything after it, its tags included, is inside it. It looks like a
+select and opens the projects as pills, one of which can be lit, the same way a tag or a project
+is picked everywhere else. A press is the choice; one pill needs no Save after it.
+
+A move is saved with the rest of the task and sent only when it changed, so a task saved where it
+is never so much as asks to move. It takes its tags along: they are the new project's from then
+on. The bulk bar moves a selection the same way, and choosing the project it is already in does
+nothing.
+
 ## Groups and projects are dragged like tags
 
 The rail's rows carry the same press-and-move gesture as the pills, one axis over: the carried

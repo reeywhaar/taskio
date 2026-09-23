@@ -33,6 +33,21 @@ vi.mock("@app/api/actions/tasks", () => ({
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
 }));
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
+}));
 
 const detail = (status: "todo" | "done"): TaskDetail =>
   ({
@@ -159,5 +174,29 @@ describe("a verdict written and then acted on", () => {
 
     await screen.findByText("A task needs a title.");
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+/** A move is a field like any other, saved with the rest — and only sent when it changed. */
+describe("moving a task", () => {
+  it("sends the project it was moved to", async () => {
+    const onClose = vi.fn();
+    mount(<TaskDialog id="8qw4tz9k" onClose={onClose} onOpen={vi.fn()} />);
+    await screen.findByPlaceholderText(/Markdown\. Paste a file/);
+    await settle();
+
+    fireEvent.click(screen.getByRole("button", { name: "Main" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Web" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(patch.mock.calls[0]![1]).toMatchObject({ project: "web" });
+  });
+
+  it("does not so much as ask to move a task saved where it is", async () => {
+    await withVerdict();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0]![1]).not.toHaveProperty("project");
   });
 });

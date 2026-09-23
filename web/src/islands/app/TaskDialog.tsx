@@ -37,6 +37,7 @@ function differs(draft: Draft, task: TaskDetail): boolean {
     draft.description !== task.description ||
     (Number(draft.priority) || 0) !== task.priority ||
     draft.color !== task.color ||
+    draft.project !== task.project ||
     draft.tags.length !== task.tags.length ||
     draft.tags.some((tag) => !task.tags.includes(tag))
   );
@@ -104,6 +105,11 @@ export function TaskDialog({
       tags: draft.tags,
       priority: Number(draft.priority) || 0,
       color: draft.color,
+      // Only when it was changed: a task saved from where it is should not so much as ask to
+      // move, and a token confined to its project would be refused for asking.
+      ...(task.data && draft.project !== task.data.project
+        ? { project: draft.project }
+        : {}),
     });
 
   const save = useMutation({
