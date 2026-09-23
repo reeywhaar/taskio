@@ -6,6 +6,7 @@ import { TaskRow } from "@app/islands/app/TaskRow";
 
 const task = (over: Partial<Task> = {}): Task => ({
   id: "8qw4tz9k",
+  project: "main",
   title: "Fix the tap",
   description: "",
   tags: [],

@@ -1,7 +1,9 @@
-import { request } from "@app/api/transport";
+import { query, request } from "@app/api/transport";
 import type { Tag } from "@app/api/types";
 
-export const getTags = () => request<{ tags: Tag[] }>("/api/tags");
+/** A project's tags, by slug; empty is the default project. */
+export const getTags = (project: string) =>
+  request<{ tags: Tag[] }>(`/api/tags${query({ project })}`);
 
 export const patchTagsBySlug = (slug: string, body: { slug: string }) =>
   request<{ slug: string; tasks: number }>(
@@ -18,5 +20,8 @@ export const deleteTagsBySlug = (slug: string) =>
   });
 
 /** Where the pills have been dragged to. The whole arrangement, not one move. */
-export const putTagsOrder = (body: { slugs: string[] }) =>
-  request<void>("/api/tags/order", { method: "PUT", body });
+export const putTagsOrder = (project: string, body: { slugs: string[] }) =>
+  request<void>(`/api/tags/order${query({ project })}`, {
+    method: "PUT",
+    body,
+  });

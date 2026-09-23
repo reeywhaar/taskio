@@ -29,13 +29,20 @@ export type Editing = Group | "new" | null;
  */
 export function GroupDialog({
   editing,
+  project,
   onClose,
 }: {
   editing: Editing;
+  /** The project on screen: a group is a view of one project's tags, and a new one is made in
+   *  the project it is being made from. */
+  project: string;
   onClose: () => void;
 }) {
   const client = useQueryClient();
-  const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
+  const tags = useQuery({
+    queryKey: qk.tagsOf(project),
+    queryFn: () => getTags(project),
+  });
   const group = editing === "new" ? null : editing;
 
   const [name, setName] = useState("");
@@ -63,7 +70,9 @@ export function GroupDialog({
   const save = useMutation({
     mutationFn: () => {
       const body = { name: name.trim(), tags: chosen, color: color };
-      return group ? patchGroupsById(group.id, body) : postGroups(body);
+      return group
+        ? patchGroupsById(group.id, body)
+        : postGroups(project, body);
     },
     onSuccess: done,
     onError: failed,

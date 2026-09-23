@@ -6,6 +6,7 @@ import { Elsewhere } from "@app/islands/app/Elsewhere";
 
 const task = (id: string, title: string, status: "todo" | "done"): Task => ({
   id,
+  project: "main",
   title,
   status,
   description: "",

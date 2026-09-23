@@ -2,6 +2,8 @@ import { query, request } from "@app/api/transport";
 import type { Task, TaskDetail, TaskPage } from "@app/api/types";
 
 export type ListParams = {
+  /** The project's slug; empty is the default project. */
+  project?: string;
   tags?: string;
   q?: string;
   status?: string;
@@ -17,14 +19,17 @@ export const getTasks = (params: ListParams) =>
 export const getTasksById = (id: string) =>
   request<TaskDetail>(`/api/tasks/${id}`);
 
-export const postTasks = (body: {
-  title: string;
-  description?: string;
-  tags?: string[];
-  color?: string;
-  priority?: number;
-  pinned?: boolean;
-}) => request<Task>("/api/tasks", { method: "POST", body });
+export const postTasks = (
+  project: string,
+  body: {
+    title: string;
+    description?: string;
+    tags?: string[];
+    color?: string;
+    priority?: number;
+    pinned?: boolean;
+  },
+) => request<Task>(`/api/tasks${query({ project })}`, { method: "POST", body });
 
 export const patchTasksById = (
   id: string,
@@ -35,6 +40,8 @@ export const patchTasksById = (
     priority?: number;
     pinned?: boolean;
     color?: string;
+    /** Moves it, with its tags, to the project with this slug. */
+    project?: string;
   },
 ) => request<Task>(`/api/tasks/${id}`, { method: "PATCH", body });
 
@@ -61,6 +68,13 @@ export const postTasksBulkTags = (
   request<void>("/api/tasks/bulk/tags", {
     method: "POST",
     body: { ids, add, remove },
+  });
+
+/** Moves every task in the set, each with its tags, to one project. */
+export const postTasksBulkProject = (ids: string[], project: string) =>
+  request<void>("/api/tasks/bulk/project", {
+    method: "POST",
+    body: { ids, project },
   });
 
 export const postTasksBulkPriority = (ids: string[], priority: number) =>

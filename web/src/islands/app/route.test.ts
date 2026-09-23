@@ -30,7 +30,12 @@ describe("parseAnd", () => {
 });
 
 describe("href", () => {
-  const filters = { tags: [] as string[], view: "todo" as const, q: "" };
+  const filters = {
+    project: "",
+    tags: [] as string[],
+    view: "todo" as const,
+    q: "",
+  };
 
   it("leaves defaults out of the URL", () => {
     expect(href({ route: { name: "list" }, filters })).toBe("/");
@@ -71,7 +76,10 @@ describe("href", () => {
 
 /** The tab for a list with these tags lit and nothing else going on. */
 const at = (tags: string[]) =>
-  title({ route: { name: "list" }, filters: { tags, view: "todo", q: "" } });
+  title({
+    route: { name: "list" },
+    filters: { project: "", tags, view: "todo", q: "" },
+  });
 
 describe("title", () => {
   it("is the name alone when nothing is lit", () => {
@@ -89,7 +97,7 @@ describe("title", () => {
     expect(
       title({
         route: { name: "list" },
-        filters: { tags: ["web"], view: "done", q: "plumb" },
+        filters: { project: "", tags: ["web"], view: "done", q: "plumb" },
       }),
     ).toBe("web :: taskio");
   });

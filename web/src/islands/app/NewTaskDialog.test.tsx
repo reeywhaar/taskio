@@ -6,7 +6,7 @@ import { mount } from "@app/test/harness";
 
 const postTasks = vi.fn();
 vi.mock("@app/api/actions/tasks", () => ({
-  postTasks: (body: unknown) => postTasks(body),
+  postTasks: (project: string, body: unknown) => postTasks(project, body),
 }));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
@@ -24,6 +24,7 @@ describe("NewTaskDialog", () => {
   it("opens with the title it was handed, and the lit tags", () => {
     mount(
       <NewTaskDialog
+        project=""
         open
         tags={["home"]}
         title="Renew the passport"
@@ -45,6 +46,7 @@ describe("NewTaskDialog", () => {
     const onClose = vi.fn();
     mount(
       <NewTaskDialog
+        project=""
         open
         tags={[]}
         title="Renew the passport"
@@ -56,6 +58,7 @@ describe("NewTaskDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
     expect(postTasks).toHaveBeenCalledWith(
+      "",
       expect.objectContaining({ title: "Renew the passport" }),
     );
 

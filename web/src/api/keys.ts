@@ -8,8 +8,12 @@ export const qk = {
   tasks: ["tasks"] as const,
   taskList: (search: string) => ["tasks", "list", search] as const,
   task: (id: string) => ["tasks", "one", id] as const,
+  projects: ["projects"] as const,
+  /** Every project's tags, for invalidating; tagsOf is one project's. */
   tags: ["tags"] as const,
+  tagsOf: (project: string) => ["tags", project] as const,
   groups: ["groups"] as const,
+  groupsOf: (project: string) => ["groups", project] as const,
   sessions: ["sessions"] as const,
   tokens: ["tokens"] as const,
   account: ["account"] as const,

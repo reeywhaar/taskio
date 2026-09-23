@@ -30,7 +30,11 @@ export function TokenDialog({
   onClose: () => void;
 }) {
   const client = useQueryClient();
-  const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
+  // The default project's, which is what a scope alone confines a token inside.
+  const tags = useQuery({
+    queryKey: qk.tagsOf(""),
+    queryFn: () => getTags(""),
+  });
   const [form, setForm] = useState<TokenForm>(blankToken);
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");

@@ -186,15 +186,29 @@ a group without a color wears the brand, so empty is what the brand swatch store
 without one wears nothing, so empty is a swatch of its own and the brand is a color like any
 other.
 
-## Groups are dragged like tags, and All is not one of them
+## The rail is projects, and the open one's groups
 
-The rail's groups carry the same press-and-move gesture as the pills, one axis over: the carried
+A project row is the whole project — the list with nothing lit, which is what All used to be,
+so there is no All. Only the open project's groups are drawn, a step in from it: a group is a
+view of one project's tags, and every project's groups at once is a rail about the other
+projects. Opening a project lights none of the last one's tags, since they are not its tags.
+
+The URL says `?project=` with the slug, and says nothing for the default project — the server's
+own rule, so a link with no project means one place to whoever follows it.
+
+A slug is derived from the name while the project is being made, until somebody types into the
+slug field. After that it changes only when it is changed: a rename keeps every link and every
+agent's `?project=` working, and a new slug breaks them, which the field says. Deleting takes
+every task in the project with it, so it asks for the name typed out rather than a yes. The
+default project can be renamed and not deleted.
+
+## Groups and projects are dragged like tags
+
+The rail's rows carry the same press-and-move gesture as the pills, one axis over: the carried
 row dims, a bar shows the place it would land, and nothing moves until it is let go. The gesture
 itself is in one place — the two would otherwise be two copies of pointer capture, a slop
-threshold and a swallowed click.
-
-All does not carry. It is the list with nothing lit rather than a stored group, so it has no
-place in the arrangement and stays at the top of the rail.
+threshold and a swallowed click. A group moves among its project's groups and a project among
+the projects; neither can be dropped among the other.
 
 A new group is written after the ones already there rather than at position zero, which is where
 the first arranged group sits. Otherwise writing one puts it at the top of somebody's

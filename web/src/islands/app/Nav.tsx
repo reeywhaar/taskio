@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getGroups, putGroupsOrder } from "@app/api/actions/groups";
-import type { Group } from "@app/api/types";
+import { getProjects, putProjectsOrder } from "@app/api/actions/projects";
+import type { Group, Project } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import {
   BurgerIcon,
@@ -12,12 +13,21 @@ import {
 } from "@app/components/icons/Icon";
 import { useCarry } from "@app/islands/app/carry";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
+import {
+  ProjectDialog,
+  type EditingProject,
+} from "@app/islands/app/ProjectDialog";
 import { markURI } from "@app/mark";
 import type { Location } from "@app/islands/app/route";
 
 /**
- * The nav rail is the only thing always in the same place: the groups, settings, and the docs
- * at the foot. Where you are is drawn in the foreground color rather than hidden.
+ * The nav rail is the only thing always in the same place: the projects, the open one's groups,
+ * settings, and the docs at the foot. Where you are is drawn in the foreground color rather
+ * than hidden.
+ *
+ * A project row is the whole project, which is what All used to be: the list with nothing lit.
+ * Only the open project's groups are drawn, a step in from it — a group is a view of one
+ * project's tags, and every project's groups at once is a rail about the other projects.
  *
  * Below the breakpoint it goes behind a burger and slides over as a sheet — the same component
  * with different chrome rather than a second nav.
@@ -31,8 +41,20 @@ export function Nav({
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
-  const groups = useQuery({ queryKey: qk.groups, queryFn: getGroups });
+  const [editingProject, setEditingProject] = useState<EditingProject>(null);
   const client = useQueryClient();
+
+  const here = location.filters.project;
+  const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
+  const groups = useQuery({
+    queryKey: qk.groupsOf(here),
+    queryFn: () => getGroups(here),
+  });
+  const listedProjects = projects.data?.projects ?? [];
+  /** The project on screen: named in the URL, or the default when it names none. */
+  const opened = listedProjects.find((p) =>
+    here ? p.slug === here : p.default,
+  );
 
   /** The group being carried, and the one it would be dropped on. */
   const [carrying, setCarrying] = useState<string | null>(null);
@@ -41,21 +63,59 @@ export function Nav({
   const listed = groups.data?.groups ?? [];
 
   const arrange = useMutation({
-    mutationFn: (ids: string[]) => putGroupsOrder({ ids }),
+    mutationFn: (ids: string[]) => putGroupsOrder(here, { ids }),
     onMutate: (ids) => {
-      const before = client.getQueryData<{ groups: Group[] }>(qk.groups);
+      const key = qk.groupsOf(here);
+      const before = client.getQueryData<{ groups: Group[] }>(key);
       if (before) {
         const by = new Map(before.groups.map((g) => [g.id, g]));
-        client.setQueryData(qk.groups, {
+        client.setQueryData(key, {
           groups: ids.flatMap((id) => by.get(id) ?? []),
         });
       }
       return before;
     },
     onError: (_err, _ids, before) =>
-      before && client.setQueryData(qk.groups, before),
+      before && client.setQueryData(qk.groupsOf(here), before),
     onSettled: () => client.invalidateQueries({ queryKey: qk.groups }),
   });
+
+  /** The projects being carried, on the same terms as the groups. */
+  const [carryingProject, setCarryingProject] = useState<string | null>(null);
+  const [ontoProject, setOntoProject] = useState<string | null>(null);
+  const arrangeProjects = useMutation({
+    mutationFn: (ids: string[]) => putProjectsOrder({ ids }),
+    onMutate: (ids) => {
+      const before = client.getQueryData<{ projects: Project[] }>(qk.projects);
+      if (before) {
+        const by = new Map(before.projects.map((p) => [p.id, p]));
+        client.setQueryData(qk.projects, {
+          projects: ids.flatMap((id) => by.get(id) ?? []),
+        });
+      }
+      return before;
+    },
+    onError: (_err, _ids, before) =>
+      before && client.setQueryData(qk.projects, before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.projects }),
+  });
+  const dropProject = () => {
+    const ids = listedProjects.map((p) => p.id);
+    const from = carryingProject ? ids.indexOf(carryingProject) : -1;
+    const to = ontoProject ? ids.indexOf(ontoProject) : -1;
+    setCarryingProject(null);
+    setOntoProject(null);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(to, 0, ids[from]!);
+    arrangeProjects.mutate(next);
+  };
+  const markForProject = (id: string): "above" | "below" | null => {
+    if (!carryingProject || ontoProject !== id) return null;
+    const ids = listedProjects.map((p) => p.id);
+    return ids.indexOf(carryingProject) < ids.indexOf(id) ? "below" : "above";
+  };
 
   /**
    * Nothing moves until the group is let go, and All is not in it.
@@ -125,47 +185,99 @@ export function Nav({
     });
   };
 
+  /** The whole of a project. Its tags are its own, so none of the ones lit here carry over. */
+  const showProject = (project: Project) => {
+    setOpen(false);
+    onGo({
+      ...location,
+      route: { name: "list" },
+      filters: {
+        ...location.filters,
+        project: project.default ? "" : project.slug,
+        tags: [],
+      },
+    });
+  };
+
   const items = (
     <ul className="flex flex-1 flex-col gap-0.5 p-2">
-      <li className="px-3 pt-1 pb-1 text-xs font-medium tracking-wide text-muted uppercase">
-        Groups
-      </li>
+      {listedProjects.map((project) => {
+        const isOpen = project.id === opened?.id;
+        return (
+          <Fragment key={project.id}>
+            <Item
+              id={project.id}
+              kind="project"
+              label={project.name}
+              lit={isOpen && litBy([])}
+              opened={isOpen}
+              carried={carryingProject === project.id}
+              mark={markForProject(project.id)}
+              onClick={() => showProject(project)}
+              onEdit={() => {
+                setOpen(false);
+                setEditingProject(project);
+              }}
+              onOver={(id) => {
+                setCarryingProject(project.id);
+                setOntoProject(id && id !== project.id ? id : null);
+              }}
+              onDrop={dropProject}
+            />
 
-      {/* All is not a stored group and cannot be deleted: it is the list with nothing lit,
-          which is where everybody starts. */}
-      <Item label="All" lit={litBy([])} onClick={() => show([])} />
-
-      {listed.map((group) => (
-        <Item
-          key={group.id}
-          id={group.id}
-          label={group.name}
-          lit={litBy(group.tags)}
-          carried={carrying === group.id}
-          mark={markFor(group.id)}
-          onClick={() => show(group.tags)}
-          onEdit={() => {
-            setOpen(false);
-            setEditing(group);
-          }}
-          onOver={(id) => {
-            setCarrying(group.id);
-            setOnto(id && id !== group.id ? id : null);
-          }}
-          onDrop={drop}
-        />
-      ))}
+            {/* A step in, so they read as belonging to the project above them. */}
+            {isOpen ? (
+              <li>
+                <ul className="ml-3 flex flex-col gap-0.5">
+                  {listed.map((group) => (
+                    <Item
+                      key={group.id}
+                      id={group.id}
+                      label={group.name}
+                      lit={litBy(group.tags)}
+                      carried={carrying === group.id}
+                      mark={markFor(group.id)}
+                      onClick={() => show(group.tags)}
+                      onEdit={() => {
+                        setOpen(false);
+                        setEditing(group);
+                      }}
+                      onOver={(id) => {
+                        setCarrying(group.id);
+                        setOnto(id && id !== group.id ? id : null);
+                      }}
+                      onDrop={drop}
+                    />
+                  ))}
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        setEditing("new");
+                      }}
+                      className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-shade hover:text-fg"
+                    >
+                      <PlusIcon /> New group
+                    </button>
+                  </li>
+                </ul>
+              </li>
+            ) : null}
+          </Fragment>
+        );
+      })}
 
       <li>
         <button
           type="button"
           onClick={() => {
             setOpen(false);
-            setEditing("new");
+            setEditingProject("new");
           }}
           className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-shade hover:text-fg"
         >
-          <PlusIcon /> New group
+          <PlusIcon /> New project
         </button>
       </li>
 
@@ -266,7 +378,23 @@ export function Nav({
         </div>
       </div>
 
-      <GroupDialog editing={editing} onClose={() => setEditing(null)} />
+      <GroupDialog
+        editing={editing}
+        project={here}
+        onClose={() => setEditing(null)}
+      />
+      <ProjectDialog
+        editing={editingProject}
+        onClose={() => setEditingProject(null)}
+        onGo={(project) => showProject(project)}
+        onGone={() =>
+          onGo({
+            ...location,
+            route: { name: "list" },
+            filters: { ...location.filters, project: "", tags: [] },
+          })
+        }
+      />
     </>
   );
 }
@@ -303,13 +431,15 @@ function Mark({ color }: { color: string }) {
  * rail about editing rather than about where you are. Where there is no pointer to wait for it
  * is simply there.
  *
- * A group row also carries: press and move and it goes somewhere else in the rail. All does not,
- * because All is not a group — it is the list with nothing lit, and it stays at the top.
+ * A group or a project row also carries: press and move and it goes somewhere else among its
+ * own kind. A group cannot be dropped among the projects, nor a project among one's groups.
  */
 function Item({
   id,
+  kind = "group",
   label,
   lit,
+  opened = false,
   carried = false,
   mark = null,
   onClick,
@@ -318,10 +448,13 @@ function Item({
   onDrop,
   bare = false,
 }: {
-  /** The group this row is, where it is one. */
+  /** The group or project this row is, where it is one. */
   id?: string;
+  kind?: "group" | "project";
   label: string;
   lit: boolean;
+  /** The project on screen, which reads as the open one even while a group inside it is lit. */
+  opened?: boolean;
   carried?: boolean;
   mark?: "above" | "below" | null;
   onClick: () => void;
@@ -332,9 +465,9 @@ function Item({
   bare?: boolean;
 }) {
   const carry = useCarry({
-    find: "[data-group]",
+    find: `[data-${kind}]`,
     enabled: !!onOver,
-    onOver: (el) => onOver?.(el?.dataset.group ?? null),
+    onOver: (el) => onOver?.(el?.dataset[kind] ?? null),
     onDrop: () => onDrop?.(),
   });
 
@@ -349,7 +482,7 @@ function Item({
     >
       <button
         type="button"
-        data-group={id}
+        {...{ [`data-${kind}`]: id }}
         onPointerDown={carry.press}
         onPointerMove={carry.move}
         onPointerUp={carry.release}
@@ -364,7 +497,13 @@ function Item({
         aria-current={lit ? "page" : undefined}
         className={`min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none ${
           onOver ? "touch-none" : ""
-        } ${lit ? "font-medium text-brand" : "text-muted group-hover/row:text-fg"}`}
+        } ${
+          lit
+            ? "font-medium text-brand"
+            : opened
+              ? "font-medium text-fg"
+              : "text-muted group-hover/row:text-fg"
+        }`}
       >
         {label}
       </button>

@@ -22,10 +22,26 @@ vi.mock("@app/api/actions/groups", () => ({
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
 }));
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
+  putProjectsOrder: vi.fn(),
+}));
 
-const at = (tags: string[]): Location => ({
+const at = (tags: string[], project = ""): Location => ({
   route: { name: "list" },
-  filters: { tags, view: "todo", q: "" },
+  filters: { project, tags, view: "todo", q: "" },
 });
 
 const rail = () => screen.getAllByRole("navigation")[0]!;
@@ -36,10 +52,34 @@ const lit = () =>
     .map((b) => b.textContent);
 
 describe("Nav", () => {
-  it("lights All when nothing is filtered", async () => {
+  /** The project row is the whole project, which is what All used to be. */
+  it("lights the open project when nothing is filtered", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
     await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
-    expect(lit()).toEqual(["All"]);
+    expect(lit()).toEqual(["Main"]);
+  });
+
+  it("opens a project with nothing of the last one's lit", async () => {
+    const onGo = vi.fn();
+    mount(<Nav location={at(["home"])} onGo={onGo} />);
+    await waitFor(() => screen.getAllByRole("button", { name: "Web" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Web" })[0]!);
+    expect(onGo).toHaveBeenCalledWith({
+      route: { name: "list" },
+      filters: { project: "web", tags: [], view: "todo", q: "" },
+    });
+  });
+
+  /** Only the open project's groups, a step in from it: a group is a view of one project. */
+  it("draws the groups under the open project and no other", async () => {
+    mount(<Nav location={at([], "web")} onGo={vi.fn()} />);
+    await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
+    const rows = [...rail().querySelectorAll("button")].map(
+      (b) => b.textContent,
+    );
+    expect(rows.indexOf("Errands")).toBeGreaterThan(rows.indexOf("Web"));
+    expect(rows.indexOf("Main")).toBeLessThan(rows.indexOf("Web"));
+    expect(lit()).toEqual(["Web"]);
   });
 
   /** The tags are the state, so a group is lit by what the list is filtered by. */
@@ -62,7 +102,7 @@ describe("Nav", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Errands" })[0]!);
     expect(onGo).toHaveBeenCalledWith({
       route: { name: "list" },
-      filters: { tags: ["errands"], view: "todo", q: "" },
+      filters: { project: "", tags: ["errands"], view: "todo", q: "" },
     });
   });
 
@@ -86,12 +126,10 @@ describe("Nav", () => {
     ).not.toBeNull();
   });
 
-  it("offers a group no way to be renamed from the rail itself", async () => {
+  it("gives projects a pencil, and has no All", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
-    await waitFor(() =>
-      screen.getAllByRole("button", { name: "Edit Deep work" }),
-    );
-    // All is not stored, so there is nothing to edit about it.
-    expect(screen.queryByRole("button", { name: "Edit All" })).toBeNull();
+    await waitFor(() => screen.getAllByRole("button", { name: "Edit Main" }));
+    expect(screen.getAllByRole("button", { name: "Edit Web" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "All" })).toBeNull();
   });
 });

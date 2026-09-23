@@ -22,12 +22,15 @@ import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
  */
 export function NewTaskDialog({
   open,
+  project,
   tags,
   title = "",
   onClose,
   onCreated,
 }: {
   open: boolean;
+  /** The project on screen, which is where it is written unless somebody says otherwise. */
+  project: string;
   /** The lit pills, which a new task starts with. */
   tags: string[];
   /** What it opens with in the title, where somebody has already typed it somewhere else. */
@@ -37,20 +40,20 @@ export function NewTaskDialog({
   onCreated?: () => void;
 }) {
   const client = useQueryClient();
-  const [draft, setDraft] = useState<Draft>(emptyDraft(tags, title));
+  const [draft, setDraft] = useState<Draft>(emptyDraft(tags, title, project));
   const [error, setError] = useState("");
 
   // Emptied when it opens, not when it closes: a dialog cleared on the way out shows what was
   // typed for as long as it takes to close.
   useEffect(() => {
     if (!open) return;
-    setDraft(emptyDraft(tags, title));
+    setDraft(emptyDraft(tags, title, project));
     setError("");
-  }, [open, tags, title]);
+  }, [open, tags, title, project]);
 
   const create = useMutation({
     mutationFn: () =>
-      postTasks({
+      postTasks(draft.project, {
         title: draft.title.trim(),
         description: draft.description,
         tags: draft.tags,

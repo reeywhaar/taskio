@@ -25,6 +25,7 @@ function seed(task: TaskDetail): Draft {
     priority: String(task.priority),
     tags: task.tags,
     color: task.color,
+    project: task.project,
   };
 }
 

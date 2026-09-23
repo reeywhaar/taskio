@@ -37,6 +37,7 @@ vi.mock("@app/api/actions/tags", () => ({
 const detail = (status: "todo" | "done"): TaskDetail =>
   ({
     id: "8qw4tz9k",
+    project: "main",
     title: "Fix the tap",
     description: "",
     tags: [],

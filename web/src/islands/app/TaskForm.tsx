@@ -19,14 +19,22 @@ export type Draft = {
   tags: string[];
   /** #rrggbb, or empty for none. It means whatever whoever set it decided it means. */
   color: string;
+  /** The slug of the project it is in, or empty for the default. Its tags are that project's,
+   *  which is what the cloud below offers. */
+  project: string;
 };
 
-export const emptyDraft = (tags: string[] = [], title = ""): Draft => ({
+export const emptyDraft = (
+  tags: string[] = [],
+  title = "",
+  project = "",
+): Draft => ({
   title,
   description: "",
   priority: "0",
   tags,
   color: "",
+  project,
 });
 
 /**
@@ -46,7 +54,10 @@ export function TaskForm({
   onChange: (next: Draft) => void;
   titlePlaceholder?: string;
 }) {
-  const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
+  const tags = useQuery({
+    queryKey: qk.tagsOf(draft.project),
+    queryFn: () => getTags(draft.project),
+  });
   const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
 
   return (

@@ -20,6 +20,11 @@ export type Route =
 export type View = "pinned" | "todo" | "done";
 
 export type Filters = {
+  /**
+   * The project's slug, or empty for the default — the same rule as the server's, so a URL
+   * with no project in it means one place whoever reads it.
+   */
+  project: string;
   /** A flat and() of slugs. Anything richer came from outside and is dropped. */
   tags: string[];
   view: View;
@@ -49,6 +54,7 @@ function readRoute(path: string): Route {
 function readFilters(params: URLSearchParams): Filters {
   const view = params.get("view");
   return {
+    project: params.get("project") ?? "",
     tags: parseAnd(params.get("tags")),
     view: view === "done" || view === "pinned" ? view : "todo",
     q: params.get("q") ?? "",
@@ -107,6 +113,8 @@ export function href(location: Location): string {
         : "/";
 
   const params = new URLSearchParams();
+  // First, because it is the widest thing the URL says: everything after it is inside it.
+  if (location.filters.project) params.set("project", location.filters.project);
   const tags = printAnd(location.filters.tags);
   if (tags) params.set("tags", tags);
   if (location.filters.view !== "todo")

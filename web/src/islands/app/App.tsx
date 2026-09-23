@@ -127,6 +127,7 @@ function List({
   // The screen's three choices are two questions to the API: pinned is a property of a todo,
   // so the pinned view is the todo list narrowed rather than a third status.
   const params = {
+    project: filters.project,
     tags: printAnd(filters.tags),
     status: filters.view === "done" ? "done" : "todo",
     pinned: filters.view === "pinned" ? "true" : undefined,
@@ -140,7 +141,10 @@ function List({
     queryFn: () => getTasks(params),
     placeholderData: keepPreviousData,
   });
-  const tags = useQuery({ queryKey: qk.tags, queryFn: getTags });
+  const tags = useQuery({
+    queryKey: qk.tagsOf(filters.project),
+    queryFn: () => getTags(filters.project),
+  });
 
   /**
    * The same search with nothing narrowing it, for what the filter is hiding.
@@ -154,8 +158,17 @@ function List({
    */
   const [deep, setDeep] = useState(false);
   const wider = useQuery({
-    queryKey: qk.taskList(JSON.stringify({ q: filters.q, everywhere: true })),
-    queryFn: () => getTasks({ q: filters.q, status: "all" }),
+    // Everywhere in this project: search is a project's, and another project's tasks are not
+    // what this one's list is hiding.
+    queryKey: qk.taskList(
+      JSON.stringify({
+        project: filters.project,
+        q: filters.q,
+        everywhere: true,
+      }),
+    ),
+    queryFn: () =>
+      getTasks({ project: filters.project, q: filters.q, status: "all" }),
     enabled: filters.q !== "" && deep,
     placeholderData: keepPreviousData,
   });
@@ -245,19 +258,20 @@ function List({
    * somebody just did.
    */
   const arrange = useMutation({
-    mutationFn: (slugs: string[]) => putTagsOrder({ slugs }),
+    mutationFn: (slugs: string[]) => putTagsOrder(filters.project, { slugs }),
     onMutate: (slugs) => {
-      const before = client.getQueryData<{ tags: Tag[] }>(qk.tags);
+      const key = qk.tagsOf(filters.project);
+      const before = client.getQueryData<{ tags: Tag[] }>(key);
       if (before) {
         const by = new Map(before.tags.map((tag) => [tag.slug, tag]));
-        client.setQueryData(qk.tags, {
+        client.setQueryData(key, {
           tags: slugs.flatMap((slug) => by.get(slug) ?? []),
         });
       }
       return before;
     },
     onError: (_err, _slugs, before) =>
-      before && client.setQueryData(qk.tags, before),
+      before && client.setQueryData(qk.tagsOf(filters.project), before),
     onSettled: () => client.invalidateQueries({ queryKey: qk.tags }),
   });
 
@@ -541,6 +555,7 @@ function List({
           just made. */}
       <NewTaskDialog
         open={writing !== null}
+        project={filters.project}
         tags={filters.tags}
         title={writing ?? ""}
         onClose={() => setWriting(null)}

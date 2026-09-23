@@ -1,13 +1,15 @@
-import { request } from "@app/api/transport";
+import { query, request } from "@app/api/transport";
 import type { Group } from "@app/api/types";
 
-export const getGroups = () => request<{ groups: Group[] }>("/api/groups");
+/** A project's groups, by slug; empty is the default project. */
+export const getGroups = (project: string) =>
+  request<{ groups: Group[] }>(`/api/groups${query({ project })}`);
 
-export const postGroups = (body: {
-  name: string;
-  tags: string[];
-  color: string;
-}) => request<Group>("/api/groups", { method: "POST", body });
+export const postGroups = (
+  project: string,
+  body: { name: string; tags: string[]; color: string },
+) =>
+  request<Group>(`/api/groups${query({ project })}`, { method: "POST", body });
 
 /** Name and tags together: the dialog that edits one edits both. */
 export const patchGroupsById = (
@@ -19,5 +21,8 @@ export const deleteGroupsById = (id: string) =>
   request<void>(`/api/groups/${id}`, { method: "DELETE" });
 
 /** Where the rail's groups have been dragged to. The whole arrangement, not one move. */
-export const putGroupsOrder = (body: { ids: string[] }) =>
-  request<void>("/api/groups/order", { method: "PUT", body });
+export const putGroupsOrder = (project: string, body: { ids: string[] }) =>
+  request<void>(`/api/groups/order${query({ project })}`, {
+    method: "PUT",
+    body,
+  });

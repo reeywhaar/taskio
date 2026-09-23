@@ -5,6 +5,8 @@ export type Status = "todo" | "done" | "deleted";
 
 export type Task = {
   id: string;
+  /** The slug of the project it is in. */
+  project: string;
   title: string;
   description: string;
   tags: string[];
@@ -21,7 +23,13 @@ export type Task = {
 };
 
 /** A mention: enough to draw a link with a title on it. */
-export type TaskStub = { id: string; title: string; status: Status };
+export type TaskStub = {
+  id: string;
+  title: string;
+  /** Where it is, which can be another project: a mention is by id. */
+  project: string;
+  status: Status;
+};
 
 export type TaskDetail = Task & {
   mentions: TaskStub[];
@@ -35,6 +43,17 @@ export type TaskPage = {
 };
 
 export type Tag = { id: string; slug: string };
+
+/** A hard separation of an account's tasks, each with its own tags and groups. */
+export type Project = {
+  id: string;
+  name: string;
+  /** What the URL says. Changes only when somebody changes it, never with the name. */
+  slug: string;
+  /** Where a URL with no project goes. It can be renamed, and cannot be deleted. */
+  default: boolean;
+  created_at: number;
+};
 
 /** A named set of tags. Its tags need not be tags anything carries. */
 export type Group = {
