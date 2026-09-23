@@ -11,6 +11,8 @@ import {
 } from "@app/api/actions/admin";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
+import { Copyable } from "@app/components/Copyable";
+import { Dialog } from "@app/components/Dialog";
 import { Select } from "@app/components/Select";
 import { LimitsDialog } from "@app/islands/admin/LimitsDialog";
 import { RelayDialog, TestMailDialog } from "@app/islands/admin/RelayDialog";
@@ -45,16 +47,17 @@ function Heading({ children }: { children: React.ReactNode }) {
 
 function Users() {
   const users = useQuery({ queryKey: qk.adminUsers, queryFn: getAdminUsers });
-  const [shown, setShown] = useState<{ url: string; note: string } | null>(
-    null,
-  );
+  const [invited, setInvited] = useState("");
+  const [recovered, setRecovered] = useState<{
+    url: string;
+    username: string;
+  } | null>(null);
   const [role, setRole] = useState("user");
 
   const invite = useMutation({
     mutationFn: () => postAdminInvites({ role }),
     // Readable exactly once, so a lost link is reissued rather than recovered.
-    onSuccess: (result) =>
-      setShown({ url: result.link, note: "An invitation, shown once." }),
+    onSuccess: (result) => setInvited(result.link),
   });
 
   /**
@@ -72,10 +75,7 @@ function Users() {
   const recovery = useMutation({
     mutationFn: (id: string) => postAdminUsersByIdRecovery(id),
     onSuccess: (result) =>
-      setShown({
-        url: result.url,
-        note: `A way back into ${result.username}'s account, shown once. Nothing has changed until it is used.`,
-      }),
+      setRecovered({ url: result.url, username: result.username }),
   });
 
   return (
@@ -117,14 +117,32 @@ function Users() {
         </Button>
       </div>
 
-      {shown ? (
-        <div className="mt-3 rounded-md border border-warn/40 bg-shade p-3">
-          <p className="text-sm text-warn">{shown.note}</p>
-          <code className="mt-1 block break-all font-mono text-sm select-all">
-            {shown.url}
-          </code>
+      {invited ? (
+        <div className="mt-3 flex flex-col gap-2 rounded-md border border-warn/40 bg-shade p-3">
+          <p className="text-sm text-warn">An invitation, shown once.</p>
+          <Copyable value={invited} />
         </div>
       ) : null}
+
+      {/* Its own dialog, over the row it was asked from, rather than under the invitations. */}
+      <Dialog
+        open={recovered !== null}
+        onClose={() => setRecovered(null)}
+        title="Recovery link"
+        footer={
+          <Button variant="solid" onClick={() => setRecovered(null)}>
+            I have copied it
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-warn">
+            A way back into <b>{recovered?.username}</b>&apos;s account, shown
+            once. Nothing has changed until it is used.
+          </p>
+          <Copyable value={recovered?.url ?? ""} />
+        </div>
+      </Dialog>
     </section>
   );
 }
