@@ -170,11 +170,14 @@
  *
  * focus-within as well as focus, because a field is sometimes a box with the input inside it.
  */
+/* The ring is the edge while focused, so the pale lip goes: drawn under a ring that is only
+   65% there, it came through along the bottom and right and the ring looked broken on two
+   sides. The shade stays, which is what keeps it a well with a light in it. */
 .sunken:focus,
 .sunken:focus-within {
   box-shadow:
-    var(--well),
-    inset 0 0 0 1.5px color-mix(in srgb, var(--color-brand) 65%, transparent);
+    inset 0 0 0 1.5px color-mix(in srgb, var(--color-brand) 65%, transparent),
+    var(--well-depth);
 }
 
 /* Pressed is raised turned inside out, which is what a finger on a real button does. */
@@ -231,11 +234,11 @@
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
   /* A well: a hard pale lip on the far side, and a soft shade tucked under the near one. */
-  --well-lit: #fff;
-  --well-shade: rgb(0 0 0 / 0.1);
+  --well-lit: #fff8;
+  --well-shade: #0001;
   --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02);
   /* What the floating bar lays over the page.
-     
+
      Warm rather than black, because the grounds are: black fog on a beige rail greys it, and
      the one thing on the screen that is allowed to take the color out of a ground is nothing.
      It has no offset to concentrate it, so it is spread thinner everywhere than a cast — and
@@ -243,7 +246,7 @@
   --fog: #51382726;
   --sheen: linear-gradient(0deg, var(--sheen-stops));
   --sheen-in: linear-gradient(180deg, var(--sheen-stops));
-  /* Named once, because focus draws it again with a line on top.
+  /* In two parts, because focus draws the depth again under a ring of its own.
 
      A hard pale line along the bottom and right, and a soft shade tucked under the top and
      left: the lip of a hole with light falling into it from above. The line has no blur, which
@@ -253,10 +256,10 @@
      White in light and nearly nothing in dark, where white at any strength is a line drawn on
      the field. The shade is far heavier in dark, because a tenth of black on a dark ground is
      not there. */
-  --well:
-    inset -1px -1px 0 0 var(--well-lit),
+  --well-depth:
     inset 1px 1px 2px 0.5px var(--well-shade),
     inset 1px 1px 1px var(--well-shade);
+  --well: inset -1px -1px 0 0 var(--well-lit), var(--well-depth);
 }
 
 @media (prefers-color-scheme: dark) {
