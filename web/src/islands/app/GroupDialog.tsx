@@ -178,7 +178,7 @@ export function GroupDialog({
             label="Color"
             hint="What the tab wears while this group is the one on screen."
           >
-            <Swatches value={color} onChange={setColor} />
+            <Swatches value={color} onChange={setColor} none="Default color" />
           </Caption>
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}

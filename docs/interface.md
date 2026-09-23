@@ -181,10 +181,9 @@ is straight, and the corners simply take its ends off.
 The swatches sit beside the priority field, which had the space, and the two are unrelated: one
 orders the list and the other is a mark somebody made for themselves.
 
-Groups wear one too, and the palette is the same control. Where they differ is the empty choice:
-a group without a color wears the brand, so empty is what the brand swatch stores; a task
-without one wears nothing, so empty is a swatch of its own and the brand is a color like any
-other.
+Groups wear one too, and the palette is the same control, empty choice included: a dashed
+swatch that is "No color" on a task, which then wears nothing, and "Default color" on a group,
+which then wears the brand. The brand is a color like any other beside it.
 
 ## The rail is projects, and the open one's groups
 

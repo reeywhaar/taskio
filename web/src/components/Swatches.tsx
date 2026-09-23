@@ -12,8 +12,7 @@ import { BRAND } from "@app/mark";
  * beside an amber and the two were one color — a palette whose entries are not distinguishable
  * has fewer entries than it appears to.
  *
- * The brand leads because it is what a group wears with nothing chosen; the rest run round the
- * wheel.
+ * The brand leads, and the rest run round the wheel.
  */
 export const COLOURS = [
   BRAND,
@@ -34,9 +33,11 @@ export const COLOURS = [
  * the control does rather than what it happens to hold — showing the value made a ninth swatch
  * that was a copy of whichever of the eight was chosen.
  *
- * `none` names the empty choice for the things that have one. A group without a color wears the
- * brand, so there the first swatch is the brand and empty is what it stores; a task without one
- * wears nothing, so there empty is a swatch of its own and the brand is a color like the rest.
+ * `none` names the empty choice, a dashed swatch of its own: nothing on a task, and on a group the
+ * default, which is the brand. Either way the brand is a color like the rest beside it.
+ *
+ * 16px, where they were 20 with a thick ring: a block of ten at that size was the heaviest thing in
+ * the form, for the one field that means least.
  */
 export function Swatches({
   value,
@@ -46,8 +47,8 @@ export function Swatches({
   /** #rrggbb, or empty. */
   value: string;
   onChange: (color: string) => void;
-  /** What an empty value is called, where it is a choice rather than the brand. */
-  none?: string;
+  /** What an empty value is called: "No color", "Default color". */
+  none: string;
 }) {
   const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
@@ -61,33 +62,28 @@ export function Swatches({
     // swatches happen to be given — the same control would be one row in a wide dialog and
     // three on a phone, and where it breaks would be arithmetic nobody chose.
     <div className="grid w-fit grid-cols-5 items-center gap-1.5">
-      {none ? (
-        <button
-          type="button"
-          aria-label={none}
-          title={none}
-          aria-pressed={value === ""}
-          onClick={() => onChange("")}
-          className={`size-5 rounded border-[1.5px] border-dashed border-line ring-offset-2 ring-offset-bg ${
-            value === "" ? "ring-2 ring-fg" : ""
-          }`}
-        />
-      ) : null}
+      <button
+        type="button"
+        aria-label={none}
+        title={none}
+        aria-pressed={value === ""}
+        onClick={() => onChange("")}
+        className={`size-4 rounded-sm border border-dashed border-muted ring-offset-1 ring-offset-bg ${
+          value === "" ? "ring-[1.5px] ring-fg" : ""
+        }`}
+      />
 
       {COLOURS.map((swatch) => {
-        // Where the brand is the default, it is stored as no color at all: a group that was
-        // never given one and a group given the brand are the same group.
-        const held = !none && swatch === BRAND ? "" : swatch;
-        const on = value === held;
+        const on = value === swatch;
         return (
           <button
             key={swatch}
             type="button"
-            aria-label={!none && swatch === BRAND ? "The brand color" : swatch}
+            aria-label={swatch}
             aria-pressed={on}
-            onClick={() => onChange(held)}
-            className={`size-5 rounded ring-offset-2 ring-offset-bg ${
-              on ? "ring-2 ring-fg" : ""
+            onClick={() => onChange(swatch)}
+            className={`size-4 rounded-sm ring-offset-1 ring-offset-bg ${
+              on ? "ring-[1.5px] ring-fg" : ""
             }`}
             style={{ background: swatch }}
           />
@@ -102,12 +98,12 @@ export function Swatches({
         aria-label="Another color"
         title="Another color"
         onClick={() => setPicking(true)}
-        className={`flex size-5 items-center justify-center rounded ring-offset-2 ring-offset-bg ${
-          value ? "" : "border-[1.5px] border-line"
-        } ${custom ? "ring-2 ring-fg" : ""}`}
+        className={`flex size-4 items-center justify-center rounded-sm ring-offset-1 ring-offset-bg ${
+          value ? "" : "border border-muted"
+        } ${custom ? "ring-[1.5px] ring-fg" : ""}`}
         style={value ? { background: value, color: ink(value) } : undefined}
       >
-        <DropperIcon className="text-sm" />
+        <DropperIcon className="text-[10px]" />
       </button>
 
       <ColorDialog
