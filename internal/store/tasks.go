@@ -393,6 +393,18 @@ func (s *Store) ResolveTask(ctx context.Context, principalID, ref string) (strin
 		return "", Invalid("%s", err.Error())
 	}
 	if ids.IsFullTask(normal) {
+		// A whole id still has to be one. Returned unchecked, a word that only has the shape of
+		// one became a mention of a task nobody has: "mentions" reads as ment10ns, and a spec
+		// saved from the editor came back with the word rewritten.
+		var one int
+		err := s.reader.QueryRowContext(ctx,
+			`SELECT 1 FROM tasks WHERE principal_id = ? AND id = ?`, principalID, normal).Scan(&one)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", NotFound("There is no task %s.", normal)
+		}
+		if err != nil {
+			return "", fmt.Errorf("resolve task: %w", err)
+		}
 		return normal, nil
 	}
 

@@ -31,6 +31,18 @@ func TestAMentionThatDoesNotResolveIsLeftAlone(t *testing.T) {
 	}
 }
 
+// A word with the shape of a whole id is not a mention of one. "mentions" reads as ment10ns —
+// i as 1, o as 0 — and was rewritten to that, in the middle of a sentence, from the editor.
+func TestAWordShapedLikeAnIDIsLeftAlone(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	made := c.task(`{"title":"Spec","description":"so @mentions work across projects"}`)
+	if got := made["description"].(string); got != "so @mentions work across projects" {
+		t.Errorf("description = %q, want it untouched", got)
+	}
+}
+
 // The @ must not follow a word character, which is what keeps an email address out of it.
 func TestAnEmailAddressIsNotAMention(t *testing.T) {
 	s, st := newServerStore(t, nil)
