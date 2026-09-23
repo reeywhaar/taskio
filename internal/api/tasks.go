@@ -23,8 +23,10 @@ type taskBody struct {
 	Color       string   `json:"color"`
 	CreatedAt   int64    `json:"created_at"`
 	UpdatedAt   int64    `json:"updated_at"`
-	DoneAt      *int64   `json:"done_at"`
-	DeletedAt   *int64   `json:"deleted_at"`
+	// PokedAt is when somebody last said it still stands, and what its age counts from.
+	PokedAt   int64  `json:"poked_at"`
+	DoneAt    *int64 `json:"done_at"`
+	DeletedAt *int64 `json:"deleted_at"`
 }
 
 // renderTask draws one; slugs names the account's projects by id, for its project.
@@ -41,6 +43,7 @@ func renderTask(t *store.Task, slugs map[string]string) taskBody {
 		Color:       t.Color,
 		CreatedAt:   t.CreatedAt.Unix(),
 		UpdatedAt:   t.UpdatedAt.Unix(),
+		PokedAt:     t.PokedAt.Unix(),
 	}
 	if body.Tags == nil {
 		body.Tags = []string{}
@@ -303,6 +306,21 @@ func (s *Server) setDone(done bool) http.HandlerFunc {
 		}
 		s.renderOne(w, r, http.StatusOK, updated)
 	}
+}
+
+// pokeTask says a task still stands: its age counts from now.
+func (s *Server) pokeTask(w http.ResponseWriter, r *http.Request) {
+	task, err := s.task(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	poked, err := s.store.PokeTask(r.Context(), principalOf(r).ID, task.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	s.renderOne(w, r, http.StatusOK, poked)
 }
 
 func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {

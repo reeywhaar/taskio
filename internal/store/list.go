@@ -278,7 +278,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 
 // scanTasks reads rows and attaches each task's tags.
 // taskColumns is the row every read of a task selects, in the order scanTasks reads it.
-const taskColumns = "seq, id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, done_at, deleted_at"
+const taskColumns = "seq, id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, poked_at, done_at, deleted_at"
 
 // cursorKeys reads the sort values off the last row of a page, in the order they sort.
 func cursorKeys(columns []string, t *Task) []int64 {
@@ -314,16 +314,17 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 	out := []*Task{}
 	for rows.Next() {
 		var (
-			t                Task
-			created, updated int64
-			done, deleted    sql.NullInt64
+			t                       Task
+			created, updated, poked int64
+			done, deleted           sql.NullInt64
 		)
 		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted); err != nil {
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
 		t.CreatedAt = time.Unix(created, 0).UTC()
 		t.UpdatedAt = time.Unix(updated, 0).UTC()
+		t.PokedAt = time.Unix(poked, 0).UTC()
 		if done.Valid {
 			at := time.Unix(done.Int64, 0).UTC()
 			t.DoneAt = &at
@@ -358,19 +359,20 @@ func (s *Store) countTasks(ctx context.Context, where string, args []any) (int, 
 
 func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 	var (
-		t                Task
-		created, updated int64
-		done, deleted    any
+		t                       Task
+		created, updated, poked int64
+		done, deleted           any
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE seq = ?`, seq).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)
 	}
 	t.CreatedAt = time.Unix(created, 0).UTC()
 	t.UpdatedAt = time.Unix(updated, 0).UTC()
+	t.PokedAt = time.Unix(poked, 0).UTC()
 	if v, ok := done.(int64); ok {
 		at := time.Unix(v, 0).UTC()
 		t.DoneAt = &at

@@ -80,6 +80,18 @@ func (s *Server) bulkPinned(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) bulkPoke(w http.ResponseWriter, r *http.Request) {
+	var req bulkRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.store.BulkPoke(r.Context(), principalOf(r).ID, reachOf(r), req.IDs); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // bulkDelete is a POST rather than a DELETE with a body: a body on DELETE is legal and is
 // dropped by enough intermediaries and client libraries that it is not worth being right about.
 func (s *Server) bulkDelete(w http.ResponseWriter, r *http.Request) {

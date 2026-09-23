@@ -545,3 +545,43 @@ func TestAPatchWithoutAColorLeavesIt(t *testing.T) {
 		t.Errorf("color = %v, want it kept", after["color"])
 	}
 }
+
+// A task's age counts from when somebody last said it still stands. Any other write moves
+// updated_at and leaves that alone, because a tag taken off says nothing about the task.
+func TestOnlyAPokeMovesPokedAt(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	made := c.task(`{"title":"Fix the tap","tags":["home"]}`)
+	id := made["id"].(string)
+	if made["poked_at"] != made["created_at"] {
+		t.Fatalf("a new task's poked_at = %v, want its created_at %v", made["poked_at"], made["created_at"])
+	}
+
+	later := st.Now().Add(72 * time.Hour)
+	st.SetClock(func() time.Time { return later })
+	edited := c.json(c.do("PATCH", "/api/tasks/"+id, `{"tags":[]}`))
+	if edited["poked_at"] != made["poked_at"] || edited["updated_at"] == made["updated_at"] {
+		t.Errorf("an edit: poked_at %v, updated_at %v; want only updated_at moved", edited["poked_at"], edited["updated_at"])
+	}
+
+	// By a token too: an agent going through old tasks is who this is for.
+	a := mintToken(t, s, c, "claude", "")
+	resp := a.do("POST", "/api/tasks/"+id+"/poke", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("poke = %s", resp.Status)
+	}
+	var poked map[string]any
+	json.NewDecoder(resp.Body).Decode(&poked)
+	if poked["poked_at"] != float64(later.Unix()) {
+		t.Errorf("poked_at = %v, want %d", poked["poked_at"], later.Unix())
+	}
+
+	evenLater := later.Add(24 * time.Hour)
+	st.SetClock(func() time.Time { return evenLater })
+	if resp := c.do("POST", "/api/tasks/bulk/poke", `{"ids":["`+id+`"]}`); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("bulk poke = %s", resp.Status)
+	}
+	if got := c.json(c.do("GET", "/api/tasks/"+id, ""))["poked_at"]; got != float64(evenLater.Unix()) {
+		t.Errorf("after a bulk poke poked_at = %v, want %d", got, evenLater.Unix())
+	}
+}

@@ -185,6 +185,7 @@ GET    /api/tasks/{id}
 PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?, project?}
 POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
+POST   /api/tasks/{id}/poke
 DELETE /api/tasks/{id}
 
 POST   /api/tasks/bulk/done      {ids}
@@ -192,6 +193,7 @@ POST   /api/tasks/bulk/todo      {ids}
 POST   /api/tasks/bulk/tags      {ids, add?, remove?}
 POST   /api/tasks/bulk/priority  {ids, priority}
 POST   /api/tasks/bulk/pinned    {ids, pinned}
+POST   /api/tasks/bulk/poke      {ids}
 POST   /api/tasks/bulk/delete    {ids}
 POST   /api/tasks/bulk/project   {ids, project}
 
@@ -236,7 +238,7 @@ there. A task already at that value is not written: `updated_at` does not move f
   "tasks": [ { "id": "8qw4tz9k", "title": "Fix the tap", "description": "It drips.",
                "tags": ["home","repair"], "status": "todo",
                "priority": 0, "pinned": false, "color": "",
-               "created_at": 1789343452, "updated_at": 1789343452,
+               "created_at": 1789343452, "updated_at": 1789343452, "poked_at": 1789343452,
                "done_at": null, "deleted_at": null } ],
   "total": 1
 }
@@ -254,6 +256,11 @@ only removal left in the program. Deleting a task twice is a success and moves n
 This is the one place to be careful when summarising: `status=done` counts tasks somebody
 finished **and** tasks somebody threw away. Ask for `deleted` to tell them apart, or read each
 task's own `status`.
+
+**`poked_at` is how stale a task is.** It moves only on `POST /api/tasks/{id}/poke` (or
+`bulk/poke`), which says the task still stands; it starts at `created_at`. `updated_at` moves on
+any write, a tag taken off included, so it says nothing about whether anybody still wants the
+task. Poke a task only when you have looked at it and it is still worth doing.
 
 `total` is how many match the filter, before `limit`. `next_cursor` is present only when there
 is another page — a search never has one, because results are ranked.

@@ -121,6 +121,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("PATCH /api/tasks/{id}", s.requireAuth(s.patchTask))
 	s.handleAgent("POST /api/tasks/{id}/done", s.requireAuth(s.setDone(true)))
 	s.handleAgent("POST /api/tasks/{id}/todo", s.requireAuth(s.setDone(false)))
+	s.handleAgent("POST /api/tasks/{id}/poke", s.requireAuth(s.pokeTask))
 	s.handleAgent("DELETE /api/tasks/{id}", s.requireAuth(s.deleteTask))
 
 	s.handleAgent("POST /api/tasks/bulk/done", s.requireAuth(s.bulkDone(true)))
@@ -128,6 +129,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/bulk/tags", s.requireAuth(s.bulkTags))
 	s.handleAgent("POST /api/tasks/bulk/priority", s.requireAuth(s.bulkPriority))
 	s.handleAgent("POST /api/tasks/bulk/pinned", s.requireAuth(s.bulkPinned))
+	s.handleAgent("POST /api/tasks/bulk/poke", s.requireAuth(s.bulkPoke))
 	s.handleAgent("POST /api/tasks/bulk/delete", s.requireAuth(s.bulkDelete))
 	s.handleAgent("POST /api/tasks/bulk/project", s.requireAuth(s.bulkProject))
 

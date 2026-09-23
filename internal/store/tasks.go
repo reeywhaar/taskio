@@ -50,7 +50,10 @@ type Task struct {
 	Color     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DoneAt    *time.Time
+	// PokedAt is when somebody last said it still stands, which is what its age counts from.
+	// Only a poke moves it; a task nobody has poked counts from when it was written.
+	PokedAt time.Time
+	DoneAt  *time.Time
 	// DeletedAt is when it was thrown away, and implies DoneAt.
 	DeletedAt *time.Time
 }
@@ -136,6 +139,7 @@ func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, r
 		Color:       color,
 		CreatedAt:   now,
 		UpdatedAt:   now,
+		PokedAt:     now,
 	}
 
 	tx, err := s.writer.BeginTx(ctx, nil)
@@ -149,9 +153,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, r
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, poked_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -326,6 +330,23 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach,
 	return task, nil
 }
 
+// PokeTask says a task still stands, so its age counts from now. It is the one write that moves
+// poked_at, and updated_at moves with it, because it is a write.
+func (s *Store) PokeTask(ctx context.Context, principalID, id string) (*Task, error) {
+	now := unix(s.Now())
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tasks SET poked_at = ?, updated_at = ? WHERE principal_id = ? AND id = ?`,
+		now, now, principalID, id)
+	if err != nil {
+		return nil, fmt.Errorf("poke task: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, NotFound("There is no task %s.", id)
+	}
+	s.changed(principalID)
+	return loadTask(ctx, s.reader, principalID, id)
+}
+
 // SetDone marks a task done or undone.
 //
 // Marking an already-done task done is a success and does not move done_at: two agents, or an
@@ -474,14 +495,14 @@ func (s *Store) ResolveTask(ctx context.Context, principalID, ref string) (strin
 
 func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, error) {
 	var (
-		t                Task
-		created, updated int64
-		done, deleted    sql.NullInt64
+		t                       Task
+		created, updated, poked int64
+		done, deleted           sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not
 		// the caller's business either way.
@@ -492,6 +513,7 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 	}
 	t.CreatedAt = time.Unix(created, 0).UTC()
 	t.UpdatedAt = time.Unix(updated, 0).UTC()
+	t.PokedAt = time.Unix(poked, 0).UTC()
 	if done.Valid {
 		at := time.Unix(done.Int64, 0).UTC()
 		t.DoneAt = &at

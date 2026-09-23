@@ -134,6 +134,20 @@ func applyTags(tags, add, remove []string) []string {
 	return out
 }
 
+// BulkPoke says every task in the set still stands. See PokeTask.
+func (s *Store) BulkPoke(ctx context.Context, principalID string, reach Reach, refs []string) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
+		now := unix(s.Now())
+		for _, task := range tasks {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE tasks SET poked_at = ?, updated_at = ? WHERE seq = ?`, now, now, task.Seq); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // BulkMove puts every task in the set into one project, each with its tags. The project's rule
 // applies to what each one carries, so a token moving tasks into a project it is confined in
 // has to move tasks that already belong there by their tags.
