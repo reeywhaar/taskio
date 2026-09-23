@@ -497,7 +497,10 @@ func TestAnIdBeatsATitle(t *testing.T) {
 func TestAShortWordIsNotAnIdPrefix(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	// Spelled only in the four letters the id alphabet leaves out, so no id can share a
+	// character with it. It was "Fix the tap", and one run in forty the random id began with
+	// three letters the forgiving title match read as fix, the or tap.
+	id := c.task(`{"title":"Oil lull"}`)["id"].(string)
 
 	if got := titles(c.list("?q=" + id[:3])); len(got) != 0 {
 		t.Errorf("three characters of an id returned %v, want nothing", got)
