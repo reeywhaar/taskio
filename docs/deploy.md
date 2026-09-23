@@ -114,13 +114,15 @@ Multi-stage, and the stages do not depend on each other.
 
 ## Tags
 
-A push to `main` that passes the tests moves three tags onto one image:
+A push to `main` that passes the tests moves two tags onto one image:
 
 | tag | what it means |
 | --- | --- |
 | `:latest` | whatever was published last. Fine for a first look, and a pin to nothing |
 | `:v1` | this line of the software, fixes included. What a deployment pins to |
-| `:<sha>` | one commit and no other. What a rollback names, since the other two have moved |
+
+A rollback names an earlier image by its digest, `ghcr.io/reeywhaar/taskio@sha256:…`, which the
+package's page lists for every version pushed.
 
 There is no release number to keep in step with. If something ever breaks compatibility, `:v2`
 is what it would be published under, beside a `:v1` that keeps getting fixes.
@@ -147,8 +149,7 @@ A missing bundle is the placeholder page rather than a failure.
 Publishing on every push is safe because `publish` needs `test`: a red build skips it rather
 than shipping a broken image as `latest`. That dependency is the whole gate.
 
-`publish` pushes `:latest` and a tag for the commit sha — the sha tag is what makes a rollback
-possible at all, since `latest` has by then moved.
+`publish` pushes `:latest` and `:v1`, then smoke-tests the image by the digest it pushed.
 
 ## Backups
 

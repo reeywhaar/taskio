@@ -98,20 +98,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          # Three names for one image, and each answers a different question. latest is what
-          # a `docker run` with no tag gets, and is a pin to nothing. v1 is this line of the
-          # software, fixes included — what a deployment pins to, and what a v2 would leave
-          # alone the day something breaks compatibility. The sha is what makes a rollback
-          # possible at all, since the other two have moved.
+          # Two names for one image. latest is what a `docker run` with no tag gets, and is a
+          # pin to nothing. v1 is this line of the software, fixes included — what a deployment
+          # pins to, and what a v2 would leave alone the day something breaks compatibility.
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:v1
-            ${{ env.IMAGE }}:${{ github.sha }}
           build-args: VERSION=${{ github.sha }}
           # Keeps the package listing to one real platform instead of an unknown/unknown
           # entry beside it.
@@ -120,13 +118,16 @@ jobs:
       # Steps on publish rather than a job of their own: a fresh GHCR package is private, so
       # a separate job would have to sign in again to pull the image it just pushed.
       - name: Smoke-test the image
+        # By digest: exactly what this run pushed, which a tag that moves cannot promise.
+        env:
+          REF: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
         run: |
           set -eu
-          docker pull "$IMAGE:${{ github.sha }}"
-          docker run --rm "$IMAGE:${{ github.sha }}" version
+          docker pull "$REF"
+          docker run --rm "$REF" version
           # A volume, because the server never creates /data: without one it exits at start.
           docker run -d --name taskio-smoke -p 8080:80 -v taskio-smoke:/data \
-            -e TASKIO_PUBLIC_URL=http://localhost:8080 "$IMAGE:${{ github.sha }}"
+            -e TASKIO_PUBLIC_URL=http://localhost:8080 "$REF"
           # The container's own logs, however this ends: a failure without them is a guess.
           trap 'docker logs taskio-smoke; docker rm -f taskio-smoke >/dev/null' EXIT
           for i in $(seq 1 30); do
