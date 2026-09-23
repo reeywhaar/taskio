@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"taskio/internal/filter"
 	"taskio/internal/ids"
 )
 
@@ -140,11 +141,12 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, projectID, name st
 	return g, nil
 }
 
-// UpdateGroup replaces a group's name and tags together.
+// UpdateGroup replaces a group's name and tags together, and moves it when projectID names
+// another project. Empty leaves it where it is.
 //
 // Both at once because the dialog that edits one edits both, and a group whose name says work
 // and whose tags say home is a group somebody half-saved.
-func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, tags []string, color string) (*Group, error) {
+func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, tags []string, color, projectID string) (*Group, error) {
 	name, slugs, color, err := validGroup(name, tags, color)
 	if err != nil {
 		return nil, err
@@ -168,7 +170,7 @@ func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, t
 	}
 	var created int64
 	if err := tx.QueryRowContext(ctx,
-		`SELECT created_at FROM groups WHERE id = ?`, id).Scan(&created); err != nil {
+		`SELECT project_id, created_at FROM groups WHERE id = ?`, id).Scan(&g.ProjectID, &created); err != nil {
 		return nil, fmt.Errorf("update group: %w", err)
 	}
 	g.CreatedAt = time.Unix(created, 0).UTC()
@@ -178,11 +180,75 @@ func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, t
 	if err := writeGroupTags(ctx, tx, id, slugs); err != nil {
 		return nil, fmt.Errorf("update group: %w", err)
 	}
+	if projectID != "" && projectID != g.ProjectID {
+		if err := moveGroup(ctx, tx, g, projectID, unix(s.Now())); err != nil {
+			return nil, fmt.Errorf("move group: %w", err)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("update group: %w", err)
 	}
 	s.changed(principalID)
 	return g, nil
+}
+
+// moveGroup takes a group to another project with the tasks it shows: every one in its project
+// carrying all of its tags, the finished and the binned ones too, so it opens on the same list
+// where it lands. Their tags come as well, onto the end of the new project's arrangement in the
+// order the old one had them.
+func moveGroup(ctx context.Context, tx *sql.Tx, g *Group, to string, now int64) error {
+	shows := &filter.Node{Op: filter.And}
+	for _, slug := range g.Tags {
+		shows.Args = append(shows.Args, &filter.Node{Op: filter.Leaf, Slug: slug})
+	}
+	match, args := filter.Compile(shows, "tasks.seq")
+	where := `tasks.principal_id = ? AND tasks.project_id = ? AND ` + match
+	args = append([]any{g.PrincipalID, g.ProjectID}, args...)
+
+	rows, err := tx.QueryContext(ctx,
+		`SELECT task_tags.slug, MIN(COALESCE(tag_order.position, `+unplaced+`)) AS place
+		   FROM task_tags
+		   JOIN tasks ON tasks.seq = task_tags.task_seq
+		   LEFT JOIN tag_order ON tag_order.project_id = tasks.project_id
+		                      AND tag_order.slug = task_tags.slug
+		  WHERE `+where+`
+		  GROUP BY task_tags.slug
+		  ORDER BY place, task_tags.slug`, args...)
+	if err != nil {
+		return err
+	}
+	var carried []string
+	for rows.Next() {
+		var slug string
+		var place int64
+		if err := rows.Scan(&slug, &place); err != nil {
+			rows.Close()
+			return err
+		}
+		carried = append(carried, slug)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if err := noteTags(ctx, tx, to, carried); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE tasks SET project_id = ?, updated_at = ? WHERE `+where,
+		append([]any{to, now}, args...)...); err != nil {
+		return err
+	}
+	// At the end of the arrangement it joins, as a new group is.
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE groups SET project_id = ?, position = (SELECT COALESCE(MAX(position), -1) + 1
+		                                                FROM groups WHERE principal_id = ? AND project_id = ?)
+		  WHERE id = ?`, to, g.PrincipalID, to, g.ID); err != nil {
+		return err
+	}
+	g.ProjectID = to
+	return nil
 }
 
 // SetGroupOrder writes where the rail's groups have been dragged to.

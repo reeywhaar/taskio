@@ -384,6 +384,20 @@ export function Nav({
         editing={editing}
         project={here}
         onClose={() => setEditing(null)}
+        onMoved={(group, to) => {
+          // The list it was showing went with it, so the list goes too.
+          if (current?.id !== group.id) return;
+          setOpen(false);
+          onGo({
+            ...location,
+            route: { name: "list" },
+            filters: {
+              ...location.filters,
+              project: to.default ? "" : to.slug,
+              tags: group.tags,
+            },
+          });
+        }}
       />
       <ProjectDialog
         editing={editingProject}

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"testing"
 )
 
@@ -197,5 +198,80 @@ func TestATokenCannotArrangeGroups(t *testing.T) {
 
 	if resp := a.do("PUT", "/api/groups/order", `{"ids":[]}`); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("a token arranging groups = %s, want 401", resp.Status)
+	}
+}
+
+// A group moves with the tasks it shows, the finished and binned ones too, and their tags join
+// the new project's arrangement in the order the old one had them. A task carrying only some of
+// its tags stays.
+func TestMovingAGroupTakesTheTasksItShows(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.project(`{"name":"Garden"}`)
+	c.do("POST", "/api/tasks?project=garden", `{"title":"Sow the beans","tags":["seeds"]}`)
+
+	c.task(`{"title":"Fix the tap","tags":["home","plumbing"]}`)
+	done := c.task(`{"title":"Buy washers","tags":["shop","home","plumbing"]}`)["id"].(string)
+	c.do("POST", "/api/tasks/"+done+"/done", "")
+	binned := c.task(`{"title":"Call a plumber","tags":["home","plumbing"]}`)["id"].(string)
+	c.do("DELETE", "/api/tasks/"+binned, "")
+	c.task(`{"title":"Paint the fence","tags":["home"]}`)
+	c.do("PUT", "/api/tags/order", `{"slugs":["shop","plumbing","home"]}`)
+
+	id := c.json(c.do("POST", "/api/groups", `{"name":"Plumbing","tags":["home","plumbing"]}`))["id"].(string)
+	resp := c.do("PATCH", "/api/groups/"+id, `{"name":"Pipes","tags":["home","plumbing"],"color":"#2563eb","project":"garden"}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("move = %s", resp.Status)
+	}
+
+	if got := groupNames(c.json(c.do("GET", "/api/groups", ""))); len(got) != 0 {
+		t.Errorf("the default project still has %v", got)
+	}
+	moved := c.json(c.do("GET", "/api/groups?project=garden", ""))["groups"].([]any)
+	if len(moved) != 1 || moved[0].(map[string]any)["name"] != "Pipes" || moved[0].(map[string]any)["color"] != "#2563eb" {
+		t.Errorf("garden's groups = %v, want the one moved, as it was saved", moved)
+	}
+
+	if got := titles(c.list("?status=all")); !slices.Equal(got, []string{"Paint the fence"}) {
+		t.Errorf("the default project kept %v", got)
+	}
+	got := titles(c.list("?project=garden&status=all"))
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"Buy washers", "Call a plumber", "Fix the tap", "Sow the beans"}) {
+		t.Errorf("garden has %v", got)
+	}
+	if c.statusOf(done) != "done" || c.statusOf(binned) != "deleted" {
+		t.Errorf("moving changed a status: %s, %s", c.statusOf(done), c.statusOf(binned))
+	}
+
+	var tags []string
+	for _, tag := range c.json(c.do("GET", "/api/tags?project=garden", ""))["tags"].([]any) {
+		tags = append(tags, tag.(map[string]any)["slug"].(string))
+	}
+	if !slices.Equal(tags, []string{"seeds", "shop", "plumbing", "home"}) {
+		t.Errorf("garden's tags = %v, want the moved ones after its own, in the old order", tags)
+	}
+}
+
+func TestAGroupMovesOnlyToALiveProject(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	garden := c.project(`{"name":"Garden"}`)
+	c.task(`{"title":"Fix the tap","tags":["home"]}`)
+	id := c.json(c.do("POST", "/api/groups", `{"name":"Home","tags":["home"]}`))["id"].(string)
+	c.do("DELETE", "/api/projects/"+garden["id"].(string), "")
+
+	body := `{"name":"Home","tags":["home"],"project":"garden"}`
+	if got := refusal(t, c.do("PATCH", "/api/groups/"+id, body), http.StatusGone); got.Code != CodeProjectDeleted {
+		t.Errorf("a move to a deleted project = %+v", got)
+	}
+	refusal(t, c.do("PATCH", "/api/groups/"+id, `{"name":"Home","tags":["home"],"project":"nowhere"}`), http.StatusNotFound)
+
+	// Where it already is, it stays, with its task.
+	if resp := c.do("PATCH", "/api/groups/"+id, `{"name":"Home","tags":["home"],"project":"main"}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("a move to where it is = %s", resp.Status)
+	}
+	if len(groupNames(c.json(c.do("GET", "/api/groups", "")))) != 1 || len(titles(c.list(""))) != 1 {
+		t.Error("a move to where it is moved something")
 	}
 }

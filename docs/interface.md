@@ -273,6 +273,11 @@ telling one window from another at a glance, which is a job for a 16px tile rath
 repainting every button — and it comes from a short list rather than a picker, because eight
 obviously different colors do that job and sixteen million do not.
 
+A group moves to another project with Move… in its dialog, chosen from the same pills. It takes
+the tasks it shows — every one carrying all of its tags, finished and binned ones too — and their
+tags join the new project's arrangement in the order the old one had them. What was typed into
+the dialog is saved on the way, and a group that was on screen takes the list with it.
+
 Groups are session-only in the API. Not because a program could not use one, but because a
 scoped token must not learn tag names its scope does not reach, and a group is a list of tag
 names.

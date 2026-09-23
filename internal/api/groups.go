@@ -70,13 +70,27 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, renderGroup(g))
 }
 
+type patchGroupRequest struct {
+	groupRequest
+	// Project moves it to the project with this slug, with every task it shows.
+	Project *string `json:"project"`
+}
+
 // patchGroup replaces both fields, since the dialog that edits one edits both.
 func (s *Server) patchGroup(w http.ResponseWriter, r *http.Request) {
-	var req groupRequest
+	var req patchGroupRequest
 	if !decode(w, r, &req) {
 		return
 	}
-	g, err := s.store.UpdateGroup(r.Context(), principalOf(r).ID, r.PathValue("id"), req.Name, req.Tags, req.Color)
+	move := ""
+	if req.Project != nil {
+		target, ok := s.namedProject(w, r, *req.Project)
+		if !ok {
+			return
+		}
+		move = target.ID
+	}
+	g, err := s.store.UpdateGroup(r.Context(), principalOf(r).ID, r.PathValue("id"), req.Name, req.Tags, req.Color, move)
 	if err != nil {
 		s.fail(w, r, err)
 		return

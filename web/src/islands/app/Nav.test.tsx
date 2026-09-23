@@ -18,6 +18,8 @@ vi.mock("@app/api/actions/groups", () => ({
         { id: "gr_2", name: "Errands", tags: ["errands"], created_at: 2 },
       ],
     }),
+  patchGroupsById: (id: string, body: object) =>
+    Promise.resolve({ id, created_at: 2, ...body }),
 }));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
@@ -130,6 +132,35 @@ describe("Nav", () => {
     expect(
       row.querySelector('button[aria-label="Edit Deep work"]'),
     ).not.toBeNull();
+  });
+
+  /** What it was showing went with it, so the list goes too; one not on screen moves alone. */
+  it("follows a group moved while it is the one on screen", async () => {
+    const move = async (tags: string[]) => {
+      const onGo = vi.fn();
+      const view = mount(<Nav location={at(tags)} onGo={onGo} />);
+      fireEvent.click(
+        (await screen.findAllByRole("button", { name: "Edit Errands" }))[0]!,
+      );
+      fireEvent.click(await screen.findByRole("button", { name: "Move…" }));
+      // The picker's pill, not the rail's row of the same name.
+      const pill = screen
+        .getAllByRole("button", { name: "Garden" })
+        .find((b) => b.hasAttribute("aria-pressed"))!;
+      fireEvent.click(pill);
+      // Moved, and the dialog shut behind it.
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Move…" })).toBeNull(),
+      );
+      view.unmount();
+      return onGo;
+    };
+
+    expect(await move(["errands"])).toHaveBeenCalledWith({
+      route: { name: "list" },
+      filters: { project: "garden", tags: ["errands"], view: "todo", q: "" },
+    });
+    expect(await move([])).not.toHaveBeenCalled();
   });
 
   it("gives projects a pencil, and has no All", async () => {

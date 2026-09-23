@@ -358,3 +358,26 @@ func TestRowsNarrowATokenAndNoRowsWidenIt(t *testing.T) {
 		t.Errorf("with its rows taken away = %s, want every project again", resp.Status)
 	}
 }
+
+// Projects and groups are the browser's: no token reaches them, not even one reaching every
+// project.
+func TestATokenCannotManageProjectsOrGroups(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	garden := c.project(`{"name":"Garden"}`)["id"].(string)
+	group := c.json(c.do("POST", "/api/groups", `{"name":"Home","tags":["home"]}`))["id"].(string)
+	a := mintRows(t, s, c, `[]`)
+
+	for _, call := range [][3]string{
+		{"GET", "/api/projects", ""},
+		{"POST", "/api/projects", `{"name":"Side Project"}`},
+		{"PATCH", "/api/projects/" + garden, `{"name":"Side Project"}`},
+		{"DELETE", "/api/projects/" + garden, ""},
+		{"PATCH", "/api/groups/" + group, `{"name":"Home","tags":["home"],"project":"garden"}`},
+		{"DELETE", "/api/groups/" + group, ""},
+	} {
+		if resp := a.do(call[0], call[1], call[2]); resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("%s %s with a token = %s, want 401", call[0], call[1], resp.Status)
+		}
+	}
+}

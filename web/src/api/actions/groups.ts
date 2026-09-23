@@ -11,10 +11,11 @@ export const postGroups = (
 ) =>
   request<Group>(`/api/groups${query({ project })}`, { method: "POST", body });
 
-/** Name and tags together: the dialog that edits one edits both. */
+/** Name and tags together: the dialog that edits one edits both. A project, by slug, moves
+ *  it there with every task it shows. */
 export const patchGroupsById = (
   id: string,
-  body: { name: string; tags: string[]; color: string },
+  body: { name: string; tags: string[]; color: string; project?: string },
 ) => request<Group>(`/api/groups/${id}`, { method: "PATCH", body });
 
 export const deleteGroupsById = (id: string) =>
