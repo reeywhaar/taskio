@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Dialog } from "@app/components/Dialog";
 import { mount } from "@app/test/harness";
 
+function Breaks(): never {
+  throw new Error("the data was not what it claimed");
+}
+
 describe("Dialog", () => {
   /**
    * showModal focuses the first control it finds whether or not that control wanted it, and in
@@ -83,9 +87,6 @@ describe("Dialog", () => {
   /** A body that throws is one dialog's trouble, and its close still closes it. */
   it("keeps its title and close when the body fails", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const Breaks = () => {
-      throw new Error("the data was not what it claimed");
-    };
     const onClose = vi.fn();
     mount(
       <Dialog open onClose={onClose} title="Task">
