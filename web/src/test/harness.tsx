@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render } from "@testing-library/react";
 
+import { ConfirmProvider } from "@app/components/Confirm";
+
 /**
  * A component under a query client of its own.
  *
@@ -14,7 +16,9 @@ export function mount(ui: ReactElement) {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const wrap = (node: ReactElement) => (
-    <QueryClientProvider client={client}>{node}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ConfirmProvider>{node}</ConfirmProvider>
+    </QueryClientProvider>
   );
   const view = render(wrap(ui));
   return {

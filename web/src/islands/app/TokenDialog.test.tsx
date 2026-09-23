@@ -191,4 +191,26 @@ describe("TokenDialog", () => {
 
     expect(screen.queryByText("tkc_sekrit")).toBeNull();
   });
+
+  /** Copied with a press, and said so: dragging across it is where a token loses a character. */
+  it("copies the new secret, and says so", async () => {
+    const written: string[] = [];
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: (text: string) => {
+          written.push(text);
+          return Promise.resolve();
+        },
+      },
+    });
+    mount(<TokenDialog open onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("What is it for"), {
+      target: { value: "claude" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Copy" }));
+
+    await waitFor(() => expect(written).toEqual(["tkc_sekrit"]));
+    await screen.findByRole("button", { name: "Copied" });
+  });
 });

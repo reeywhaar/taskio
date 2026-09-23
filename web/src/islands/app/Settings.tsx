@@ -22,6 +22,7 @@ import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
 import { PasswordDialog } from "@app/islands/app/PasswordDialog";
 import { RecoveryDialog } from "@app/islands/app/RecoveryDialog";
 import { TokenDialog } from "@app/islands/app/TokenDialog";
+import { useConfirm } from "@app/components/Confirm";
 import { TokenEditDialog } from "@app/islands/app/TokenEditDialog";
 import { lengthName } from "@app/islands/app/TokenFields";
 
@@ -273,6 +274,7 @@ function Panel({
 }
 
 export function Tokens() {
+  const confirm = useConfirm();
   const client = useQueryClient();
   const tokens = useQuery({ queryKey: qk.tokens, queryFn: getTokens });
   const [minting, setMinting] = useState(false);
@@ -391,13 +393,19 @@ export function Tokens() {
                     way on is a new token pasted into every place the old one was. */}
                 <Button
                   variant="link"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Revoke "${token.label}"? Whatever uses it stops working at once, and it cannot be undone.`,
-                      )
-                    )
-                      revoke.mutate(token.id);
+                  onClick={async () => {
+                    const yes = await confirm({
+                      title: "Revoke this token?",
+                      message: (
+                        <>
+                          Whatever uses <b>{token.label}</b> stops working at
+                          once, and it cannot be undone.
+                        </>
+                      ),
+                      confirm: "Revoke",
+                      danger: true,
+                    });
+                    if (yes) revoke.mutate(token.id);
                   }}
                 >
                   Revoke
@@ -415,6 +423,7 @@ export function Tokens() {
 }
 
 function Sessions() {
+  const confirm = useConfirm();
   const client = useQueryClient();
   const sessions = useQuery({ queryKey: qk.sessions, queryFn: getSessions });
 
@@ -457,15 +466,16 @@ function Sessions() {
             </div>
             <Button
               variant="link"
-              onClick={() => {
-                if (
+              onClick={async () => {
+                const yes =
                   !session.current ||
-                  window.confirm(
-                    "This is the browser you are using. Signing it out returns you to the login page.",
-                  )
-                ) {
-                  revoke.mutate(session.id);
-                }
+                  (await confirm({
+                    title: "Sign this browser out?",
+                    message:
+                      "This is the browser you are using. Signing it out returns you to the login page.",
+                    confirm: "Sign out",
+                  }));
+                if (yes) revoke.mutate(session.id);
               }}
             >
               Sign out

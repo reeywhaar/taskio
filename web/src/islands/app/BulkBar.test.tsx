@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BulkBar } from "@app/islands/app/BulkBar";
@@ -11,6 +11,7 @@ const postTasksBulkDone = vi.fn();
 const postTasksBulkTodo = vi.fn();
 const postTasksBulkTags = vi.fn();
 const postTasksBulkProject = vi.fn();
+const postTasksBulkDelete = vi.fn();
 vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkPinned: (ids: string[], pinned: boolean) =>
     postTasksBulkPinned(ids, pinned),
@@ -20,7 +21,7 @@ vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkTodo: (ids: string[]) => postTasksBulkTodo(ids),
   postTasksBulkTags: (ids: string[], add: string[], remove: string[]) =>
     postTasksBulkTags(ids, add, remove),
-  postTasksBulkDelete: vi.fn(),
+  postTasksBulkDelete: (ids: string[]) => postTasksBulkDelete(ids),
   postTasksBulkProject: (ids: string[], project: string) =>
     postTasksBulkProject(ids, project),
 }));
@@ -326,5 +327,33 @@ describe("moving a selection", () => {
     await waitFor(() =>
       expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "garden"),
     );
+  });
+});
+
+/** Delete asks first, in the application's own dialog, and only a yes deletes. */
+describe("deleting a selection", () => {
+  beforeEach(() =>
+    postTasksBulkDelete.mockReset().mockResolvedValue(undefined),
+  );
+
+  it("asks, and deletes on a yes", async () => {
+    bar();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const asked = screen.getByRole("dialog");
+    expect(within(asked).getByText("Delete 2 tasks?")).toBeDefined();
+    fireEvent.click(within(asked).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(postTasksBulkDelete).toHaveBeenCalledWith(ids));
+  });
+
+  it("deletes nothing on a no", async () => {
+    bar();
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(postTasksBulkDelete).not.toHaveBeenCalled();
   });
 });

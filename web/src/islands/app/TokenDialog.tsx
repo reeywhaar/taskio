@@ -5,6 +5,7 @@ import { postTokens } from "@app/api/actions/tokens";
 import { ApiError } from "@app/api/transport";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
+import { copy } from "@app/clipboard";
 import { Dialog } from "@app/components/Dialog";
 import {
   blankToken,
@@ -31,6 +32,12 @@ export function TokenDialog({
   const client = useQueryClient();
   const [form, setForm] = useState<TokenForm>(blankToken);
   const [secret, setSecret] = useState("");
+  const [copied, setCopied] = useState(false);
+  const copySecret = async () => {
+    if (!(await copy(secret))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -89,9 +96,17 @@ export function TokenDialog({
           <p className="text-sm text-warn">
             This is the only time this token is shown.
           </p>
-          <code className="block break-all font-mono text-sm select-all">
-            {secret}
-          </code>
+          {/* A button, not only a selectable line: dragging across forty-odd characters of
+              base64 is where a token gets copied one character short. It says so afterwards,
+              because a copy that reports nothing is a copy nobody trusts. */}
+          <div className="flex items-start gap-2">
+            <code className="sunken block min-w-0 flex-1 rounded-md bg-bg px-3 py-2 font-mono text-sm break-all select-all">
+              {secret}
+            </code>
+            <Button onClick={() => void copySecret()}>
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
         </div>
       ) : (
         <form

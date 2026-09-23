@@ -10,6 +10,7 @@ import {
 import type { Filters } from "@app/islands/app/route";
 import type { Tag, Task } from "@app/api/types";
 import { Button } from "@app/components/Button";
+import { useConfirm } from "@app/components/Confirm";
 import { CrossIcon } from "@app/components/icons/Icon";
 import { copy } from "@app/clipboard";
 import { BulkPriorityDialog } from "@app/islands/app/BulkPriorityDialog";
@@ -64,6 +65,7 @@ export function BulkBar({
     null,
   );
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   const [copied, setCopied] = useState(false);
 
   /**
@@ -217,14 +219,15 @@ export function BulkBar({
           variant="danger"
           size="bar"
           disabled={busy || ids.length === 0}
-          onClick={() => {
-            if (
-              window.confirm(
-                `Delete ${ids.length} tasks? They go to the finished list, where you can put them back.`,
-              )
-            ) {
-              void run(() => postTasksBulkDelete(ids));
-            }
+          onClick={async () => {
+            const yes = await confirm({
+              title: `Delete ${ids.length} tasks?`,
+              message:
+                "They go to the finished list, where you can put them back.",
+              confirm: "Delete",
+              danger: true,
+            });
+            if (yes) void run(() => postTasksBulkDelete(ids));
           }}
         >
           Delete

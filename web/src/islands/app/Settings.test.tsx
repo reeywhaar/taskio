@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Token } from "@app/api/types";
@@ -65,18 +65,24 @@ describe("a token's row", () => {
 
   /** The one thing on the row that cannot be taken back, so it is asked first. */
   it("asks before revoking, and a no does nothing", async () => {
-    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
     mount(<Tokens />);
     fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
 
-    expect(ask).toHaveBeenCalledWith(expect.stringContaining("the laptop"));
+    const asked = screen.getByRole("dialog");
+    expect(within(asked).getByText("the laptop")).toBeDefined();
+    fireEvent.click(within(asked).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(revoke).not.toHaveBeenCalled();
   });
 
   it("revokes on a yes", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     mount(<Tokens />);
     fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Revoke",
+      }),
+    );
     await waitFor(() => expect(revoke).toHaveBeenCalledWith("4b9933cf3430"));
   });
 
