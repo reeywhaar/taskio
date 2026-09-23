@@ -230,6 +230,9 @@
 :root {
   --lit: rgb(255 255 255 / 0.7);
   --cast: rgb(158 172 193 / 0.36);
+  /* A well's edge: darker than a cast, because it is drawn far tighter. */
+  --rim: rgb(95 108 132 / 0.45);
+  --rim-soft: rgb(95 108 132 / 0.12);
   --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02);
   /* What the floating bar lays over the page.
      
@@ -242,17 +245,17 @@
   --sheen-in: linear-gradient(180deg, var(--sheen-stops));
   /* Named once, because focus draws it again with a line on top.
 
-     The cast side is the one that says "sunk", and it was drawn at the lit side's strengths:
-     the rim came out 1.16:1 against the field in light and 1.13 in dark, which is a field you
-     find by where its words are. Two and a half times that is 1.36 and 1.33 — past it the 1px
-     layer is already at full strength, and the rest only widens the shadow into the field. */
+     Tight and dark rather than wide and faint. It was a raised card's shadow turned inside
+     out — six layers, a highlight on the far side, 5.5px of band — and a band that wide at a
+     strength that low is a field you find by where its words are. This is one crisp line with
+     a breath of depth under it: 2.8px of band, 1.8:1 at the rim in light where it was 1.4.
+
+     Shifted a pixel up and to the left rather than centred, and spread half a pixel so the far
+     edges keep a trace of it: the right and bottom read as the lip of the same hole instead of
+     the field running out into the page. No highlight — a pale line along the bottom of a well
+     is light hitting its floor, which is the edge this now draws in shadow. */
   --well:
-    inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
-    inset -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
-    inset -4px -4px 8px color-mix(in srgb, var(--lit) 16%, transparent),
-    inset 1px 1px 1.5px var(--cast),
-    inset 2px 2px 4px color-mix(in srgb, var(--cast) 80%, transparent),
-    inset 3px 4px 9px color-mix(in srgb, var(--cast) 40%, transparent);
+    inset 1px 1px 1.5px 0.5px var(--rim), inset 1px 1px 4px var(--rim-soft);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -261,6 +264,8 @@
        highlight is nearly gone and the shadow does most of the speaking. */
     --lit: rgb(255 255 255 / 0.03);
     --cast: rgb(0 0 0 / 0.38);
+    --rim: rgb(0 0 0 / 0.7);
+    --rim-soft: rgb(0 0 0 / 0.2);
     /* A dark ground has nothing to bounce, so the pale end is a hint and the dark end does the
        separating. */
     --sheen-stops: rgb(255 255 255 / 0.05), rgb(0 0 0 / 0.12);
