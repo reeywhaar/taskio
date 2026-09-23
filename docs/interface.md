@@ -435,8 +435,12 @@ to.
 **The row reads the other way round**: the actions, then the gap, then what the row is about —
 Select all, the count and a cross to close it. Every control here is reached from the left, and
 the things that are not actions sit past them. The actions wrap among themselves and the rest
-stays on the first line; on a phone it is a line of its own above them. Select all takes every
-row on screen, and reads Select none once that is the selection.
+stays on the first line; on a phone it is a line of its own above them, the count at its start.
+
+A selection can span the todo and done views and a search into another project, so both of these
+leave what was picked elsewhere alone. Select all adds every row on screen, and reads Select none
+once they are all in, which takes only those rows out. The count opens the selection as a list of
+rows with nothing to press in them, each asked for by id, since most of it may not be on screen.
 
 The buttons are a size smaller than anywhere else. Eight at the bar size wrapped to a second
 line on a laptop-width window.

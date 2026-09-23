@@ -44,14 +44,18 @@ export function TaskRow({
   onOpen,
   onToggleDone,
   onTogglePinned,
+  still = false,
 }: {
   task: Task;
+  /** Nothing to press: a row that shows a task and does nothing else, for a list of them
+   *  somewhere that is not the list, like the bulk bar's selection. */
+  still?: boolean;
   /** Set on the first row of a new run, which is where the wider gap goes. */
   apart?: boolean;
   selectable?: boolean;
   selected?: boolean;
   onSelect?: (id: string) => void;
-  onOpen: (id: string) => void;
+  onOpen?: (id: string) => void;
   /** Left out where the row is not in the list it would change: the search results from
    *  elsewhere are rows about tasks the list above is not showing, and a tick there is a change
    *  nobody can see the result of. The row still opens. */
@@ -99,16 +103,17 @@ export function TaskRow({
     <li
       data-task={task.id}
       onClick={() => {
+        if (still) return;
         // A click that ends a text selection is somebody reading, not somebody pressing.
         if (window.getSelection()?.toString()) return;
         // While picking, the card picks. Opening a task from a row somebody is ticking is the
         // wrong half of a mode, and the box is a small target to have to hit.
         if (selectable) onSelect?.(task.id);
-        else onOpen(task.id);
+        else onOpen?.(task.id);
       }}
       // Three columns wide, two rows narrow: on a phone the column and the mark took 100px of
       // 390 and left the title a four-line ribbon. Placed rather than duplicated.
-      className={`raised group relative grid cursor-pointer grid-cols-[1fr_auto] items-start gap-x-3 gap-y-1 overflow-hidden rounded-lg bg-bg py-2.5 pr-3 pl-3 sm:grid-cols-[auto_1fr_auto] sm:gap-y-0 ${
+      className={`raised relative grid grid-cols-[1fr_auto] ${still ? "" : "group cursor-pointer"} items-start gap-x-3 gap-y-1 overflow-hidden rounded-lg bg-bg py-2.5 pr-3 pl-3 sm:grid-cols-[auto_1fr_auto] sm:gap-y-0 ${
         apart ? "mt-4" : ""
       }`}
     >
@@ -133,7 +138,13 @@ export function TaskRow({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="flex h-6 items-center">
-          <TaskId id={task.id} />
+          {still ? (
+            <span className="inline-block w-[8ch] font-mono text-xs tabular-nums text-faint">
+              {task.id}
+            </span>
+          ) : (
+            <TaskId id={task.id} />
+          )}
         </span>
 
         {/* Small and tucked under the id: a thing to notice, not to read. One in the bin
@@ -175,21 +186,32 @@ export function TaskRow({
             {task.priority}
           </span>
 
-          <button
-            type="button"
-            hidden={!onTogglePinned}
-            aria-label={task.pinned ? "Unpin" : "Pin"}
-            title={task.pinned ? "Unpin" : "Pin"}
-            aria-pressed={task.pinned}
-            onClick={() => onTogglePinned?.(task)}
-            className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
-              task.pinned
-                ? "text-brand"
-                : "text-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-            }`}
-          >
-            <PinIcon />
-          </button>
+          {still ? (
+            task.pinned ? (
+              <span
+                aria-label="Pinned"
+                className="flex items-center p-0.5 text-base text-brand"
+              >
+                <PinIcon />
+              </span>
+            ) : null
+          ) : (
+            <button
+              type="button"
+              hidden={!onTogglePinned}
+              aria-label={task.pinned ? "Unpin" : "Pin"}
+              title={task.pinned ? "Unpin" : "Pin"}
+              aria-pressed={task.pinned}
+              onClick={() => onTogglePinned?.(task)}
+              className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
+                task.pinned
+                  ? "text-brand"
+                  : "text-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+              }`}
+            >
+              <PinIcon />
+            </button>
+          )}
         </span>
       </span>
 
@@ -198,14 +220,22 @@ export function TaskRow({
         {/* A button, so the keyboard and a screen reader have something to land on and
             announce. Its click reaches the card like any other, which is what opens the
             task — one way in, by mouse and by keyboard. */}
-        <button
-          type="button"
-          className={`block w-full cursor-pointer text-left text-base leading-6 ${
-            finished ? "text-muted line-through" : ""
-          }`}
-        >
-          {task.title}
-        </button>
+        {still ? (
+          <p
+            className={`text-base leading-6 ${finished ? "text-muted line-through" : ""}`}
+          >
+            {task.title}
+          </p>
+        ) : (
+          <button
+            type="button"
+            className={`block w-full cursor-pointer text-left text-base leading-6 ${
+              finished ? "text-muted line-through" : ""
+            }`}
+          >
+            {task.title}
+          </button>
+        )}
 
         {/* A line saying so, without the retry: a button inside the row is a press on the row. */}
         <Boundary
@@ -215,7 +245,7 @@ export function TaskRow({
             </p>
           }
         >
-          <Excerpt source={task.description} />
+          <Excerpt source={task.description} still={still} />
         </Boundary>
 
         {task.tags.length > 0 ? (
@@ -241,7 +271,7 @@ export function TaskRow({
 
           The box reports the tick itself; without stopping the click the card behind it
           reports a second one and the row toggles back to where it started. */}
-      {selectable ? (
+      {still ? null : selectable ? (
         <span
           className="col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center sm:col-start-3"
           onClick={(e) => e.stopPropagation()}
@@ -282,7 +312,7 @@ export function TaskRow({
 
 /** The row's opening lines, in a component of its own so the boundary around it can catch a
  *  description the parser throws on. */
-function Excerpt({ source }: { source: string }) {
+function Excerpt({ source, still }: { source: string; still: boolean }) {
   const pieces = excerpt(source);
   if (pieces.length === 0) return null;
   return (
@@ -293,7 +323,7 @@ function Excerpt({ source }: { source: string }) {
       {pieces.map((piece, i) =>
         piece.br ? (
           <br key={i} />
-        ) : piece.href ? (
+        ) : piece.href && !still ? (
           <a
             key={i}
             href={piece.href}

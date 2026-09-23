@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BulkBar } from "@app/islands/app/BulkBar";
+import { BulkBar, selectAll } from "@app/islands/app/BulkBar";
 import type { Task } from "@app/api/types";
 import { mount } from "@app/test/harness";
 
@@ -390,5 +390,16 @@ describe("selecting everything", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Select none" })).toBeDefined();
+  });
+});
+
+describe("selectAll", () => {
+  it("adds the rows on screen to what was picked elsewhere", () => {
+    expect(selectAll(["done1"], ["a", "b"])).toEqual(["done1", "a", "b"]);
+    expect(selectAll(["a"], ["a", "b"])).toEqual(["a", "b"]);
+  });
+
+  it("takes only the rows on screen back out once they are all in", () => {
+    expect(selectAll(["done1", "a", "b"], ["a", "b"])).toEqual(["done1"]);
   });
 });

@@ -16,6 +16,18 @@ import { copy } from "@app/clipboard";
 import { BulkPriorityDialog } from "@app/islands/app/BulkPriorityDialog";
 import { BulkTagDialog } from "@app/islands/app/BulkTagDialog";
 import { ProjectSelectDialog } from "@app/islands/app/ProjectPicker";
+import { SelectionDialog } from "@app/islands/app/SelectionDialog";
+
+/**
+ * Select all: the rows on screen added to the selection, or taken back out of it when they are
+ * all in it already. Only those rows either way, because a selection can span views and a search
+ * into another project, and neither press should lose what was picked somewhere else.
+ */
+export function selectAll(current: string[], here: string[]): string[] {
+  return here.every((id) => current.includes(id))
+    ? current.filter((id) => !here.includes(id))
+    : [...new Set([...current, ...here])];
+}
 
 /**
  * A bar under the list, one request per action.
@@ -67,9 +79,9 @@ export function BulkBar({
   onHeight?: (px: number) => void;
 }) {
   // One prompt at a time, and both of them are dialogs. See the note on the bar below.
-  const [asking, setAsking] = useState<"tag" | "priority" | "project" | null>(
-    null,
-  );
+  const [asking, setAsking] = useState<
+    "tag" | "priority" | "project" | "list" | null
+  >(null);
   const [busy, setBusy] = useState(false);
   const confirm = useConfirm();
   const [copied, setCopied] = useState(false);
@@ -247,9 +259,12 @@ export function BulkBar({
           </Button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2">
+        {/* On a phone this is the top line: the count at its start, the controls at its end,
+            rather than all three bunched at the right over a line of empty bar. */}
+        <div className="flex shrink-0 items-center gap-2">
           {onSelectAll ? (
-            <Button size="compact" variant="link" onClick={onSelectAll}>
+            // A button like the actions, so it does not run into the count as one phrase.
+            <Button size="compact" onClick={onSelectAll}>
               {everything ? "Select none" : "Select all"}
             </Button>
           ) : null}
@@ -258,9 +273,17 @@ export function BulkBar({
             control here is reached from the left, and the two things that are not controls at
             all sit past them. It counts what is in front of somebody, which is a different
             thing from a workload number pinned to a tab. */}
-          <span className="text-xs whitespace-nowrap text-muted">
+          {/* Pressed, it lists them: a selection can span views and projects, so most of it
+            may be nowhere on screen. */}
+          <Button
+            size="compact"
+            variant="link"
+            className="-order-1 mr-auto whitespace-nowrap sm:order-none sm:mr-0"
+            disabled={ids.length === 0}
+            onClick={() => setAsking("list")}
+          >
             {ids.length} selected
-          </span>
+          </Button>
 
           {/* Where a close goes. It is the one thing here that does nothing to the selection. */}
           <button
@@ -274,6 +297,12 @@ export function BulkBar({
           </button>
         </div>
       </div>
+
+      <SelectionDialog
+        open={asking === "list"}
+        ids={ids}
+        onClose={() => setAsking(null)}
+      />
 
       <BulkPriorityDialog
         open={asking === "priority"}

@@ -26,7 +26,7 @@ import { TagCloud } from "@app/islands/app/TagCloud";
 import { rank, TaskRow } from "@app/islands/app/TaskRow";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
 import { TaskDialog } from "@app/islands/app/TaskDialog";
-import { BulkBar } from "@app/islands/app/BulkBar";
+import { BulkBar, selectAll } from "@app/islands/app/BulkBar";
 import { Elsewhere } from "@app/islands/app/Elsewhere";
 import { Settings } from "@app/islands/app/Settings";
 import {
@@ -542,13 +542,10 @@ function List({
             tasks.length > 0 &&
             tasks.every((task) => selection.includes(task.id))
           }
-          onSelectAll={() =>
-            setSelection(
-              tasks.every((task) => selection.includes(task.id))
-                ? []
-                : tasks.map((task) => task.id),
-            )
-          }
+          onSelectAll={() => {
+            const here = tasks.map((task) => task.id);
+            setSelection((current) => selectAll(current ?? [], here));
+          }}
           onDone={() => {
             stopPicking();
             client.invalidateQueries({ queryKey: qk.tasks });
