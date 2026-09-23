@@ -5,12 +5,7 @@ import { getGroups, putGroupsOrder } from "@app/api/actions/groups";
 import { getProjects, putProjectsOrder } from "@app/api/actions/projects";
 import type { Group, Project } from "@app/api/types";
 import { qk } from "@app/api/keys";
-import {
-  BurgerIcon,
-  CrossIcon,
-  PencilIcon,
-  PlusIcon,
-} from "@app/components/icons/Icon";
+import { BurgerIcon, CrossIcon, PencilIcon } from "@app/components/icons/Icon";
 import { useCarry } from "@app/islands/app/carry";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
 import {
@@ -258,9 +253,9 @@ export function Nav({
                         setOpen(false);
                         setEditing("new");
                       }}
-                      className="inline-flex w-full items-center gap-1 rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
+                      className="w-full rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
                     >
-                      <PlusIcon /> New group
+                      New group
                     </button>
                   </li>
                 </ul>
@@ -270,16 +265,17 @@ export function Nav({
         );
       })}
 
-      <li>
+      {/* Room above it, or under the last project it runs into that project's New group. */}
+      <li className="mt-2">
         <button
           type="button"
           onClick={() => {
             setOpen(false);
             setEditingProject("new");
           }}
-          className="inline-flex w-full items-center gap-1 rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
+          className="w-full rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
         >
-          <PlusIcon /> New project
+          New project
         </button>
       </li>
 
