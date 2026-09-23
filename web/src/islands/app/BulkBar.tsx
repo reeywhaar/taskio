@@ -12,6 +12,7 @@ import type { Filters } from "@app/islands/app/route";
 import type { Tag, Task } from "@app/api/types";
 import { Button } from "@app/components/Button";
 import { useConfirm } from "@app/components/Confirm";
+import { Menu, MenuItem } from "@app/components/Menu";
 import { CrossIcon } from "@app/components/icons/Icon";
 import { copy } from "@app/clipboard";
 import { BulkPriorityDialog } from "@app/islands/app/BulkPriorityDialog";
@@ -225,24 +226,10 @@ export function BulkBar({
           )}
           <Button
             size="compact"
-            disabled={ids.length === 0}
-            onClick={() => setAsking("priority")}
-          >
-            Priority…
-          </Button>
-          <Button
-            size="compact"
             disabled={busy || ids.length === 0}
             onClick={() => setAsking("tag")}
           >
             Tag…
-          </Button>
-          <Button
-            size="compact"
-            disabled={busy || ids.length === 0}
-            onClick={() => setAsking("project")}
-          >
-            Move…
           </Button>
           <Button
             size="compact"
@@ -251,35 +238,66 @@ export function BulkBar({
           >
             {copied ? "Copied" : "Copy ids"}
           </Button>
-          <Button
-            variant="danger"
-            size="compact"
-            disabled={busy || ids.length === 0}
-            onClick={async () => {
-              const yes = await confirm({
-                title: `Delete ${ids.length} tasks?`,
-                message:
-                  "They go to the finished list, where you can put them back.",
-                confirm: "Delete",
-                danger: true,
-              });
-              if (yes) void run(() => postTasksBulkDelete(ids));
-            }}
-          >
-            Delete…
-          </Button>
+          {/* The ones used least, behind one button: ten across wrapped the bar to a second line
+              on any window narrower than a laptop's with the rail open. Delete among them because
+              it asks first anyway, so a menu in front of it costs one press, not a mistake. Open
+              with nothing selected, since Select all is in it; the rest wait for a selection. */}
+          <Menu label="More">
+            {(close) => (
+              <>
+                {onSelectAll ? (
+                  <MenuItem
+                    onClick={() => {
+                      close();
+                      onSelectAll();
+                    }}
+                  >
+                    {everything ? "Select none" : "Select all"}
+                  </MenuItem>
+                ) : null}
+                <MenuItem
+                  disabled={ids.length === 0}
+                  onClick={() => {
+                    close();
+                    setAsking("priority");
+                  }}
+                >
+                  Priority
+                </MenuItem>
+                <MenuItem
+                  disabled={busy || ids.length === 0}
+                  onClick={() => {
+                    close();
+                    setAsking("project");
+                  }}
+                >
+                  Move…
+                </MenuItem>
+                <MenuItem
+                  danger
+                  disabled={busy || ids.length === 0}
+                  onClick={async () => {
+                    close();
+                    const yes = await confirm({
+                      title: `Delete ${ids.length} tasks?`,
+                      message:
+                        "They go to the finished list, where you can put them back.",
+                      confirm: "Delete",
+                      danger: true,
+                    });
+                    if (yes) void run(() => postTasksBulkDelete(ids));
+                  }}
+                >
+                  Delete…
+                </MenuItem>
+              </>
+            )}
+          </Menu>
         </div>
 
         {/* On a phone this is the top line: the count at its start, the controls at its end,
             rather than all three bunched at the right over a line of empty bar. */}
         <div className="flex shrink-0 items-center gap-2">
-          {onSelectAll ? (
-            // A button like the actions, so it does not run into the count as one phrase.
-            <Button size="compact" onClick={onSelectAll}>
-              {everything ? "Select none" : "Select all"}
-            </Button>
-          ) : null}
-
           {/* What the row is about, at the end of it and out of the way of the hands: every
             control here is reached from the left, and the two things that are not controls at
             all sit past them. It counts what is in front of somebody, which is a different

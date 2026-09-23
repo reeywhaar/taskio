@@ -130,7 +130,8 @@ describe("BulkBar", () => {
 
   it("sets one priority across the selection", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Priority…" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Priority" }));
     fireEvent.change(screen.getByRole("spinbutton"), {
       target: { value: "-2" },
     });
@@ -320,11 +321,13 @@ describe("moving a selection", () => {
 
   it("moves it to the project pressed, and nowhere for the one it is in", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Move…" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Main" }));
     expect(postTasksBulkProject).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move…" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     await waitFor(() =>
       expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "garden"),
@@ -340,7 +343,8 @@ describe("deleting a selection", () => {
 
   it("asks, and deletes on a yes", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
     const asked = screen.getByRole("dialog");
     expect(within(asked).getByText("Delete 2 tasks?")).toBeDefined();
     fireEvent.click(within(asked).getByRole("button", { name: "Delete" }));
@@ -349,7 +353,8 @@ describe("deleting a selection", () => {
 
   it("deletes nothing on a no", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete…" }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Cancel",
@@ -375,7 +380,8 @@ describe("selecting everything", () => {
         onSelectAll={onSelectAll}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Select all" }));
     expect(onSelectAll).toHaveBeenCalled();
 
     rerender(
@@ -391,7 +397,8 @@ describe("selecting everything", () => {
         everything
       />,
     );
-    expect(screen.getByRole("button", { name: "Select none" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("menuitem", { name: "Select none" })).toBeDefined();
   });
 });
 
@@ -419,4 +426,24 @@ describe("poking a selection", () => {
     bar("done");
     expect(screen.queryByRole("button", { name: "Poke" })).toBeNull();
   });
+});
+
+/** Select all is how a selection often starts, so More opens with nothing selected yet. */
+it("reaches Select all with nothing selected", () => {
+  const onSelectAll = vi.fn();
+  mount(
+    <BulkBar
+      ids={[]}
+      chosen={[]}
+      tags={tags}
+      view="todo"
+      project=""
+      onDone={vi.fn()}
+      onCancel={vi.fn()}
+      onSelectAll={onSelectAll}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Select all" }));
+  expect(onSelectAll).toHaveBeenCalled();
 });
