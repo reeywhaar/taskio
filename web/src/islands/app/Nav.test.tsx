@@ -33,7 +33,13 @@ vi.mock("@app/api/actions/projects", () => ({
           default: true,
           created_at: 1,
         },
-        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+        {
+          id: "pj_2",
+          name: "Garden",
+          slug: "garden",
+          default: false,
+          created_at: 2,
+        },
       ],
     }),
   putProjectsOrder: vi.fn(),
@@ -62,24 +68,24 @@ describe("Nav", () => {
   it("opens a project with nothing of the last one's lit", async () => {
     const onGo = vi.fn();
     mount(<Nav location={at(["home"])} onGo={onGo} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Web" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Web" })[0]!);
+    await waitFor(() => screen.getAllByRole("button", { name: "Garden" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Garden" })[0]!);
     expect(onGo).toHaveBeenCalledWith({
       route: { name: "list" },
-      filters: { project: "web", tags: [], view: "todo", q: "" },
+      filters: { project: "garden", tags: [], view: "todo", q: "" },
     });
   });
 
   /** Only the open project's groups, a step in from it: a group is a view of one project. */
   it("draws the groups under the open project and no other", async () => {
-    mount(<Nav location={at([], "web")} onGo={vi.fn()} />);
+    mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
     await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
     const rows = [...rail().querySelectorAll("button")].map(
       (b) => b.textContent,
     );
-    expect(rows.indexOf("Errands")).toBeGreaterThan(rows.indexOf("Web"));
-    expect(rows.indexOf("Main")).toBeLessThan(rows.indexOf("Web"));
-    expect(lit()).toEqual(["Web"]);
+    expect(rows.indexOf("Errands")).toBeGreaterThan(rows.indexOf("Garden"));
+    expect(rows.indexOf("Main")).toBeLessThan(rows.indexOf("Garden"));
+    expect(lit()).toEqual(["Garden"]);
   });
 
   /** The tags are the state, so a group is lit by what the list is filtered by. */
@@ -129,7 +135,9 @@ describe("Nav", () => {
   it("gives projects a pencil, and has no All", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
     await waitFor(() => screen.getAllByRole("button", { name: "Edit Main" }));
-    expect(screen.getAllByRole("button", { name: "Edit Web" })).toBeDefined();
+    expect(
+      screen.getAllByRole("button", { name: "Edit Garden" }),
+    ).toBeDefined();
     expect(screen.queryByRole("button", { name: "All" })).toBeNull();
   });
 });

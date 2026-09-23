@@ -14,18 +14,18 @@ vi.mock("@app/api/actions/projects", () => ({
   deleteProjectsById: (id: string) => remove(id),
 }));
 
-const web: Project = {
+const garden: Project = {
   id: "pj_2",
-  name: "Web",
-  slug: "web",
+  name: "Garden",
+  slug: "garden",
   default: false,
   created_at: 1,
 };
 const field = (name: string) => screen.getByLabelText(name) as HTMLInputElement;
 
 beforeEach(() => {
-  post.mockReset().mockResolvedValue({ ...web, id: "pj_3" });
-  patch.mockReset().mockResolvedValue(web);
+  post.mockReset().mockResolvedValue({ ...garden, id: "pj_3" });
+  patch.mockReset().mockResolvedValue(garden);
   remove.mockReset().mockResolvedValue(undefined);
 });
 
@@ -56,7 +56,7 @@ describe("a project's slug", () => {
   it("is left out of a rename", async () => {
     mount(
       <ProjectDialog
-        editing={web}
+        editing={garden}
         onClose={vi.fn()}
         onGo={vi.fn()}
         onGone={vi.fn()}
@@ -75,7 +75,7 @@ describe("deleting a project", () => {
     const onGone = vi.fn();
     mount(
       <ProjectDialog
-        editing={web}
+        editing={garden}
         onClose={vi.fn()}
         onGo={vi.fn()}
         onGone={onGone}
@@ -85,13 +85,13 @@ describe("deleting a project", () => {
 
     const go = screen.getByRole("button", { name: "Delete project" });
     expect(go.hasAttribute("disabled")).toBe(true);
-    fireEvent.change(field("Type Web to confirm"), {
-      target: { value: "web" },
+    fireEvent.change(field("Type Garden to confirm"), {
+      target: { value: "garden" },
     });
     expect(go.hasAttribute("disabled")).toBe(true);
 
-    fireEvent.change(field("Type Web to confirm"), {
-      target: { value: "Web" },
+    fireEvent.change(field("Type Garden to confirm"), {
+      target: { value: "Garden" },
     });
     fireEvent.click(go);
     await waitFor(() => expect(remove).toHaveBeenCalledWith("pj_2"));
@@ -101,7 +101,7 @@ describe("deleting a project", () => {
   it("is not offered for the default project", () => {
     mount(
       <ProjectDialog
-        editing={{ ...web, default: true }}
+        editing={{ ...garden, default: true }}
         onClose={vi.fn()}
         onGo={vi.fn()}
         onGone={vi.fn()}

@@ -44,7 +44,13 @@ vi.mock("@app/api/actions/projects", () => ({
           default: true,
           created_at: 1,
         },
-        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+        {
+          id: "pj_2",
+          name: "Garden",
+          slug: "garden",
+          default: false,
+          created_at: 2,
+        },
       ],
     }),
 }));
@@ -223,11 +229,11 @@ describe("moving a task", () => {
     await settle();
 
     fireEvent.click(screen.getByRole("button", { name: "Main" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Web" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(patch.mock.calls[0]![1]).toMatchObject({ project: "web" });
+    expect(patch.mock.calls[0]![1]).toMatchObject({ project: "garden" });
   });
 
   it("does not so much as ask to move a task saved where it is", async () => {
@@ -244,7 +250,7 @@ describe("moving a task", () => {
  */
 describe("a task from another project", () => {
   it("asks for the list to be that project's", async () => {
-    task = { ...detail("todo"), project: "web" };
+    task = { ...detail("todo"), project: "garden" };
     const onElsewhere = vi.fn();
     mount(
       <TaskDialog
@@ -257,7 +263,7 @@ describe("a task from another project", () => {
     );
     await waitFor(() =>
       expect(onElsewhere).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: "web" }),
+        expect.objectContaining({ slug: "garden" }),
       ),
     );
   });

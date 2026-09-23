@@ -29,7 +29,13 @@ vi.mock("@app/api/actions/projects", () => ({
           default: true,
           created_at: 1,
         },
-        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+        {
+          id: "pj_2",
+          name: "Garden",
+          slug: "garden",
+          default: false,
+          created_at: 2,
+        },
       ],
     }),
 }));
@@ -103,7 +109,7 @@ describe("TokenDialog", () => {
         expect.objectContaining({
           projects: [
             { project: "", scope: "" },
-            { project: "web", scope: "" },
+            { project: "garden", scope: "" },
           ],
         }),
       ),

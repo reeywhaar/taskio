@@ -129,7 +129,7 @@ the tags. Left out, it means:
 
 The routes on one task (`/api/tasks/{id}`) need no project: the id says where it is.
 
-**Moving** is `PATCH {"project": "web"}`, or `bulk/project` for several. A task takes its tags
+**Moving** is `PATCH {"project": "garden"}`, or `bulk/project` for several. A task takes its tags
 with it; they are the new project's tags from then on.
 
 A project that was deleted is answered `410 project_deleted`, for a token that still names it,

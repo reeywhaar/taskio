@@ -35,7 +35,13 @@ vi.mock("@app/api/actions/projects", () => ({
           default: true,
           created_at: 1,
         },
-        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+        {
+          id: "pj_2",
+          name: "Garden",
+          slug: "garden",
+          default: false,
+          created_at: 2,
+        },
       ],
     }),
 }));
@@ -316,9 +322,9 @@ describe("moving a selection", () => {
     expect(postTasksBulkProject).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Web" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     await waitFor(() =>
-      expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "web"),
+      expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "garden"),
     );
   });
 });

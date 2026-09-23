@@ -59,9 +59,9 @@ func TestAProjectHasItsOwnTasksTagsAndGroups(t *testing.T) {
 	c := signIn(t, s, st)
 
 	// Digits kept, everything else a hyphen.
-	web := c.project(`{"name":"Side Project 2"}`)
-	if web["slug"] != "side-project-2" {
-		t.Fatalf("slug = %v, want side-project-2", web["slug"])
+	garden := c.project(`{"name":"Side Project 2"}`)
+	if garden["slug"] != "side-project-2" {
+		t.Fatalf("slug = %v, want side-project-2", garden["slug"])
 	}
 
 	c.task(`{"title":"Fix the tap","tags":["home"]}`)
@@ -104,17 +104,17 @@ func TestAProjectHasItsOwnTasksTagsAndGroups(t *testing.T) {
 func TestMovingATaskTakesItsTags(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	c.project(`{"name":"Web"}`)
+	c.project(`{"name":"Garden"}`)
 	id := c.task(`{"title":"Ship the form","tags":["release"]}`)["id"].(string)
 
-	moved := c.json(c.do("PATCH", "/api/tasks/"+id, `{"project":"web"}`))
-	if moved["project"] != "web" {
+	moved := c.json(c.do("PATCH", "/api/tasks/"+id, `{"project":"garden"}`))
+	if moved["project"] != "garden" {
 		t.Fatalf("moved to %v", moved["project"])
 	}
-	if len(titles(c.list(""))) != 0 || len(titles(c.list("?project=web"))) != 1 {
+	if len(titles(c.list(""))) != 0 || len(titles(c.list("?project=garden"))) != 1 {
 		t.Error("the task did not leave one project for the other")
 	}
-	tags := c.json(c.do("GET", "/api/tags?project=web", ""))["tags"].([]any)
+	tags := c.json(c.do("GET", "/api/tags?project=garden", ""))["tags"].([]any)
 	if len(tags) != 1 || tags[0].(map[string]any)["slug"] != "release" {
 		t.Errorf("the new project's tags = %v", tags)
 	}
@@ -134,14 +134,14 @@ func TestMovingATaskTakesItsTags(t *testing.T) {
 func TestARenameKeepsTheSlug(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	id := c.project(`{"name":"Web"}`)["id"].(string)
+	id := c.project(`{"name":"Garden"}`)["id"].(string)
 
 	got := c.json(c.do("PATCH", "/api/projects/"+id, `{"name":"Side Project"}`))
-	if got["name"] != "Side Project" || got["slug"] != "web" {
+	if got["name"] != "Side Project" || got["slug"] != "garden" {
 		t.Errorf("renamed to %v, slug %v; want the slug kept", got["name"], got["slug"])
 	}
 	c.do("PATCH", "/api/projects/"+id, `{"slug":"side-project"}`)
-	if resp := c.do("GET", "/api/tasks?project=web", ""); resp.StatusCode != http.StatusNotFound {
+	if resp := c.do("GET", "/api/tasks?project=garden", ""); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("the old slug = %s, want 404", resp.Status)
 	}
 	if resp := c.do("GET", "/api/tasks?project=side-project", ""); resp.StatusCode != http.StatusOK {
@@ -160,11 +160,11 @@ func TestARenameKeepsTheSlug(t *testing.T) {
 func TestDeletingAProjectDeletesItsTasks(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	web := c.project(`{"name":"Web"}`)
-	c.do("POST", "/api/tasks?project=web", `{"title":"Ship the form"}`)
-	a := mintRows(t, s, c, `[{"project":"web"}]`)
+	garden := c.project(`{"name":"Garden"}`)
+	c.do("POST", "/api/tasks?project=garden", `{"title":"Ship the form"}`)
+	a := mintRows(t, s, c, `[{"project":"garden"}]`)
 
-	if resp := c.do("DELETE", "/api/projects/"+web["id"].(string), ""); resp.StatusCode != http.StatusNoContent {
+	if resp := c.do("DELETE", "/api/projects/"+garden["id"].(string), ""); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete = %s", resp.Status)
 	}
 	if n := len(c.json(c.do("GET", "/api/projects", ""))["projects"].([]any)); n != 1 {
@@ -177,8 +177,8 @@ func TestDeletingAProjectDeletesItsTasks(t *testing.T) {
 	}
 
 	// Its slug is free again, and the new project is empty.
-	c.project(`{"name":"Web"}`)
-	if n := len(titles(c.list("?project=web"))); n != 0 {
+	c.project(`{"name":"Garden"}`)
+	if n := len(titles(c.list("?project=garden"))); n != 0 {
 		t.Errorf("the new project has %d tasks, want the deleted one's gone", n)
 	}
 
@@ -192,11 +192,11 @@ func TestDeletingAProjectDeletesItsTasks(t *testing.T) {
 func TestATokenReachingOneProjectNeedsNoProjectParam(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	c.project(`{"name":"Web"}`)
-	c.do("POST", "/api/tasks?project=web", `{"title":"Ship the form"}`)
+	c.project(`{"name":"Garden"}`)
+	c.do("POST", "/api/tasks?project=garden", `{"title":"Ship the form"}`)
 	c.task(`{"title":"Fix the tap"}`)
 
-	a := mintRows(t, s, c, `[{"project":"web"}]`)
+	a := mintRows(t, s, c, `[{"project":"garden"}]`)
 	if got := titles(a.json(a.do("GET", "/api/tasks", ""))); !slices.Equal(got, []string{"Ship the form"}) {
 		t.Errorf("a one-project token lists %v", got)
 	}
@@ -210,19 +210,19 @@ func TestATokenReachingOneProjectNeedsNoProjectParam(t *testing.T) {
 func TestATokenReachingSeveralMustNameOne(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	c.project(`{"name":"Web"}`)
-	a := mintRows(t, s, c, `[{"project":"main"},{"project":"web"}]`)
+	c.project(`{"name":"Garden"}`)
+	a := mintRows(t, s, c, `[{"project":"main"},{"project":"garden"}]`)
 
 	for _, resp := range []*http.Response{
 		a.do("GET", "/api/tasks", ""),
 		a.do("POST", "/api/tasks", `{"title":"Where does this go"}`),
 	} {
 		body := refusal(t, resp, http.StatusBadRequest)
-		if body.Code != CodeProjectRequired || !strings.Contains(body.Message, "main, web") {
+		if body.Code != CodeProjectRequired || !strings.Contains(body.Message, "main, garden") {
 			t.Errorf("without a project = %+v, want both slugs named", body)
 		}
 	}
-	if resp := a.do("POST", "/api/tasks?project=web", `{"title":"Ship the form"}`); resp.StatusCode != http.StatusCreated {
+	if resp := a.do("POST", "/api/tasks?project=garden", `{"title":"Ship the form"}`); resp.StatusCode != http.StatusCreated {
 		t.Errorf("naming one = %s", resp.Status)
 	}
 }
@@ -263,12 +263,12 @@ func TestAnOrRowNeedsOnlyOneOfItsTags(t *testing.T) {
 func TestATokenMovesOnlyBetweenItsProjects(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	c.project(`{"name":"Web"}`)
+	c.project(`{"name":"Garden"}`)
 	c.project(`{"name":"Other"}`)
-	a := mintRows(t, s, c, `[{"project":"main"},{"project":"web"}]`)
+	a := mintRows(t, s, c, `[{"project":"main"},{"project":"garden"}]`)
 	id := a.json(a.do("POST", "/api/tasks?project=main", `{"title":"Ship it"}`))["id"].(string)
 
-	if got := a.json(a.do("PATCH", "/api/tasks/"+id, `{"project":"web"}`)); got["project"] != "web" {
+	if got := a.json(a.do("PATCH", "/api/tasks/"+id, `{"project":"garden"}`)); got["project"] != "garden" {
 		t.Errorf("moved to %v", got["project"])
 	}
 	refusal(t, a.do("PATCH", "/api/tasks/"+id, `{"project":"other"}`), http.StatusForbidden)
@@ -278,9 +278,9 @@ func TestATokenMovesOnlyBetweenItsProjects(t *testing.T) {
 func TestTheScopeListsEveryRow(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	web := c.project(`{"name":"Web"}`)
-	a := mintRows(t, s, c, `[{"project":"main","scope":"or(garden,reading)"},{"project":"web"}]`)
-	c.do("DELETE", "/api/projects/"+web["id"].(string), "")
+	garden := c.project(`{"name":"Garden"}`)
+	a := mintRows(t, s, c, `[{"project":"main","scope":"or(garden,reading)"},{"project":"garden"}]`)
+	c.do("DELETE", "/api/projects/"+garden["id"].(string), "")
 
 	rows := a.json(a.do("GET", "/api/scope", ""))["projects"].([]any)
 	if len(rows) != 2 {
@@ -290,7 +290,7 @@ func TestTheScopeListsEveryRow(t *testing.T) {
 	if main["slug"] != "main" || main["match"] != "any" {
 		t.Errorf("main = %v", main)
 	}
-	if gone["slug"] != "web" || gone["deleted"] != true {
+	if gone["slug"] != "garden" || gone["deleted"] != true {
 		t.Errorf("the deleted row = %v", gone)
 	}
 }
