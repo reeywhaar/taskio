@@ -82,11 +82,23 @@ export type Session = {
   user_agent: string;
 };
 
+/** One project a token reaches, and what confines it there. */
+export type TokenRow = {
+  project: string;
+  name: string;
+  /** A flat or() or and() of the project's tags, or empty for all of it. */
+  scope: string;
+  /** A project since deleted, which the token still names and is refused on. */
+  deleted?: boolean;
+};
+
 export type Token = {
   id: string;
   label: string;
   hint: string;
+  /** Its one row's scope, for a token reaching one project; empty for one reaching several. */
   scope: string;
+  projects: TokenRow[];
   created_at: number;
   expires_at: number | null;
   last_used_at: number | null;

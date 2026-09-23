@@ -333,9 +333,19 @@ export function Tokens() {
           >
             <span className="font-mono text-xs text-faint">{token.id}</span>
             <span>{token.label}</span>
-            <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
-              {token.scope || "the whole account"}
-            </span>
+            {/* A chip per project it reaches, with what confines it there. */}
+            {token.projects.map((row) => (
+              <span
+                key={row.project}
+                className={`rounded-full bg-shade px-2 py-0.5 text-xs text-muted ${
+                  row.deleted ? "line-through" : ""
+                }`}
+                title={row.deleted ? "This project was deleted." : undefined}
+              >
+                {row.name}
+                {row.scope ? ` · ${row.scope}` : ""}
+              </span>
+            ))}
             {token.revoked_at ? (
               <span className="text-xs text-faint">revoked</span>
             ) : null}

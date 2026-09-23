@@ -80,6 +80,27 @@ export function parseAnd(raw: string | null): string[] {
   return [...new Set(parts)];
 }
 
+/**
+ * A token's scope: its tags, and whether a task needs any of them or all of them. A single tag
+ * is both, and reads as any.
+ */
+export function parseScope(raw: string | null): {
+  tags: string[];
+  any: boolean;
+} {
+  const trimmed = (raw ?? "").trim();
+  const or = /^or\((.*)\)$/s.exec(trimmed);
+  if (or) return { tags: parseAnd(or[1]!), any: true };
+  const tags = parseAnd(trimmed);
+  return { tags, any: tags.length <= 1 };
+}
+
+/** A scope in the grammar the server takes: or() for any, and() for all. */
+export function printScope(tags: string[], any: boolean): string {
+  if (tags.length === 0) return "";
+  return any && tags.length > 1 ? `or(${tags.join(",")})` : printAnd(tags);
+}
+
 /** The canonical spelling, which is what goes back into the URL. */
 export function printAnd(tags: string[]): string {
   if (tags.length === 0) return "";

@@ -294,3 +294,14 @@ func TestTheScopeListsEveryRow(t *testing.T) {
 		t.Errorf("the deleted row = %v", gone)
 	}
 }
+
+// A row naming no project is the default one, the same rule as a URL naming none.
+func TestARowNamingNoProjectIsTheDefault(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.task(`{"title":"Fix the tap"}`)
+	a := mintRows(t, s, c, `[{"project":"","scope":""}]`)
+	if got := titles(a.json(a.do("GET", "/api/tasks", ""))); len(got) != 1 {
+		t.Errorf("a token for the default project lists %v", got)
+	}
+}

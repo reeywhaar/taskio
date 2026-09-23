@@ -18,6 +18,22 @@ vi.mock("@app/api/actions/tags", () => ({
     }),
 }));
 
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
+}));
+
 describe("TokenDialog", () => {
   beforeEach(() => {
     postTokens.mockReset();
@@ -42,14 +58,17 @@ describe("TokenDialog", () => {
     await waitFor(() =>
       expect(postTokens).toHaveBeenCalledWith({
         label: "claude",
-        scope: undefined,
+        projects: [{ project: "", scope: "" }],
         idle_seconds: 0,
       }),
     );
   });
 
-  /** A scope is an unnested and() of tags, written by pressing pills rather than typing it. */
-  it("writes the lit pills as the scope grammar", async () => {
+  /**
+   * Several pills mean any of them: garden and reading is a token for both, not only for the
+   * tasks that happen to be in both. Written by pressing pills, not typing grammar.
+   */
+  it("writes the lit pills as an or() scope", async () => {
     mount(<TokenDialog open onClose={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("What is it for"), {
       target: { value: "claude" },
@@ -62,10 +81,35 @@ describe("TokenDialog", () => {
     await waitFor(() =>
       expect(postTokens).toHaveBeenCalledWith({
         label: "claude",
-        scope: "and(home,work)",
+        projects: [{ project: "", scope: "or(home,work)" }],
         idle_seconds: 0,
       }),
     );
+  });
+
+  /** A row per project, and a project not already on a row is the one a new row starts on. */
+  it("mints one reaching a second project", async () => {
+    mount(<TokenDialog open onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("What is it for"), {
+      target: { value: "claude" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "+ Add project" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+
+    await waitFor(() =>
+      expect(postTokens).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projects: [
+            { project: "", scope: "" },
+            { project: "web", scope: "" },
+          ],
+        }),
+      ),
+    );
+    // Every project is on a row now, so there is nothing left to add.
+    expect(screen.queryByRole("button", { name: "+ Add project" })).toBeNull();
   });
 
   // A credential nobody has used for a month is one still open on a machine nobody remembers.

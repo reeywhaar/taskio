@@ -202,6 +202,20 @@ agent's `?project=` working, and a new slug breaks them, which the field says. D
 every task in the project with it, so it asks for the name typed out rather than a yes. The
 default project can be renamed and not deleted.
 
+## A token is a row per project
+
+Each row is a project and that project's own tags: `+ Add project` gives a row to a project not
+already on one, and `−` takes a row away. A token keeps at least one, because a token that
+reaches nothing is a revoked one by another name.
+
+Several pills on a row mean any of them — garden and reading is a token for both projects' work,
+not only for the tasks that happen to carry both. A token minted before that needs every tag on
+its row, and the row says so, with a switch to reach any instead. Changing a pill never widens a
+token on the quiet; only the switch does.
+
+A deleted project's row stays until the token's projects are next saved, saying the project was
+deleted and that asking for it is refused.
+
 ## A task is moved with a field, not a gesture
 
 The task form leads its row with the project — `[project] [priority] … [color]` — because it is

@@ -14,6 +14,21 @@ vi.mock("@app/api/actions/tokens", () => ({
   patchTokensById: vi.fn(),
   postTokens: vi.fn(),
 }));
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
+}));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
 }));
@@ -24,6 +39,7 @@ const token = (extra: Partial<Token> = {}): Token =>
     label: "the laptop",
     hint: "abcd1234",
     scope: "",
+    projects: [{ project: "main", name: "Main", scope: "" }],
     created_at: 1789343452,
     expires_at: null,
     last_used_at: null,

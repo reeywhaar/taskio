@@ -25,6 +25,7 @@ export function ProjectSelectDialog({
   open,
   title,
   current,
+  taken = [],
   onChoose,
   onClose,
 }: {
@@ -32,6 +33,8 @@ export function ProjectSelectDialog({
   title: string;
   /** The slug lit when it opens: where the task is now. Empty is the default project. */
   current: string;
+  /** Slugs that cannot be chosen here, because something else already holds them. */
+  taken?: string[];
   onChoose: (project: Project) => void;
   onClose: () => void;
 }) {
@@ -49,8 +52,9 @@ export function ProjectSelectDialog({
               key={project.id}
               type="button"
               aria-pressed={on}
+              disabled={!on && taken.includes(project.slug)}
               onClick={() => onChoose(project)}
-              className={`raised rounded-full px-3 py-1.5 text-sm select-none ${
+              className={`raised rounded-full px-3 py-1.5 text-sm select-none disabled:opacity-40 ${
                 on ? "wash" : "bg-bg text-muted hover:text-fg"
               }`}
             >
@@ -71,10 +75,13 @@ export function ProjectSelectDialog({
  */
 export function ProjectField({
   value,
+  taken,
   onChange,
 }: {
   /** The slug, or empty for the default project. */
   value: string;
+  /** Slugs it cannot be changed to. */
+  taken?: string[];
   onChange: (slug: string) => void;
 }) {
   const [choosing, setChoosing] = useState(false);
@@ -97,6 +104,7 @@ export function ProjectField({
         open={choosing}
         title="Project"
         current={value}
+        taken={taken}
         onChoose={(project) => {
           setChoosing(false);
           onChange(project.slug);

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { getTags } from "@app/api/actions/tags";
 import { patchTokensById, type TokenPatch } from "@app/api/actions/tokens";
 import { ApiError } from "@app/api/transport";
 import type { Token } from "@app/api/types";
@@ -14,7 +13,7 @@ import {
   TokenFields,
   type TokenForm,
 } from "@app/islands/app/TokenFields";
-import { parseAnd, printAnd } from "@app/islands/app/route";
+import { parseScope, printScope } from "@app/islands/app/route";
 
 /** The form as the token already stands, which is what an edit is measured against. */
 function formOf(token: Token): TokenForm {
@@ -22,12 +21,44 @@ function formOf(token: Token): TokenForm {
     label: token.label,
     idle: String(token.idle_seconds),
     expires: token.expires_at ? "keep" : "0",
-    scope: parseAnd(token.scope),
+    rows: token.projects.map((row) => ({
+      project: row.project,
+      ...parseScope(row.scope),
+      deleted: row.deleted,
+    })),
   };
 }
 
-const sameSet = (a: string[], b: string[]) =>
-  a.length === b.length && a.every((x) => b.includes(x));
+/**
+ * Rows as they would be written: live ones only, each scope in the server's grammar. A deleted
+ * project's row is left out, because the server refuses a token being given one — saving the
+ * projects is where it goes, and the row says so beforehand.
+ */
+function written(rows: TokenForm["rows"]) {
+  return rows
+    .filter((row) => !row.deleted)
+    .map((row) => ({
+      project: row.project,
+      scope: printScope(row.tags, row.any),
+    }));
+}
+
+/** Rows as one comparable string: projects, deleted or not, and scopes with tags in one order. */
+function rowsKey(rows: TokenForm["rows"]): string {
+  return JSON.stringify(
+    rows.map((row) => [
+      row.project,
+      !!row.deleted,
+      // eslint-disable-next-line unicorn/no-array-sort -- a copy, so there is nothing to mutate
+      printScope([...row.tags].sort(), row.any),
+    ]),
+  );
+}
+
+/** Whether two sets of rows reach the same things: same projects, same scopes, same order. */
+function sameRows(a: TokenForm["rows"], b: TokenForm["rows"]): boolean {
+  return rowsKey(a) === rowsKey(b);
+}
 
 /**
  * What the form asks for that the token does not already have — and only that, so the log
@@ -36,8 +67,8 @@ const sameSet = (a: string[], b: string[]) =>
 function changes(token: Token, form: TokenForm): TokenPatch {
   const patch: TokenPatch = {};
   if (form.label.trim() !== token.label) patch.label = form.label.trim();
-  if (!sameSet(form.scope, parseAnd(token.scope)))
-    patch.scope = printAnd(form.scope);
+  if (!sameRows(form.rows, formOf(token).rows))
+    patch.projects = written(form.rows);
   if (Number(form.idle) !== token.idle_seconds)
     patch.idle_seconds = Number(form.idle);
   if (form.expires !== "keep" && !(form.expires === "0" && !token.expires_at))
@@ -62,11 +93,6 @@ export function TokenEditDialog({
   onClose: (saved?: boolean) => void;
 }) {
   const client = useQueryClient();
-  // The default project's, which is what a scope alone confines a token inside.
-  const tags = useQuery({
-    queryKey: qk.tagsOf(""),
-    queryFn: () => getTags(""),
-  });
   const [form, setForm] = useState<TokenForm>(blankToken);
   const [error, setError] = useState("");
 
@@ -118,7 +144,6 @@ export function TokenEditDialog({
         <TokenFields
           value={form}
           onChange={setForm}
-          tags={tags.data?.tags ?? []}
           current={token ?? undefined}
         />
 

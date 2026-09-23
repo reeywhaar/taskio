@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { href, parseAnd, printAnd, title } from "@app/islands/app/route";
+import {
+  href,
+  parseAnd,
+  parseScope,
+  printAnd,
+  printScope,
+  title,
+} from "@app/islands/app/route";
 
 /**
  * The app's parser only has to recognise one shape. Everything else is "not drawable", which is
@@ -100,5 +107,33 @@ describe("title", () => {
         filters: { project: "", tags: ["web"], view: "done", q: "plumb" },
       }),
     ).toBe("web :: taskio");
+  });
+});
+
+describe("a token's scope", () => {
+  it("reads or() as any and and() as all", () => {
+    expect(parseScope("or(garden,reading)")).toEqual({
+      tags: ["garden", "reading"],
+      any: true,
+    });
+    expect(parseScope("and(garden,reading)")).toEqual({
+      tags: ["garden", "reading"],
+      any: false,
+    });
+  });
+
+  /** One tag is the same scope either way, and the server stores it bare. */
+  it("reads a single tag as any", () => {
+    expect(parseScope("work")).toEqual({ tags: ["work"], any: true });
+    expect(parseScope("")).toEqual({ tags: [], any: true });
+  });
+
+  it("prints what it read", () => {
+    expect(printScope(["garden", "reading"], true)).toBe("or(garden,reading)");
+    expect(printScope(["garden", "reading"], false)).toBe(
+      "and(garden,reading)",
+    );
+    expect(printScope(["work"], true)).toBe("and(work)");
+    expect(printScope([], true)).toBe("");
   });
 });

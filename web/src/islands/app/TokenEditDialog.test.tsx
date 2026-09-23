@@ -20,15 +20,35 @@ vi.mock("@app/api/actions/tags", () => ({
     }),
 }));
 
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () =>
+    Promise.resolve({
+      projects: [
+        {
+          id: "pj_1",
+          name: "Main",
+          slug: "main",
+          default: true,
+          created_at: 1,
+        },
+        { id: "pj_2", name: "Web", slug: "web", default: false, created_at: 2 },
+      ],
+    }),
+}));
+
+/** A token reaching the default project alone, confined by scope — every token before rows. */
 const token = (scope: string, extra: Partial<Token> = {}): Token =>
   ({
     id: "abc123",
     label: "claude",
     scope,
+    projects: [{ project: "main", name: "Main", scope }],
     idle_seconds: 0,
     expires_at: null,
     ...extra,
   }) as Token;
+
+const row = (scope: string) => ({ projects: [{ project: "main", scope }] });
 
 const save = () => screen.getByRole("button", { name: "Save" });
 const field = (name: string) =>
@@ -62,9 +82,7 @@ describe("TokenEditDialog", () => {
     fireEvent.click(save());
 
     await waitFor(() =>
-      expect(patchTokensById).toHaveBeenCalledWith("abc123", {
-        scope: "and(work)",
-      }),
+      expect(patchTokensById).toHaveBeenCalledWith("abc123", row("and(work)")),
     );
   });
 
@@ -75,7 +93,7 @@ describe("TokenEditDialog", () => {
     fireEvent.click(save());
 
     await waitFor(() =>
-      expect(patchTokensById).toHaveBeenCalledWith("abc123", { scope: "" }),
+      expect(patchTokensById).toHaveBeenCalledWith("abc123", row("")),
     );
   });
 
@@ -201,5 +219,64 @@ describe("TokenEditDialog", () => {
       ).toBe("false"),
     );
     expect(field("What is it for").value).toBe("second");
+  });
+
+  it("reaches any of several pills", async () => {
+    await open(token(""));
+    fireEvent.click(screen.getByRole("button", { name: "home" }));
+    fireEvent.click(screen.getByRole("button", { name: "work" }));
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(patchTokensById).toHaveBeenCalledWith(
+        "abc123",
+        row("or(home,work)"),
+      ),
+    );
+  });
+
+  /**
+   * A token minted before any was the default needs every one of its tags, and nothing about
+   * its pills says so. The row says it, and changing a pill keeps it that way — only the switch
+   * widens it, so no other edit can do that on the quiet.
+   */
+  it("keeps an old all-of row all-of until it is switched", async () => {
+    await open(token("and(home,work)"));
+    expect(screen.getByText(/Only tasks carrying all of/)).toBeDefined();
+
+    fireEvent.change(field("What is it for"), { target: { value: "x" } });
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(patchTokensById).toHaveBeenCalledWith("abc123", { label: "x" }),
+    );
+
+    patchTokensById.mockClear();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reach any of them instead" }),
+    );
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(patchTokensById).toHaveBeenCalledWith("abc123", {
+        label: "x",
+        ...row("or(home,work)"),
+      }),
+    );
+  });
+
+  /** A deleted project's row is said, and dropped when the projects are next written. */
+  it("drops a deleted project's row when the rows are saved", async () => {
+    await open(
+      token("", {
+        projects: [
+          { project: "main", name: "Main", scope: "" },
+          { project: "gone", name: "Gone", scope: "", deleted: true },
+        ],
+      }),
+    );
+    expect(screen.getByText(/gone was deleted/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "work" }));
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(patchTokensById).toHaveBeenCalledWith("abc123", row("and(work)")),
+    );
   });
 });

@@ -265,7 +265,14 @@ func (s *Server) rowsOf(w http.ResponseWriter, r *http.Request, asked []rowReque
 	}
 	rows := make([]store.TokenProject, 0, len(asked))
 	for _, a := range asked {
-		p, err := s.store.ProjectBySlug(ctx, principal, strings.TrimSpace(a.Project))
+		// A row naming no project means the default one, as a URL naming none does.
+		var p *store.Project
+		var err error
+		if slug := strings.TrimSpace(a.Project); slug != "" {
+			p, err = s.store.ProjectBySlug(ctx, principal, slug)
+		} else {
+			p, err = s.store.DefaultProject(ctx, principal)
+		}
 		if err != nil {
 			s.fail(w, r, err)
 			return nil, false

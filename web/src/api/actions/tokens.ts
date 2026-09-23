@@ -4,9 +4,13 @@ import type { Token } from "@app/api/types";
 export const getTokens = () => request<{ tokens: Token[] }>("/api/tokens");
 
 /** The secret is in this response and nowhere else, ever. */
+/** One project a token reaches, by slug — empty is the default — and its scope there. */
+export type RowBody = { project: string; scope: string };
+
 export const postTokens = (body: {
   label: string;
   scope?: string;
+  projects?: RowBody[];
   expires_at?: number;
   idle_seconds?: number;
 }) =>
@@ -22,6 +26,7 @@ export const postTokens = (body: {
 export type TokenPatch = {
   label?: string;
   scope?: string;
+  projects?: RowBody[];
   expires_at?: number;
   idle_seconds?: number;
 };
