@@ -105,6 +105,7 @@ export function TaskRow({
   return (
     <li
       data-task={task.id}
+      data-still={still || undefined}
       onClick={() => {
         if (still) return;
         // A click that ends a text selection is somebody reading, not somebody pressing.

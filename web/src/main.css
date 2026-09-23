@@ -180,8 +180,9 @@
     var(--well-depth);
 }
 
-/* Pressed is raised turned inside out, which is what a finger on a real button does. */
-.raised:active:not(:disabled),
+/* Pressed is raised turned inside out, which is what a finger on a real button does. Not on
+   something raised that nothing happens to, where the press would promise an action. */
+.raised:active:not(:disabled):not([data-still]),
 .raised[aria-pressed="true"] {
   box-shadow:
     inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 50%, transparent),

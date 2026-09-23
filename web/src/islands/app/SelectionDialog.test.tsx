@@ -57,6 +57,8 @@ describe("SelectionDialog", () => {
     expect(within(row).queryAllByRole("link")).toEqual([]);
     expect(within(row).queryAllByRole("checkbox")).toEqual([]);
     expect(within(row).getByLabelText("Pinned")).toBeDefined();
+    // What the stylesheet reads to leave out the pressed look.
+    expect(row.hasAttribute("data-still")).toBe(true);
   });
 
   it("says which one could not be read", async () => {
