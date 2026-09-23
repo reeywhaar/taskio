@@ -5,6 +5,7 @@ import { getTags } from "@app/api/actions/tags";
 import { qk } from "@app/api/keys";
 import type { Token } from "@app/api/types";
 import { Button } from "@app/components/Button";
+import { MinusIcon } from "@app/components/icons/Icon";
 import { Field, Group } from "@app/components/Field";
 import { Select } from "@app/components/Select";
 import { TextField } from "@app/components/TextField";
@@ -293,14 +294,17 @@ function Row({
           <span className="text-sm font-medium">{name}</span>
         )}
         <span className="flex-1" />
-        <Button
-          size="bar"
+        {/* Bare, like the rail's pencils: a slab the height of a field for one small dash was
+            the heaviest thing on the row, and removing a row is the least of what it is for. */}
+        <button
+          type="button"
           onClick={onRemove}
           aria-label="Remove this project"
           title="Remove this project"
+          className="rounded-md p-1.5 text-faint hover:bg-line hover:text-fg"
         >
-          −
-        </Button>
+          <MinusIcon />
+        </button>
       </div>
 
       {row.deleted ? null : (
