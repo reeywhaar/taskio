@@ -324,14 +324,17 @@ the arithmetic, if they bother, and the point of the label is to be understood w
 any. The exact time is in the tooltip, where it costs nothing.
 
 It counts from the last thing that happened to the task rather than the last time anything was
-written to it: `deleted_at` for one in the bin, `done_at` for one that is finished, `updated_at`
+written to it: `deleted_at` for one in the bin, `done_at` for one that is finished, `poked_at`
 for one that is live. A finished list is a record of what was finished, and a task closed a
 minute ago read "8 hours ago" because somebody had edited its description that morning — true,
 and not what anybody reads the column for.
 
-On a live task that is `updated_at`, so anything done to it resets the number: editing, pinning,
-marking done. That is the reset button this started out wanting — touching a task is what says
-it is still live, and a separate "I have seen this" mark would be a second thing to keep true.
+On a live task it used to be `updated_at`, so anything done to it reset the number — a tag taken
+off a whole selection included, which said forty tasks had been looked at when nobody had looked
+at any of them. So staleness has its own mark: **Poke**, at the foot of the task dialog and in
+the bulk bar, says the task still stands, and only a poke moves `poked_at`. A task nobody has
+poked counts from when it was written. Neither button is offered on finished tasks, whose age
+is when they were finished.
 
 Two marks on the scale, and they are the whole feature. Under a week it is `faint`, which is the
 row saying there is nothing to see. From a week it is `warn`, from a month `accent`. A finished

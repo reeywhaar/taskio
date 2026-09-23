@@ -51,6 +51,10 @@ export const postTasksByIdDone = (id: string) =>
 export const postTasksByIdTodo = (id: string) =>
   request<Task>(`/api/tasks/${id}/todo`, { method: "POST" });
 
+/** Says it still stands: its age counts from now. */
+export const postTasksByIdPoke = (id: string) =>
+  request<Task>(`/api/tasks/${id}/poke`, { method: "POST" });
+
 export const deleteTasksById = (id: string) =>
   request<void>(`/api/tasks/${id}`, { method: "DELETE" });
 
@@ -88,6 +92,9 @@ export const postTasksBulkPinned = (ids: string[], pinned: boolean) =>
     method: "POST",
     body: { ids, pinned },
   });
+
+export const postTasksBulkPoke = (ids: string[]) =>
+  request<void>("/api/tasks/bulk/poke", { method: "POST", body: { ids } });
 
 export const postTasksBulkDelete = (ids: string[]) =>
   request<void>("/api/tasks/bulk/delete", { method: "POST", body: { ids } });

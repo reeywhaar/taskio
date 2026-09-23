@@ -4,6 +4,7 @@ import {
   postTasksBulkDelete,
   postTasksBulkDone,
   postTasksBulkPinned,
+  postTasksBulkPoke,
   postTasksBulkProject,
   postTasksBulkTodo,
 } from "@app/api/actions/tasks";
@@ -212,6 +213,16 @@ export function BulkBar({
           >
             Unpin
           </Button>
+          {/* Not in the done view, where every row's age is when it was finished. */}
+          {view === "done" ? null : (
+            <Button
+              size="compact"
+              disabled={busy || ids.length === 0}
+              onClick={() => run(() => postTasksBulkPoke(ids))}
+            >
+              Poke
+            </Button>
+          )}
           <Button
             size="compact"
             disabled={ids.length === 0}

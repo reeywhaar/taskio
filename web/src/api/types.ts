@@ -17,6 +17,9 @@ export type Task = {
   color: string;
   created_at: number;
   updated_at: number;
+  /** When somebody last said it still stands, which is what its age counts from. Only a poke
+   *  moves it. */
+  poked_at: number;
   done_at: number | null;
   /** Set on a task somebody threw away, which also carries done_at. */
   deleted_at: number | null;

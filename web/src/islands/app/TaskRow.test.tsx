@@ -16,6 +16,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   color: "",
   created_at: 0,
   updated_at: 0,
+  poked_at: 0,
   done_at: null,
   deleted_at: null,
   ...over,
@@ -83,15 +84,15 @@ describe("TaskRow", () => {
     const now = Math.floor(Date.now() / 1000);
     const day = 24 * 60 * 60;
 
-    const fresh = row({ updated_at: now - 3 * day });
+    const fresh = row({ poked_at: now - 3 * day });
     expect(screen.getByText("3 days ago").className).toContain("text-faint");
     fresh.unmount();
 
-    const stale = row({ updated_at: now - 14 * day });
+    const stale = row({ poked_at: now - 14 * day });
     expect(screen.getByText("2 weeks ago").className).toContain("text-warn");
     stale.unmount();
 
-    row({ updated_at: now - 70 * day });
+    row({ poked_at: now - 70 * day });
     expect(screen.getByText("2 months ago").className).toContain("text-accent");
   });
 
@@ -104,6 +105,7 @@ describe("TaskRow", () => {
     row({
       status: "deleted",
       updated_at: now - 60 * 24 * 60 * 60,
+      poked_at: now - 60 * 24 * 60 * 60,
       done_at: now,
       deleted_at: now,
     });
@@ -113,6 +115,16 @@ describe("TaskRow", () => {
     expect(screen.queryByText(/months ago/)).toBeNull();
     expect(screen.getByRole("button", { name: "Restore" })).toBeDefined();
     expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
+  });
+
+  /** A write that is not a poke says nothing about whether anybody still wants the task. */
+  it("counts a todo's age from its last poke, not its last write", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const day = 24 * 60 * 60;
+    row({ updated_at: now - day, poked_at: now - 40 * day });
+    const age = screen.getByText("1 month ago");
+    expect(age.className).toContain("text-accent");
+    expect(age.getAttribute("title")).toMatch(/^Last poked /);
   });
 
   // A finished task is never late, however long ago it was finished.

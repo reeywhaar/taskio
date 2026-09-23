@@ -53,6 +53,7 @@ describe("a description that cannot be rendered", () => {
             color: "",
             created_at: 0,
             updated_at: 0,
+            poked_at: 0,
             done_at: null,
             deleted_at: null,
           } satisfies Task

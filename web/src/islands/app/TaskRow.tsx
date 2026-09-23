@@ -84,12 +84,15 @@ export function TaskRow({
    * useful moment there is the finishing — a task closed a minute ago read "8 hours ago" because
    * somebody had edited its description that morning, which is true and is not what anybody is
    * reading the column for.
+   *
+   * A todo counts from its last poke, for the same reason: a tag taken off in bulk is a write,
+   * and it said the task had been looked at when nobody had.
    */
   const at = binned
     ? (task.deleted_at ?? task.updated_at)
     : finished
       ? (task.done_at ?? task.updated_at)
-      : task.updated_at;
+      : task.poked_at;
 
   const since = Date.now() / 1000 - at;
   const age =
@@ -152,7 +155,7 @@ export function TaskRow({
         <time
           dateTime={new Date(at * 1000).toISOString()}
           title={`${
-            binned ? "Deleted" : finished ? "Done" : "Last changed"
+            binned ? "Deleted" : finished ? "Done" : "Last poked"
           } ${new Date(at * 1000).toLocaleString()}`}
           className={`text-[9px] leading-3 whitespace-nowrap sm:mt-0.5 sm:mb-2 ${
             binned ? "text-accent" : age

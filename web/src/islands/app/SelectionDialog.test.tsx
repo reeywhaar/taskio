@@ -17,6 +17,7 @@ const task = (id: string, title: string, over: Partial<Task> = {}): Task => ({
   color: "",
   created_at: 0,
   updated_at: 0,
+  poked_at: 0,
   done_at: null,
   deleted_at: null,
   ...over,

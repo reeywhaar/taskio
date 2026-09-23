@@ -12,6 +12,7 @@ const postTasksBulkTodo = vi.fn();
 const postTasksBulkTags = vi.fn();
 const postTasksBulkProject = vi.fn();
 const postTasksBulkDelete = vi.fn();
+const postTasksBulkPoke = vi.fn();
 vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkPinned: (ids: string[], pinned: boolean) =>
     postTasksBulkPinned(ids, pinned),
@@ -22,6 +23,7 @@ vi.mock("@app/api/actions/tasks", () => ({
   postTasksBulkTags: (ids: string[], add: string[], remove: string[]) =>
     postTasksBulkTags(ids, add, remove),
   postTasksBulkDelete: (ids: string[]) => postTasksBulkDelete(ids),
+  postTasksBulkPoke: (ids: string[]) => postTasksBulkPoke(ids),
   postTasksBulkProject: (ids: string[], project: string) =>
     postTasksBulkProject(ids, project),
 }));
@@ -401,5 +403,20 @@ describe("selectAll", () => {
 
   it("takes only the rows on screen back out once they are all in", () => {
     expect(selectAll(["done1", "a", "b"], ["a", "b"])).toEqual(["done1"]);
+  });
+});
+
+describe("poking a selection", () => {
+  beforeEach(() => postTasksBulkPoke.mockReset().mockResolvedValue(undefined));
+
+  it("pokes every selected task", async () => {
+    bar();
+    fireEvent.click(screen.getByRole("button", { name: "Poke" }));
+    await waitFor(() => expect(postTasksBulkPoke).toHaveBeenCalledWith(ids));
+  });
+
+  it("is not offered in the done view", () => {
+    bar("done");
+    expect(screen.queryByRole("button", { name: "Poke" })).toBeNull();
   });
 });

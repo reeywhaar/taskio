@@ -6,6 +6,7 @@ import {
   getTasksById,
   patchTasksById,
   postTasksByIdDone,
+  postTasksByIdPoke,
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
@@ -183,6 +184,17 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  // Says the task still stands, and the row's age starts again. Stays open, like the pin.
+  const poke = useMutation({
+    mutationFn: async () => {
+      await flush();
+      await postTasksByIdPoke(id);
+    },
+    onSuccess: () => invalidate(),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
+  });
+
   const remove = useMutation({
     mutationFn: async () => {
       await flush();
@@ -238,6 +250,17 @@ export function TaskDialog({
               Delete
             </Button>
           )}
+          {/* Only on a todo: a finished task's age is when it was finished, and a poke would
+              move nothing anybody reads. */}
+          {status === "todo" ? (
+            <Button
+              title="Say it still stands: its age starts again from now"
+              disabled={poke.isPending}
+              onClick={() => poke.mutate()}
+            >
+              Poke
+            </Button>
+          ) : null}
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere. "Finish" sits where a
               dialog's dismiss button lives and reads as finishing the editing — which is the one

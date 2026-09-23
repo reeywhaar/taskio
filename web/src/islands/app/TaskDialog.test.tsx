@@ -25,6 +25,10 @@ vi.mock("@app/api/actions/tasks", () => ({
     return done(id);
   },
   postTasksByIdTodo: (id: string) => todo(id),
+  postTasksByIdPoke: (id: string) => {
+    calls.push("poke");
+    return Promise.resolve(id);
+  },
   deleteTasksById: (id: string) => {
     calls.push("delete");
     return remove(id);
@@ -68,6 +72,7 @@ const detail = (status: "todo" | "done"): TaskDetail =>
     status,
     created_at: 1789343452,
     updated_at: 1789343452,
+    poked_at: 1789343452,
     done_at: status === "done" ? 1789343452 : null,
     deleted_at: null,
     mentions: [],
@@ -313,5 +318,30 @@ describe("pinning from the dialog", () => {
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("8qw4tz9k", { pinned: false }),
     );
+  });
+});
+
+describe("poking from the dialog", () => {
+  it("saves what was typed, pokes, and stays open", async () => {
+    const onClose = vi.fn();
+    await withVerdict(onClose);
+    fireEvent.click(screen.getByRole("button", { name: "Poke" }));
+    await waitFor(() => expect(calls).toEqual(["patch", "poke"]));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /** A finished task's age is when it was finished, and a poke would move nothing read. */
+  it("is not offered on a finished task", async () => {
+    task = detail("done");
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    await screen.findByRole("button", { name: "Mark as todo" });
+    expect(screen.queryByRole("button", { name: "Poke" })).toBeNull();
   });
 });

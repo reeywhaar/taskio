@@ -16,6 +16,7 @@ const task = (id: string, title: string, status: "todo" | "done"): Task => ({
   color: "",
   created_at: 1789343452,
   updated_at: 1789343452,
+  poked_at: 1789343452,
   done_at: status === "done" ? 1789343452 : null,
   deleted_at: null,
 });
