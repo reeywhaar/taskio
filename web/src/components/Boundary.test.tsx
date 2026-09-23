@@ -58,4 +58,16 @@ describe("Boundary", () => {
     expect(onReset).toHaveBeenCalled();
     expect(screen.getByText("the real thing")).toBeDefined();
   });
+
+  /** Around a whole island, where a blank screen is the failure it exists to stop. */
+  it("fills the page with a way to reload when it holds the page", () => {
+    quiet();
+    render(
+      <Boundary page>
+        <Breaks when />
+      </Boundary>,
+    );
+    expect(screen.getByText(/the page could not be shown/)).toBeDefined();
+    expect(screen.getByRole("button", { name: "Reload" })).toBeDefined();
+  });
 });

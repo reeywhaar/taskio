@@ -15,7 +15,13 @@ import { Button } from "@app/components/Button";
  * fails the same way twice says so again rather than looping.
  */
 export class Boundary extends Component<
-  { children: ReactNode; what?: string; onReset?: () => void },
+  {
+    children: ReactNode;
+    what?: string;
+    onReset?: () => void;
+    /** The whole island: the screen, and a reload rather than a retry of the same tree. */
+    page?: boolean;
+  },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -34,6 +40,15 @@ export class Boundary extends Component<
 
   render() {
     if (!this.state.failed) return this.props.children;
+    if (this.props.page)
+      return (
+        <main className="flex min-h-dvh flex-col items-center justify-center gap-3 p-4 text-center">
+          <p className="text-sm text-accent">
+            Something broke and the page could not be shown.
+          </p>
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </main>
+      );
     return (
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-accent">
