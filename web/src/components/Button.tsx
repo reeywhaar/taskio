@@ -31,7 +31,7 @@ type Size = "field" | "bar" | "compact";
 const shapes: Record<Size, string> = {
   field: "min-h-10 min-w-20 px-3 py-1.5 text-sm sm:min-h-11",
   bar: "min-h-9 px-3 py-1.5 text-sm pointer-coarse:min-h-10",
-  compact: "min-h-7 px-2.5 py-1 text-xs pointer-coarse:min-h-9",
+  compact: "min-h-7 px-2 py-1 text-xs pointer-coarse:min-h-9",
 };
 
 const styles: Record<Variant, string> = {

@@ -182,7 +182,7 @@ export function BulkBar({
           is that line, above them: beside them it took half the width and stacked them four
           rows deep. */}
       <div className="aloft flex flex-col-reverse gap-2 rounded-t-lg bg-bg px-3 py-2 sm:flex-row sm:items-start">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
           <Button
             size="compact"
             disabled={busy || ids.length === 0}
