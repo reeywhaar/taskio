@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { marked } from "marked";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Editor } from "@app/islands/app/Editor";
 
@@ -77,5 +78,27 @@ describe("Editor", () => {
     editor("Some words", "  ");
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(screen.getByRole("heading", { name: "Description" })).toBeDefined();
+  });
+});
+
+/** A block marked throws on is drawn by React as text: its tags stay words. */
+describe("a block that cannot be rendered", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows as its source, beside the blocks that rendered", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const real = marked.parser.bind(marked);
+    vi.spyOn(marked, "parser").mockImplementation((tokens, options) => {
+      if (JSON.stringify(tokens).includes("BOOM")) throw new Error("marked");
+      return real(tokens, options);
+    });
+    editor("Before\n\nBOOM <b>bold</b>\n\nAfter");
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    const bad = document.querySelector(".prose .unrendered")!;
+    expect(bad.textContent).toBe("BOOM <b>bold</b>");
+    expect(bad.querySelector("b")).toBeNull();
+    expect(prose()).toContain("Before");
+    expect(prose()).toContain("After");
   });
 });

@@ -1,7 +1,19 @@
 import { marked } from "marked";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { excerpt, render, toggleCheck } from "@app/markdown";
+import {
+  excerpt,
+  render,
+  Rendered,
+  toggleCheck,
+  Unrendered,
+} from "@app/markdown";
+
+/** The blocks as one string, a failed one marked, for tests that ask what the page would say. */
+const page = (source: string) =>
+  render(source)
+    .map((b) => (b instanceof Rendered ? b.html : `[unrendered]${b.source}`))
+    .join("");
 
 /** Breaks read back as newlines, so a test can say where the lines fall. */
 const plain = (source: string, limit?: number) =>
@@ -21,7 +33,7 @@ describe("render", () => {
       "[click](javascript:alert(1))",
       '<a href="javascript:alert(1)">click</a>',
     ]) {
-      const html = render(source);
+      const html = page(source);
       expect(html).not.toContain("<script");
       expect(html).not.toContain("onerror");
       expect(html).not.toContain("javascript:");
@@ -29,18 +41,18 @@ describe("render", () => {
   });
 
   it("renders ordinary markdown", () => {
-    expect(render("# Title")).toContain("<h1>Title</h1>");
-    expect(render("- one\n- two")).toContain("<li>one</li>");
+    expect(page("# Title")).toContain("<h1>Title</h1>");
+    expect(page("- one\n- two")).toContain("<li>one</li>");
   });
 
   /** A mention becomes a link; an email address does not. */
   it("turns @id into a chip and leaves an address alone", () => {
-    expect(render("See @8qw4tz9k")).toContain('href="/t/8qw4tz9k"');
-    expect(render("misha@8qw4tz9k")).not.toContain('href="/t/');
+    expect(page("See @8qw4tz9k")).toContain('href="/t/8qw4tz9k"');
+    expect(page("misha@8qw4tz9k")).not.toContain('href="/t/');
   });
 
   it("keeps an image, which is the whole point of the editor", () => {
-    expect(render("![](/api/assets/a_01j9z)")).toContain("<img");
+    expect(page("![](/api/assets/a_01j9z)")).toContain("<img");
   });
 });
 
@@ -133,7 +145,7 @@ describe("toggleCheck", () => {
 
 describe("render", () => {
   it("draws a task list as something that can be ticked", () => {
-    const html = render("- [ ] one\n- [x] two\n");
+    const html = page("- [ ] one\n- [x] two\n");
     expect(html).toContain('data-check="0"');
     expect(html).toContain('data-check="1"');
     expect(html).toContain('aria-checked="true"');
@@ -143,7 +155,7 @@ describe("render", () => {
 
   /** An item holding blocks used to throw, and the throw took the whole page with it. */
   it("renders a list item holding a code block, a nested list and paragraphs", () => {
-    const html = render(
+    const html = page(
       "1. Run it:\n\n   ```sh\n   make\n   ```\n\n2. Then:\n   - [ ] check\n\n   More.\n",
     );
     expect(html).toContain("<code");
@@ -154,7 +166,7 @@ describe("render", () => {
   });
 
   it("draws a loose task list's box without marked's input", () => {
-    const html = render("- [x] one\n\n- [ ] two\n");
+    const html = page("- [x] one\n\n- [ ] two\n");
     expect(html).toContain('aria-checked="true"');
     expect(html).not.toContain("<input");
   });
@@ -176,31 +188,36 @@ const breaking = () => {
 describe("render, when marked throws", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("shows the bad block as its source and renders the rest", () => {
+  it("gives the bad block back as its source and renders the rest", () => {
     breaking();
-    const html = render(
+    const blocks = render(
       "# Before\n\nThis has BOOM <b>in</b> it\n\nAfter **all**\n",
     );
-    expect(html).toContain("<h1>Before</h1>");
-    expect(html).toContain("<strong>all</strong>");
-    expect(html).toContain('class="unrendered"');
-    // As text: the source's own tags do not become markup on the way.
-    expect(html).toContain("This has BOOM &lt;b&gt;in&lt;/b&gt; it");
+    expect(blocks.map((b) => b.constructor)).toEqual([
+      Rendered,
+      Unrendered,
+      Rendered,
+    ]);
+    expect((blocks[0] as Rendered).html).toContain("<h1>Before</h1>");
+    // The source as it was, to be drawn as text: its tags are not markup.
+    expect((blocks[1] as Unrendered).source).toBe("This has BOOM <b>in</b> it");
+    expect((blocks[2] as Rendered).html).toContain("<strong>all</strong>");
   });
 
-  it("loses only the bad item of a list", () => {
+  it("gives a list that throws back whole", () => {
     breaking();
-    const html = render("3. one\n4. BOOM two\n5. three\n");
-    expect(html).toContain('<ol start="3">');
-    expect(html).toContain("<li>one</li>");
-    expect(html).toContain("<li>three</li>");
-    expect(html.match(/<ol/g)).toHaveLength(1);
-    expect(html).toContain("BOOM two");
+    const blocks = render("Intro\n\n1. one\n2. BOOM two\n\nOutro\n");
+    expect(blocks.map((b) => b.constructor)).toEqual([
+      Rendered,
+      Unrendered,
+      Rendered,
+    ]);
+    expect((blocks[1] as Unrendered).source).toBe("1. one\n2. BOOM two");
   });
 
   /** Lexed as a whole, so a reference and its definition find each other across blocks. */
   it("keeps the context of the whole description", () => {
-    const html = render(
+    const html = page(
       "See [the notes][n].\n\n[n]: https://example.com/notes\n",
     );
     expect(html).toContain('href="https://example.com/notes"');

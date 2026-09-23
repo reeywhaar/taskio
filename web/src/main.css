@@ -336,7 +336,10 @@ textarea {
  *
  * Only the tags a description can contain.
  */
-.prose > * + * {
+/* A rendered block sits in a wrapper that takes no part in layout, so the gap goes on what is
+   inside it. */
+.prose > * + :not(.block),
+.prose > * + .block > :first-child {
   margin-top: 0.75em;
 }
 .prose h1,

@@ -13,7 +13,7 @@ import { addCopyButtons } from "@app/codeblocks";
 import { Boundary } from "@app/components/Boundary";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
-import { render, toggleCheck } from "@app/markdown";
+import { render, toggleCheck, Unrendered } from "@app/markdown";
 
 function filesOf(list: FileList | null): File[] {
   return Array.from(list ?? []);
@@ -259,7 +259,29 @@ function Rendered({
   source,
   ...rest
 }: { source: string } & ComponentProps<"div">) {
-  return <div {...rest} dangerouslySetInnerHTML={{ __html: render(source) }} />;
+  return (
+    <div {...rest}>
+      {render(source).map((block, i) =>
+        block instanceof Unrendered ? (
+          <p
+            key={i}
+            className="unrendered"
+            title="This part could not be rendered"
+          >
+            {block.source}
+          </p>
+        ) : (
+          // contents: the wrapper exists for React and not for the layout, so the block inside
+          // is what the prose spacing sees.
+          <div
+            key={i}
+            className="block contents"
+            dangerouslySetInnerHTML={{ __html: block.html }}
+          />
+        ),
+      )}
+    </div>
+  );
 }
 
 export const EditorActions = Button;
