@@ -47,7 +47,7 @@ jobs:
       - name: Set up Node
         # `current` rather than a pinned major: the image pins node:26 because a build that
         # ships has to be reproducible, and this job only checks.
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: current
           cache: npm
