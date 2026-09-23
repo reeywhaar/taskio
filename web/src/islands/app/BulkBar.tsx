@@ -37,6 +37,8 @@ export function BulkBar({
   project,
   onDone,
   onCancel,
+  onSelectAll,
+  everything = false,
   leaving = false,
   onLeft,
   onHeight,
@@ -52,6 +54,10 @@ export function BulkBar({
   onDone: () => void;
   /** Done picking, having done nothing. */
   onCancel: () => void;
+  /** Every row the list is showing, or none of them when that is already the selection. */
+  onSelectAll?: () => void;
+  /** Whether the selection is already every row on screen. */
+  everything?: boolean;
   /** Sliding back out. The bar cannot delay its own unmount, so the list keeps it while this
    *  is set and takes it away when onLeft says the animation is over. */
   leaving?: boolean;
@@ -158,99 +164,115 @@ export function BulkBar({
         leaving ? "undock" : "dock"
       } sticky inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl px-3 md:absolute md:px-6`}
     >
-      <div className="aloft flex flex-wrap items-center gap-2 rounded-t-lg bg-bg px-3 py-2">
-        <Button
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={() =>
-            run(() =>
-              view === "done" ? postTasksBulkTodo(ids) : postTasksBulkDone(ids),
-            )
-          }
-        >
-          {view === "done" ? "Mark as todo" : "Mark done"}
-        </Button>
-        {/* Both, always. The view fixes the status every selected task has — a todo list is
+      {/* Two groups: the actions wrap among themselves, and what is not an action stays on
+          the first line at the end rather than falling to a line of its own. On a phone it
+          is that line, above them: beside them it took half the width and stacked them four
+          rows deep. */}
+      <div className="aloft flex flex-col-reverse gap-2 rounded-t-lg bg-bg px-3 py-2 sm:flex-row sm:items-start">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <Button
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={() =>
+              run(() =>
+                view === "done"
+                  ? postTasksBulkTodo(ids)
+                  : postTasksBulkDone(ids),
+              )
+            }
+          >
+            {view === "done" ? "Mark as todo" : "Mark done"}
+          </Button>
+          {/* Both, always. The view fixes the status every selected task has — a todo list is
               all todos — but it fixes nothing about pinning: a todo list holds pinned and
               unpinned tasks side by side, and a selection spanning both needs to say which. */}
-        <Button
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={() => run(() => postTasksBulkPinned(ids, true))}
-        >
-          Pin
-        </Button>
-        <Button
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={() => run(() => postTasksBulkPinned(ids, false))}
-        >
-          Unpin
-        </Button>
-        <Button
-          size="bar"
-          disabled={ids.length === 0}
-          onClick={() => setAsking("priority")}
-        >
-          Priority
-        </Button>
-        <Button
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={() => setAsking("tag")}
-        >
-          Tag
-        </Button>
-        <Button
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={() => setAsking("project")}
-        >
-          Move
-        </Button>
-        <Button
-          size="bar"
-          disabled={ids.length === 0}
-          onClick={() => void copyIds()}
-        >
-          {copied ? "Copied" : "Copy ids"}
-        </Button>
-        <Button
-          variant="danger"
-          size="bar"
-          disabled={busy || ids.length === 0}
-          onClick={async () => {
-            const yes = await confirm({
-              title: `Delete ${ids.length} tasks?`,
-              message:
-                "They go to the finished list, where you can put them back.",
-              confirm: "Delete",
-              danger: true,
-            });
-            if (yes) void run(() => postTasksBulkDelete(ids));
-          }}
-        >
-          Delete
-        </Button>
+          <Button
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={() => run(() => postTasksBulkPinned(ids, true))}
+          >
+            Pin
+          </Button>
+          <Button
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={() => run(() => postTasksBulkPinned(ids, false))}
+          >
+            Unpin
+          </Button>
+          <Button
+            size="compact"
+            disabled={ids.length === 0}
+            onClick={() => setAsking("priority")}
+          >
+            Priority
+          </Button>
+          <Button
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={() => setAsking("tag")}
+          >
+            Tag
+          </Button>
+          <Button
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={() => setAsking("project")}
+          >
+            Move
+          </Button>
+          <Button
+            size="compact"
+            disabled={ids.length === 0}
+            onClick={() => void copyIds()}
+          >
+            {copied ? "Copied" : "Copy ids"}
+          </Button>
+          <Button
+            variant="danger"
+            size="compact"
+            disabled={busy || ids.length === 0}
+            onClick={async () => {
+              const yes = await confirm({
+                title: `Delete ${ids.length} tasks?`,
+                message:
+                  "They go to the finished list, where you can put them back.",
+                confirm: "Delete",
+                danger: true,
+              });
+              if (yes) void run(() => postTasksBulkDelete(ids));
+            }}
+          >
+            Delete
+          </Button>
+        </div>
 
-        <span className="flex-1" />
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {onSelectAll ? (
+            <Button size="compact" variant="link" onClick={onSelectAll}>
+              {everything ? "Select none" : "Select all"}
+            </Button>
+          ) : null}
 
-        {/* What the row is about, at the end of it and out of the way of the hands: every
+          {/* What the row is about, at the end of it and out of the way of the hands: every
             control here is reached from the left, and the two things that are not controls at
             all sit past them. It counts what is in front of somebody, which is a different
             thing from a workload number pinned to a tab. */}
-        <span className="text-sm text-muted">{ids.length} selected</span>
+          <span className="text-xs whitespace-nowrap text-muted">
+            {ids.length} selected
+          </span>
 
-        {/* Where a close goes. It is the one thing here that does nothing to the selection. */}
-        <button
-          type="button"
-          aria-label="Stop selecting"
-          title="Stop selecting"
-          onClick={onCancel}
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-line hover:text-fg"
-        >
-          <CrossIcon />
-        </button>
+          {/* Where a close goes. It is the one thing here that does nothing to the selection. */}
+          <button
+            type="button"
+            aria-label="Stop selecting"
+            title="Stop selecting"
+            onClick={onCancel}
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-line hover:text-fg"
+          >
+            <CrossIcon />
+          </button>
+        </div>
       </div>
 
       <BulkPriorityDialog

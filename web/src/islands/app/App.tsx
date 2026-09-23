@@ -538,6 +538,17 @@ function List({
           }}
           onHeight={setBarHeight}
           onCancel={stopPicking}
+          everything={
+            tasks.length > 0 &&
+            tasks.every((task) => selection.includes(task.id))
+          }
+          onSelectAll={() =>
+            setSelection(
+              tasks.every((task) => selection.includes(task.id))
+                ? []
+                : tasks.map((task) => task.id),
+            )
+          }
           onDone={() => {
             stopPicking();
             client.invalidateQueries({ queryKey: qk.tasks });

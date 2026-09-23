@@ -433,8 +433,13 @@ everybody or nobody carries has the two it always had, since there is no arrange
 to.
 
 **The row reads the other way round**: the actions, then the gap, then what the row is about —
-the count and a cross to close it. Every control here is reached from the left, and the two
-things that are not controls at all sit past them.
+Select all, the count and a cross to close it. Every control here is reached from the left, and
+the things that are not actions sit past them. The actions wrap among themselves and the rest
+stays on the first line; on a phone it is a line of its own above them. Select all takes every
+row on screen, and reads Select none once that is the selection.
+
+The buttons are a size smaller than anywhere else. Eight at the bar size wrapped to a second
+line on a laptop-width window.
 
 **It slides out the way it came in.** A bar that vanishes the frame after a press reads as the
 screen having changed rather than as something having been put away — so the list holds the

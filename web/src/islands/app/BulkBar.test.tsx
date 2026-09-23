@@ -357,3 +357,38 @@ describe("deleting a selection", () => {
     expect(postTasksBulkDelete).not.toHaveBeenCalled();
   });
 });
+
+describe("selecting everything", () => {
+  it("offers all, and none once all is what is selected", () => {
+    const onSelectAll = vi.fn();
+    const { rerender } = mount(
+      <BulkBar
+        ids={ids}
+        chosen={chosen([], [])}
+        tags={tags}
+        view="todo"
+        project=""
+        onDone={vi.fn()}
+        onCancel={vi.fn()}
+        onSelectAll={onSelectAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    expect(onSelectAll).toHaveBeenCalled();
+
+    rerender(
+      <BulkBar
+        ids={ids}
+        chosen={chosen([], [])}
+        tags={tags}
+        view="todo"
+        project=""
+        onDone={vi.fn()}
+        onCancel={vi.fn()}
+        onSelectAll={onSelectAll}
+        everything
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Select none" })).toBeDefined();
+  });
+});

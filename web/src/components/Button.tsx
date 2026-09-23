@@ -25,11 +25,13 @@ type Variant = "solid" | "quiet" | "link" | "danger";
  * It carries no minimum width either: four controls on one line is worth more on a phone than
  * a square Select, and the row wrapped at every width below 390px because of it.
  */
-type Size = "field" | "bar";
+type Size = "field" | "bar" | "compact";
 
+// compact is the bulk bar's: eight controls, and at bar size they wrapped to a second line.
 const shapes: Record<Size, string> = {
-  field: "min-h-10 min-w-20 sm:min-h-11",
-  bar: "min-h-9 pointer-coarse:min-h-10",
+  field: "min-h-10 min-w-20 px-3 py-1.5 text-sm sm:min-h-11",
+  bar: "min-h-9 px-3 py-1.5 text-sm pointer-coarse:min-h-10",
+  compact: "min-h-7 px-2.5 py-1 text-xs pointer-coarse:min-h-9",
 };
 
 const styles: Record<Variant, string> = {
@@ -49,13 +51,11 @@ export function Button({
   size?: Size;
 }) {
   const shape =
-    variant === "link"
-      ? ""
-      : `${shapes[size]} justify-center rounded-md px-3 py-1.5`;
+    variant === "link" ? "" : `${shapes[size]} justify-center rounded-md`;
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-1.5 text-sm disabled:opacity-50 ${shape} ${styles[variant]} ${className}`}
+      className={`inline-flex items-center gap-1.5 disabled:opacity-50 ${variant === "link" ? (size === "compact" ? "text-xs" : "text-sm") : ""} ${shape} ${styles[variant]} ${className}`}
       {...props}
     />
   );
