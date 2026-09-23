@@ -79,4 +79,21 @@ describe("Dialog", () => {
       screen.getByLabelText("Current password"),
     );
   });
+
+  /** A body that throws is one dialog's trouble, and its close still closes it. */
+  it("keeps its title and close when the body fails", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const Breaks = () => {
+      throw new Error("the data was not what it claimed");
+    };
+    const onClose = vi.fn();
+    mount(
+      <Dialog open onClose={onClose} title="Task">
+        <Breaks />
+      </Dialog>,
+    );
+    expect(screen.getByText(/could not be shown/)).toBeDefined();
+    screen.getByRole("button", { name: "Close" }).click();
+    expect(onClose).toHaveBeenCalled();
+  });
 });

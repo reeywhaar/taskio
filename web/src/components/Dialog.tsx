@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 
+import { Boundary } from "@app/components/Boundary";
 import { CrossIcon } from "@app/components/icons/Icon";
 import { lockScroll } from "@app/components/scrollLock";
 
@@ -181,7 +182,8 @@ export function Dialog({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-4 sm:px-5">
-            {children}
+            {/* Inside the title bar, so a body that throws still leaves its close. */}
+            <Boundary what="This">{children}</Boundary>
             {/* A box with a height rather than padding on the box that scrolls.
 
                 Measured: this container's padding-bottom read 16px and contributed nothing at
