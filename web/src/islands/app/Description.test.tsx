@@ -36,7 +36,7 @@ describe("a description that cannot be rendered", () => {
     expect(screen.getByDisplayValue("1. a list")).toBeDefined();
   });
 
-  it("leaves the row its title", () => {
+  it("leaves the row its title, and says the description could not be shown", () => {
     quiet();
     render(
       <TaskRow
@@ -64,6 +64,8 @@ describe("a description that cannot be rendered", () => {
       />,
     );
     expect(screen.getByText("Fix the tap")).toBeDefined();
-    expect(screen.queryByText(/could not be shown/)).toBeNull();
+    expect(
+      screen.getByText("The description could not be shown."),
+    ).toBeDefined();
   });
 });

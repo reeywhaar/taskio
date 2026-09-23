@@ -207,9 +207,14 @@ export function TaskRow({
           {task.title}
         </button>
 
-        {/* Nothing rather than a message when it fails: the row is one of many, and the
-            dialog behind it says what went wrong. */}
-        <Boundary fallback={null}>
+        {/* A line saying so, without the retry: a button inside the row is a press on the row. */}
+        <Boundary
+          fallback={
+            <p className="text-sm text-accent">
+              The description could not be shown.
+            </p>
+          }
+        >
           <Excerpt source={task.description} />
         </Boundary>
 
