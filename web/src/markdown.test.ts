@@ -160,19 +160,20 @@ describe("render", () => {
   });
 });
 
+const breaking = () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const real = marked.parser.bind(marked);
+  return vi.spyOn(marked, "parser").mockImplementation((tokens, options) => {
+    if (JSON.stringify(tokens).includes("BOOM")) throw new Error("marked");
+    return real(tokens, options);
+  });
+};
+
 /**
  * The next thing marked cannot render costs the block it is in, not the description. marked is
  * made to throw on anything containing BOOM, which is what a bug in it looks like from here.
  */
 describe("render, when marked throws", () => {
-  const breaking = () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const real = marked.parser.bind(marked);
-    return vi.spyOn(marked, "parser").mockImplementation((tokens, options) => {
-      if (JSON.stringify(tokens).includes("BOOM")) throw new Error("marked");
-      return real(tokens, options);
-    });
-  };
   afterEach(() => vi.restoreAllMocks());
 
   it("shows the bad block as its source and renders the rest", () => {
