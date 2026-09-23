@@ -11,8 +11,9 @@ import {
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
 import { getProjects } from "@app/api/actions/projects";
-import type { Project, TaskDetail, TaskStub } from "@app/api/types";
+import type { Project, Task, TaskDetail, TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
+import { ago, MONTH, WEEK } from "@app/ago";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { PinIcon } from "@app/components/icons/Icon";
@@ -232,12 +233,11 @@ export function TaskDialog({
             >
               <PinIcon />
             </button>
-            {status === "done" ? (
-              <span className="text-xs text-muted">finished</span>
-            ) : null}
-            {status === "deleted" ? (
-              <span className="text-xs text-accent">deleted</span>
-            ) : null}
+            <Age
+              task={task.data}
+              pending={poke.isPending}
+              onPoke={() => poke.mutate()}
+            />
           </>
         ) : null
       }
@@ -250,17 +250,7 @@ export function TaskDialog({
               Delete
             </Button>
           )}
-          {/* Only on a todo: a finished task's age is when it was finished, and a poke would
-              move nothing anybody reads. */}
-          {status === "todo" ? (
-            <Button
-              title="Say it still stands: its age starts again from now"
-              disabled={poke.isPending}
-              onClick={() => poke.mutate()}
-            >
-              Poke
-            </Button>
-          ) : null}
+
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere. "Finish" sits where a
               dialog's dismiss button lives and reads as finishing the editing — which is the one
@@ -369,5 +359,63 @@ function Mentions({
         ))}
       </ul>
     </div>
+  );
+}
+
+/**
+ * How old the task is, in the title bar with the other things said about it rather than written
+ * in it — the same number the row shows, from the same moment.
+ *
+ * A todo counts from its last poke, and once it is stale, from a week, it offers the poke there:
+ * the button on its own did not say what it did, and the age it resets is what tells somebody
+ * whether to press it. A finished or deleted task says when that happened and offers nothing,
+ * since a poke would move nothing anybody reads. Colored by the row's rules: grey, then amber from
+ * a week and red from a month on a todo; grey however old on a finished one; red in the bin.
+ */
+function Age({
+  task,
+  pending,
+  onPoke,
+}: {
+  task: Task;
+  pending: boolean;
+  onPoke: () => void;
+}) {
+  if (task.status === "deleted")
+    return (
+      <span className="text-xs whitespace-nowrap text-accent">
+        deleted {ago(task.deleted_at ?? task.updated_at)}
+      </span>
+    );
+  if (task.status === "done")
+    return (
+      <span className="text-xs whitespace-nowrap text-faint">
+        finished {ago(task.done_at ?? task.updated_at)}
+      </span>
+    );
+
+  const since = Date.now() / 1000 - task.poked_at;
+  if (since < WEEK)
+    return (
+      <span className="text-xs whitespace-nowrap text-faint">
+        {ago(task.poked_at)}
+      </span>
+    );
+  return (
+    <span
+      className={`text-xs whitespace-nowrap ${since >= MONTH ? "text-accent" : "text-warn"}`}
+    >
+      Stale for {ago(task.poked_at).replace(/ ago$/, "")}
+      {" · "}
+      <button
+        type="button"
+        title="Say it still stands: its age starts again from now"
+        disabled={pending}
+        onClick={onPoke}
+        className="underline underline-offset-2 hover:text-fg disabled:opacity-50"
+      >
+        poke?
+      </button>
+    </span>
   );
 }

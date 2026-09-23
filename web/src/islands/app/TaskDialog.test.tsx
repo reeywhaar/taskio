@@ -323,9 +323,13 @@ describe("pinning from the dialog", () => {
 
 describe("poking from the dialog", () => {
   it("saves what was typed, pokes, and stays open", async () => {
+    task = {
+      ...detail("todo"),
+      poked_at: Math.floor(Date.now() / 1000) - 15 * 86400,
+    };
     const onClose = vi.fn();
     await withVerdict(onClose);
-    fireEvent.click(screen.getByRole("button", { name: "Poke" }));
+    fireEvent.click(screen.getByRole("button", { name: "poke?" }));
     await waitFor(() => expect(calls).toEqual(["patch", "poke"]));
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -342,6 +346,63 @@ describe("poking from the dialog", () => {
       />,
     );
     await screen.findByRole("button", { name: "Mark as todo" });
-    expect(screen.queryByRole("button", { name: "Poke" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "poke?" })).toBeNull();
+  });
+});
+
+/** The age the poke resets, said beside it, since the word alone did not say what it does. */
+describe("how stale the task is", () => {
+  it("says how long it has sat unpoked, from a week", async () => {
+    task = {
+      ...detail("todo"),
+      poked_at: Math.floor(Date.now() / 1000) - 15 * 86400,
+    };
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    const line = await screen.findByText(/Stale for 2 weeks/);
+    expect(line.className).toContain("text-warn");
+  });
+
+  it("says only how long ago, and offers no poke, before that", async () => {
+    task = {
+      ...detail("todo"),
+      poked_at: Math.floor(Date.now() / 1000) - 3 * 86400,
+    };
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect((await screen.findByText("3 days ago")).className).toContain(
+      "text-faint",
+    );
+    expect(screen.queryByRole("button", { name: "poke?" })).toBeNull();
+  });
+
+  it("says when a finished task was finished, grey however old", async () => {
+    task = {
+      ...detail("done"),
+      done_at: Math.floor(Date.now() / 1000) - 60 * 86400,
+    };
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(
+      (await screen.findByText("finished 2 months ago")).className,
+    ).toContain("text-faint");
   });
 });

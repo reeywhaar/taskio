@@ -331,10 +331,14 @@ and not what anybody reads the column for.
 
 On a live task it used to be `updated_at`, so anything done to it reset the number — a tag taken
 off a whole selection included, which said forty tasks had been looked at when nobody had looked
-at any of them. So staleness has its own mark: **Poke**, at the foot of the task dialog and in
-the bulk bar, says the task still stands, and only a poke moves `poked_at`. A task nobody has
-poked counts from when it was written. Neither button is offered on finished tasks, whose age
-is when they were finished.
+at any of them. So staleness has its own mark: a poke says the task still stands, and only a
+poke moves `poked_at`. A task nobody has poked counts from when it was written.
+
+The task dialog's title bar says the same age as the row, colored the same way — "3 days ago";
+"finished 2 days ago"; "deleted …". From a week a todo reads "Stale for 2 weeks · poke?", and
+that is where the poke is: a Poke button on its own did not say what it did, and the age it
+resets is what tells somebody whether to press it. The bulk bar pokes a selection. Neither is
+offered on finished tasks, whose age is when they were finished.
 
 Two marks on the scale, and they are the whole feature. Under a week it is `faint`, which is the
 row saying there is nothing to see. From a week it is `warn`, from a month `accent`. A finished
