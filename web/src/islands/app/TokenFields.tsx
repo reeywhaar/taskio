@@ -146,7 +146,7 @@ export function TokenFields({
         hint={
           value.scope.length === 0
             ? "Nothing selected: it reaches the whole account."
-            : `It sees only tasks carrying ${value.scope.join(" and ")}, and gives them to everything it creates.`
+            : `It sees only tasks carrying ${value.scope.join(" and ")}, and everything it writes has to carry them too.`
         }
       >
         <TagCloud
