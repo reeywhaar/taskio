@@ -249,6 +249,8 @@ export function Nav({
                       onDrop={drop}
                     />
                   ))}
+                  {/* Smaller than the rows: they make a row rather than being one, and at the
+                      rows' size they read as one more group and one more project. */}
                   <li>
                     <button
                       type="button"
@@ -256,7 +258,7 @@ export function Nav({
                         setOpen(false);
                         setEditing("new");
                       }}
-                      className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-shade hover:text-fg"
+                      className="inline-flex w-full items-center gap-1 rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
                     >
                       <PlusIcon /> New group
                     </button>
@@ -275,7 +277,7 @@ export function Nav({
             setOpen(false);
             setEditingProject("new");
           }}
-          className="inline-flex w-full items-center gap-1.5 rounded-md px-3 py-2 text-left text-sm text-faint hover:bg-shade hover:text-fg"
+          className="inline-flex w-full items-center gap-1 rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
         >
           <PlusIcon /> New project
         </button>
