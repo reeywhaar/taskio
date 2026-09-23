@@ -86,7 +86,9 @@ const description = () =>
 
 /** Opened, loaded, and a verdict typed into the description. */
 async function withVerdict(onClose = vi.fn()) {
-  mount(<TaskDialog id="8qw4tz9k" onClose={onClose} onOpen={vi.fn()} />);
+  mount(
+    <TaskDialog id="8qw4tz9k" project="" onClose={onClose} onOpen={vi.fn()} />,
+  );
   // The field, not the button: the footer is drawn while the task is still on its way.
   await screen.findByPlaceholderText(/Markdown\. Paste a file/);
   await settle();
@@ -101,7 +103,14 @@ async function withVerdict(onClose = vi.fn()) {
  */
 describe("the task dialog's status button", () => {
   it("says what it does, and does it", async () => {
-    mount(<TaskDialog id="8qw4tz9k" onClose={vi.fn()} onOpen={vi.fn()} />);
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
     const button = await screen.findByRole("button", { name: "Mark done" });
     fireEvent.click(button);
     await waitFor(() => expect(done).toHaveBeenCalledWith("8qw4tz9k"));
@@ -110,7 +119,14 @@ describe("the task dialog's status button", () => {
 
   it("says the other thing on a task that is already done", async () => {
     task = detail("done");
-    mount(<TaskDialog id="8qw4tz9k" onClose={vi.fn()} onOpen={vi.fn()} />);
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
     const button = await screen.findByRole("button", { name: "Mark as todo" });
     fireEvent.click(button);
     await waitFor(() => expect(todo).toHaveBeenCalledWith("8qw4tz9k"));
@@ -119,7 +135,14 @@ describe("the task dialog's status button", () => {
   /** It changes the status and nothing else: nothing typed, nothing written, still open. */
   it("writes nothing it was not given, and does not close the dialog", async () => {
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" onClose={onClose} onOpen={vi.fn()} />);
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+        onOpen={vi.fn()}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Mark done" }));
     await waitFor(() => expect(done).toHaveBeenCalled());
     expect(patch).not.toHaveBeenCalled();
@@ -158,7 +181,14 @@ describe("a verdict written and then acted on", () => {
   });
 
   it("is not written again when nothing was typed", async () => {
-    mount(<TaskDialog id="8qw4tz9k" onClose={vi.fn()} onOpen={vi.fn()} />);
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(remove).toHaveBeenCalled());
     expect(calls).toEqual(["delete"]);
@@ -181,7 +211,14 @@ describe("a verdict written and then acted on", () => {
 describe("moving a task", () => {
   it("sends the project it was moved to", async () => {
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" onClose={onClose} onOpen={vi.fn()} />);
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+        onOpen={vi.fn()}
+      />,
+    );
     await screen.findByPlaceholderText(/Markdown\. Paste a file/);
     await settle();
 
@@ -198,5 +235,46 @@ describe("moving a task", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(patch).toHaveBeenCalled());
     expect(patch.mock.calls[0]![1]).not.toHaveProperty("project");
+  });
+});
+
+/**
+ * A task opened from a mention or a link can be in another project, and the list behind it is
+ * its own project's rather than whatever was on screen.
+ */
+describe("a task from another project", () => {
+  it("asks for the list to be that project's", async () => {
+    task = { ...detail("todo"), project: "web" };
+    const onElsewhere = vi.fn();
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+        onElsewhere={onElsewhere}
+      />,
+    );
+    await waitFor(() =>
+      expect(onElsewhere).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: "web" }),
+      ),
+    );
+  });
+
+  it("asks nothing of one already where it is", async () => {
+    const onElsewhere = vi.fn();
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+        onElsewhere={onElsewhere}
+      />,
+    );
+    await screen.findByPlaceholderText(/Markdown\. Paste a file/);
+    await settle();
+    expect(onElsewhere).not.toHaveBeenCalled();
   });
 });

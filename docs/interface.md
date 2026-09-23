@@ -196,6 +196,11 @@ projects. Opening a project lights none of the last one's tags, since they are n
 The URL says `?project=` with the slug, and says nothing for the default project — the server's
 own rule, so a link with no project means one place to whoever follows it.
 
+A task's list is its own project's. Ids belong to the account, so a mention or a link can open a
+task in another project, and when it does the list behind it moves there too — replaced rather
+than pushed, because it is the same place drawn over the right list. A dialog over the wrong list
+is a task somebody closes and then cannot find.
+
 A slug is derived from the name while the project is being made, until somebody types into the
 slug field. After that it changes only when it is changed: a rename keeps every link and every
 agent's `?project=` working, and a new slug breaks them, which the field says. Deleting takes

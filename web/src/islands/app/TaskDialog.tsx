@@ -9,12 +9,14 @@ import {
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
-import type { TaskDetail, TaskStub } from "@app/api/types";
+import { getProjects } from "@app/api/actions/projects";
+import type { Project, TaskDetail, TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { Dummy } from "@app/components/Dummy";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
+import { projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
 
 /** The fields as the server has them. */
@@ -50,14 +52,21 @@ function differs(draft: Draft, task: TaskDetail): boolean {
  */
 export function TaskDialog({
   id,
+  project,
   onClose,
   onOpen,
+  onElsewhere,
 }: {
   id: string;
+  /** The project the list behind it is showing, by slug; empty is the default. */
+  project: string;
   onClose: () => void;
   onOpen: (id: string) => void;
+  /** The task turned out to be in another project, which the list should be showing. */
+  onElsewhere?: (project: Project) => void;
 }) {
   const client = useQueryClient();
+  const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
   const task = useQuery({
     queryKey: qk.task(id),
     queryFn: () => getTasksById(id),
@@ -83,6 +92,22 @@ export function TaskDialog({
       was && differs(current, was) ? current : seed(task.data),
     );
   }, [task.data]);
+
+  /**
+   * The list behind a task is its own project's. Opened from a mention, or from a link, a task
+   * can be in a project other than the one on screen — and a dialog over the wrong list is
+   * a task somebody closes and then cannot find.
+   */
+  const lives = task.data?.project;
+  useEffect(() => {
+    const all = projects.data?.projects;
+    if (!lives || !all || !onElsewhere) return;
+    const here = projectNamed(all, project);
+    const there = all.find((p) => p.slug === lives);
+    if (here && there && here.id !== there.id) onElsewhere(there);
+    // Asked when the task or the project on screen changes, not when a callback does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lives, project, projects.data]);
 
   /**
    * One reading of the status, used by the button's word and by what the button does.
