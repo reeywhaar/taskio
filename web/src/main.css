@@ -703,3 +703,15 @@ input[type="checkbox"]:focus-visible {
     opacity: 0.5;
   }
 }
+
+/* A block marked could not render, shown as its source: the words are still there to read and
+   to fix, and the dashed edge says this part is not what it was meant to look like. */
+.prose .unrendered {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  color: var(--color-muted);
+  border: 1px dashed var(--color-line);
+  border-radius: 0.375rem;
+  padding: 0.5em 0.75em;
+}

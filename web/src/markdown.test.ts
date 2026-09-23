@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { marked } from "marked";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { excerpt, render, toggleCheck } from "@app/markdown";
 
@@ -156,5 +157,51 @@ describe("render", () => {
     const html = render("- [x] one\n\n- [ ] two\n");
     expect(html).toContain('aria-checked="true"');
     expect(html).not.toContain("<input");
+  });
+});
+
+/**
+ * The next thing marked cannot render costs the block it is in, not the description. marked is
+ * made to throw on anything containing BOOM, which is what a bug in it looks like from here.
+ */
+describe("render, when marked throws", () => {
+  const breaking = () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const real = marked.parser.bind(marked);
+    return vi.spyOn(marked, "parser").mockImplementation((tokens, options) => {
+      if (JSON.stringify(tokens).includes("BOOM")) throw new Error("marked");
+      return real(tokens, options);
+    });
+  };
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows the bad block as its source and renders the rest", () => {
+    breaking();
+    const html = render(
+      "# Before\n\nThis has BOOM <b>in</b> it\n\nAfter **all**\n",
+    );
+    expect(html).toContain("<h1>Before</h1>");
+    expect(html).toContain("<strong>all</strong>");
+    expect(html).toContain('class="unrendered"');
+    // As text: the source's own tags do not become markup on the way.
+    expect(html).toContain("This has BOOM &lt;b&gt;in&lt;/b&gt; it");
+  });
+
+  it("loses only the bad item of a list", () => {
+    breaking();
+    const html = render("3. one\n4. BOOM two\n5. three\n");
+    expect(html).toContain('<ol start="3">');
+    expect(html).toContain("<li>one</li>");
+    expect(html).toContain("<li>three</li>");
+    expect(html.match(/<ol/g)).toHaveLength(1);
+    expect(html).toContain("BOOM two");
+  });
+
+  /** Lexed as a whole, so a reference and its definition find each other across blocks. */
+  it("keeps the context of the whole description", () => {
+    const html = render(
+      "See [the notes][n].\n\n[n]: https://example.com/notes\n",
+    );
+    expect(html).toContain('href="https://example.com/notes"');
   });
 });

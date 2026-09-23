@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import { marked, type Token } from "marked";
+import { marked, type Token, type Tokens } from "marked";
 
 /**
  * One renderer, configured once.
@@ -57,8 +57,67 @@ export function toggleCheck(source: string, index: number): string {
 /** @ and a task id, turned into a chip after the markdown is rendered. */
 const mention = /(^|[^0-9A-Za-z_@>])@([0-9a-z]{8})\b/g;
 
+/** Text as text, for the one place here that writes source into HTML by hand. */
+const escape = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+/** A block marked could not render, shown as the source it was, and saying so. */
+const unrendered = (raw: string) =>
+  `<p class="unrendered" title="This part could not be rendered">${escape(raw.replace(/\n+$/, ""))}</p>`;
+
+/**
+ * One top-level block, and only that block lost if it throws.
+ *
+ * A list gets one more chance, item by item, so a bad item costs itself rather than the list:
+ * each is rendered as a one-item list, and the wrappers are swapped for one.
+ */
+function block(token: Token): string {
+  try {
+    return marked.parser([token]);
+  } catch (err) {
+    console.error("A description block could not be rendered", err);
+  }
+  if (token.type !== "list") return unrendered(token.raw);
+  const list = token as Tokens.List;
+  const items = list.items.map((item) => {
+    try {
+      return marked
+        .parser([{ ...list, raw: item.raw, items: [item] } as Token])
+        .replace(/^<(ul|ol)[^>]*>\n?/, "")
+        .replace(/<\/(ul|ol)>\n?$/, "");
+    } catch {
+      return `<li>${unrendered(item.raw)}</li>`;
+    }
+  });
+  const open = list.ordered
+    ? `<ol${list.start !== "" && list.start !== 1 ? ` start="${list.start}"` : ""}>`
+    : "<ul>";
+  return `${open}\n${items.join("")}${list.ordered ? "</ol>" : "</ul>"}\n`;
+}
+
+/**
+ * Tolerant: lexed once, so every block keeps the context of the whole — a reference link and its
+ * definition, a fence and what it holds — and then rendered a block at a time, so one marked
+ * cannot handle is shown as its source while everything around it renders. The lexer failing
+ * outright, which is rare, leaves the whole description as text.
+ */
+function parse(source: string): string {
+  let tokens: Token[];
+  try {
+    tokens = marked.lexer(source);
+  } catch (err) {
+    console.error("A description could not be read as markdown", err);
+    return unrendered(source);
+  }
+  return tokens.map(block).join("");
+}
+
 export function render(source: string): string {
-  const html = marked.parse(source, { async: false });
+  const html = parse(source);
   const safe = DOMPurify.sanitize(html, {
     FORBID_TAGS: ["style", "form", "input", "iframe", "object", "embed"],
     FORBID_ATTR: ["style"],
