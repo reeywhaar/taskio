@@ -3,12 +3,14 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type ComponentProps,
   type DragEvent,
 } from "react";
 
 import { postAssets } from "@app/api/actions/assets";
 import { ApiError } from "@app/api/transport";
 import { addCopyButtons } from "@app/codeblocks";
+import { Boundary } from "@app/components/Boundary";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { render, toggleCheck } from "@app/markdown";
@@ -234,20 +236,30 @@ export function Editor({
             prose then shrank to fit the dialog, its text painted past the end of the scrollable
             area, and the last paragraphs sat below the bottom edge with no way to scroll to
             them. */}
-        <div
-          ref={preview}
-          className="prose shrink-0 text-sm sm:min-h-50"
-          onClick={(e) => tick(e.target)}
-          onKeyDown={(e) => {
-            if (e.key !== " " && e.key !== "Enter") return;
-            e.preventDefault();
-            tick(e.target);
-          }}
-          dangerouslySetInnerHTML={{ __html: render(shown) }}
-        />
+        <Boundary what="The description">
+          <Rendered
+            ref={preview}
+            source={shown}
+            className="prose shrink-0 text-sm sm:min-h-50"
+            onClick={(e) => tick(e.target)}
+            onKeyDown={(e) => {
+              if (e.key !== " " && e.key !== "Enter") return;
+              e.preventDefault();
+              tick(e.target);
+            }}
+          />
+        </Boundary>
       </Dialog>
     </div>
   );
+}
+
+/** A component of its own, so the boundary around it catches what the parser throws. */
+function Rendered({
+  source,
+  ...rest
+}: { source: string } & ComponentProps<"div">) {
+  return <div {...rest} dangerouslySetInnerHTML={{ __html: render(source) }} />;
 }
 
 export const EditorActions = Button;

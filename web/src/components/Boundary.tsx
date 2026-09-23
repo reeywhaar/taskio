@@ -21,6 +21,8 @@ export class Boundary extends Component<
     onReset?: () => void;
     /** The whole island: the screen, and a reload rather than a retry of the same tree. */
     page?: boolean;
+    /** Shown instead of the message, where one would be louder than what failed. */
+    fallback?: ReactNode;
   },
   { failed: boolean }
 > {
@@ -40,6 +42,7 @@ export class Boundary extends Component<
 
   render() {
     if (!this.state.failed) return this.props.children;
+    if (this.props.fallback !== undefined) return this.props.fallback;
     if (this.props.page)
       return (
         <main className="flex min-h-dvh flex-col items-center justify-center gap-3 p-4 text-center">

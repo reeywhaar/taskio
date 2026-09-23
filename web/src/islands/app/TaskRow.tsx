@@ -1,4 +1,5 @@
 import { ago, MONTH, WEEK } from "@app/ago";
+import { Boundary } from "@app/components/Boundary";
 import { CheckIcon, PinIcon, UndoIcon } from "@app/components/icons/Icon";
 import type { Task } from "@app/api/types";
 import { excerpt } from "@app/markdown";
@@ -63,7 +64,6 @@ export function TaskRow({
   const binned = task.status === "deleted";
   // The one control on the right, and the three things it can mean.
   const mark = binned ? "Restore" : finished ? "Mark as todo" : "Mark done";
-  const pieces = excerpt(task.description);
 
   /**
    * How long the task has been sitting there, and whether that is a problem yet.
@@ -207,31 +207,11 @@ export function TaskRow({
           {task.title}
         </button>
 
-        {pieces.length > 0 ? (
-          // Two lines at most, and the clamp draws its own ellipsis: how many lines fit is a
-          // question about a width no other layer can see. A link stays a link because a
-          // description is often mostly one, and the click is the link's, not the row's.
-          <p className="line-clamp-2 text-sm text-muted">
-            {pieces.map((piece, i) =>
-              piece.br ? (
-                <br key={i} />
-              ) : piece.href ? (
-                <a
-                  key={i}
-                  href={piece.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {piece.text}
-                </a>
-              ) : (
-                <span key={i}>{piece.text}</span>
-              ),
-            )}
-          </p>
-        ) : null}
+        {/* Nothing rather than a message when it fails: the row is one of many, and the
+            dialog behind it says what went wrong. */}
+        <Boundary fallback={null}>
+          <Excerpt source={task.description} />
+        </Boundary>
 
         {task.tags.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -292,5 +272,37 @@ export function TaskRow({
         </button>
       )}
     </li>
+  );
+}
+
+/** The row's opening lines, in a component of its own so the boundary around it can catch a
+ *  description the parser throws on. */
+function Excerpt({ source }: { source: string }) {
+  const pieces = excerpt(source);
+  if (pieces.length === 0) return null;
+  return (
+    // Two lines at most, and the clamp draws its own ellipsis: how many lines fit is a
+    // question about a width no other layer can see. A link stays a link because a
+    // description is often mostly one, and the click is the link's, not the row's.
+    <p className="line-clamp-2 text-sm text-muted">
+      {pieces.map((piece, i) =>
+        piece.br ? (
+          <br key={i} />
+        ) : piece.href ? (
+          <a
+            key={i}
+            href={piece.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {piece.text}
+          </a>
+        ) : (
+          <span key={i}>{piece.text}</span>
+        ),
+      )}
+    </p>
   );
 }
