@@ -136,14 +136,16 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	// A scoped token's tags are applied on top of whatever was asked for, so a create with no
-	// tags at all still comes back tagged and cannot fail on scope.
-	tags := append(scopeTags(r), req.Tags...)
+	// A scoped token names its tags itself. See missingScopeTags.
+	if missing := missingScopeTags(r, req.Tags); len(missing) > 0 {
+		refuseMissingTags(w, missing)
+		return
+	}
 
 	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, scopeTags(r), store.TaskNew{
 		Title:       req.Title,
 		Description: req.Description,
-		Tags:        tags,
+		Tags:        req.Tags,
 		Priority:    req.Priority,
 		Pinned:      req.Pinned,
 		Color:       req.Color,
@@ -224,11 +226,13 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
+	// Only when the edit sets the tags at all: a PATCH that leaves them out does not touch
+	// them, so there is nothing for it to have dropped.
 	if req.Tags != nil {
-		// The scope's tags are applied to the result, so a scoped token cannot push a task out
-		// of its own reach.
-		merged := append(scopeTags(r), *req.Tags...)
-		req.Tags = &merged
+		if missing := missingScopeTags(r, *req.Tags); len(missing) > 0 {
+			refuseMissingTags(w, missing)
+			return
+		}
 	}
 
 	updated, err := s.store.UpdateTask(r.Context(), principalOf(r).ID, scopeTags(r), task.ID, store.TaskPatch{

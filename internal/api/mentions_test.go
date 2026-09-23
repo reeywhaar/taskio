@@ -120,7 +120,7 @@ func TestAScopedTokenCannotResolveAMentionOutsideItsScope(t *testing.T) {
 	hidden := c.task(`{"title":"Private thing","tags":["private"]}`)["id"].(string)
 	a := mintToken(t, s, c, "claude", "and(work)")
 
-	made := jsonOf(t, a.do("POST", "/api/tasks", `{"title":"About @`+hidden[:4]+`"}`))
+	made := jsonOf(t, a.do("POST", "/api/tasks", `{"title":"About @`+hidden[:4]+`","tags":["work"]}`))
 	if got := made["title"].(string); got != "About @"+hidden[:4] {
 		t.Errorf("title = %q, want the prefix left as typed", got)
 	}

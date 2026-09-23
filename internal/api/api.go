@@ -134,6 +134,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/assets", s.requireAuth(s.putAsset))
 	s.handleAgent("GET /api/assets/{id}", s.requireAuth(s.getAsset))
 
+	s.handleAgent("GET /api/scope", s.requireAuth(s.getScope))
+
 	s.handleAgent("GET /api/tags", s.requireAuth(s.listTags))
 	s.handleAgent("PATCH /api/tags/{slug}", s.requireAuth(s.renameTag))
 	s.handleAgent("DELETE /api/tags/{slug}", s.requireAuth(s.removeTag))

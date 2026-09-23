@@ -117,13 +117,28 @@ Prefix form, so there is no precedence to get wrong: the parentheses are the str
 
 A token may be confined to a flat `and()` of tags. It then means two things:
 
-> **A scoped token sees only tasks carrying those tags, and everything it creates is given
-> them.**
+> **A scoped token sees only tasks carrying those tags, and everything it writes has to carry
+> them too.**
 
-So a token scoped `and(work)` posting `{"title":"Call the plumber"}` gets back a task tagged
-`work`. It cannot see, edit or delete anything outside the scope, and it cannot rename or remove
-the tag it is scoped to. Tasks coming back with tags you did not ask for is the scope working,
-not a bug.
+**Ask first.** `GET /api/scope` says what this token reaches and what it must write:
+
+```json
+{"scope": "and(work,inbox)", "requires": ["work", "inbox"]}
+```
+
+A single tag comes back as itself: `{"scope": "work", "requires": ["work"]}`.
+
+Unscoped, both are empty. Put every tag in `requires` into the `tags` of what you create.
+
+**Nothing is added for you.** A create that leaves out a required tag, an edit whose `tags`
+drops one, or a `bulk/tags` that removes one is refused with `400 scope_tags_missing`, naming
+what is missing. Send it again with the tags.
+
+An edit that does not send `tags` at all does not touch them, and needs nothing:
+`PATCH {"description": "…"}` works the same with any scope.
+
+It cannot see, edit or delete anything outside the scope, and it cannot rename or remove a tag
+its scope names.
 
 ## Endpoints
 
@@ -142,6 +157,8 @@ POST   /api/tasks/bulk/tags      {ids, add?, remove?}
 POST   /api/tasks/bulk/priority  {ids, priority}
 POST   /api/tasks/bulk/pinned    {ids, pinned}
 POST   /api/tasks/bulk/delete    {ids}
+
+GET    /api/scope              what this token reaches and must write
 
 GET    /api/tags
 PATCH  /api/tags/{slug}        {slug}
@@ -334,6 +351,7 @@ the value that was wrong.
 | `unauthenticated` | 401 | The token is missing, wrong, expired or revoked |
 | `token_forbidden` | 403 | That route is not open to tokens |
 | `out_of_scope` | 403 | The task is outside this token's scope |
+| `scope_tags_missing` | 400 | A write leaves out a tag this token's scope requires. The message names it; `GET /api/scope` lists them all |
 | `not_found` | 404 | No such task |
 | `prefix_ambiguous` | 409 | Give another character or two |
 | `asset_too_large` | 413 | One image is over the limit; the message names it |

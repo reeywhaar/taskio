@@ -138,7 +138,8 @@ func TestADeletedTaskCanBePutBack(t *testing.T) {
 	}
 }
 
-// A scoped token may not take a task out of its own reach, so its own slugs survive a remove.
+// A scoped token may not take a task out of its own reach. It is refused, not quietly half
+// done: repair stays too, because the call was one change and it was not made.
 func TestBulkTaggingCannotRemoveATokensOwnScope(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
@@ -147,12 +148,12 @@ func TestBulkTaggingCannotRemoveATokensOwnScope(t *testing.T) {
 	id := c.task(`{"title":"Fix the tap","tags":["home","repair"]}`)["id"].(string)
 
 	body := fmt.Sprintf(`{"ids":[%q],"remove":["home","repair"]}`, id)
-	if resp := a.do("POST", "/api/tasks/bulk/tags", body); resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("bulk tags = %s", resp.Status)
+	if resp := a.do("POST", "/api/tasks/bulk/tags", body); resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("bulk tags = %s, want 400", resp.Status)
 	}
 
-	if got := c.tagsOf(id); !slices.Equal(got, []string{"home"}) {
-		t.Errorf("tags = %v, want home kept and repair gone", got)
+	if got := c.tagsOf(id); !slices.Equal(got, []string{"home", "repair"}) {
+		t.Errorf("tags = %v, want both kept", got)
 	}
 }
 

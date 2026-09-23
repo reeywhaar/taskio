@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"slices"
 
 	"taskio/internal/store"
 )
@@ -36,6 +37,13 @@ func (s *Server) bulkTags(w http.ResponseWriter, r *http.Request) {
 	var req bulkTagsRequest
 	if !decode(w, r, &req) {
 		return
+	}
+	// Removing a tag the scope names is dropping it from every task in the set.
+	for _, slug := range scopeTags(r) {
+		if slices.Contains(req.Remove, slug) {
+			refuseMissingTags(w, []string{slug})
+			return
+		}
 	}
 	err := s.store.BulkTagChange(r.Context(), principalOf(r).ID, scopeOf(r), req.IDs,
 		store.BulkTags{Add: req.Add, Remove: req.Remove})

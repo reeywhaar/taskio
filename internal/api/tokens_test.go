@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -98,11 +99,21 @@ func TestAScopeNarrowsAndApplies(t *testing.T) {
 		t.Fatalf("a scoped token sees %v", body)
 	}
 
-	// Created with no tags at all, and it comes back tagged.
-	made := jsonOf(t, a.do("POST", "/api/tasks", `{"title":"Call the plumber"}`))
-	tags := made["tags"].([]any)
-	if len(tags) != 1 || tags[0] != "work" {
-		t.Errorf("tags = %v, want the scope applied", tags)
+	// Created without its tag, it is told which one rather than given it.
+	resp := a.do("POST", "/api/tasks", `{"title":"Call the plumber"}`)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a create without the scope's tag = %s, want 400", resp.Status)
+	}
+	var refusal errorBody
+	json.NewDecoder(resp.Body).Decode(&refusal)
+	if refusal.Code != CodeScopeTagsMissing || !strings.Contains(refusal.Message, "work") {
+		t.Errorf("refusal = %+v, want it to name work", refusal)
+	}
+
+	// Named, it is written as asked and nothing is added.
+	made := jsonOf(t, a.do("POST", "/api/tasks", `{"title":"Call the plumber","tags":["work"]}`))
+	if tags := made["tags"].([]any); len(tags) != 1 || tags[0] != "work" {
+		t.Errorf("tags = %v, want work", tags)
 	}
 }
 
@@ -127,11 +138,17 @@ func TestAScopedTokenCannotDropItsOwnScopeTag(t *testing.T) {
 	id := c.task(`{"title":"Work thing","tags":["work","urgent"]}`)["id"].(string)
 	a := mintToken(t, s, c, "claude", "and(work)")
 
-	// Asking for no tags at all still leaves the scope's on.
-	got := jsonOf(t, a.do("PATCH", "/api/tasks/"+id, `{"tags":[]}`))
-	tags := got["tags"].([]any)
-	if len(tags) != 1 || tags[0] != "work" {
-		t.Errorf("tags = %v, want the scope kept", tags)
+	// Setting tags without the scope's is refused, and the task is as it was.
+	if resp := a.do("PATCH", "/api/tasks/"+id, `{"tags":["urgent"]}`); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("dropping the scope's tag = %s, want 400", resp.Status)
+	}
+	if got := c.tagsOf(id); !slices.Equal(got, []string{"work", "urgent"}) {
+		t.Errorf("tags = %v, want them untouched", got)
+	}
+
+	// An edit that leaves tags out does not touch them, so there is nothing to have dropped.
+	if resp := a.do("PATCH", "/api/tasks/"+id, `{"description":"Verdict: fine"}`); resp.StatusCode != http.StatusOK {
+		t.Errorf("a description-only edit = %s, want 200", resp.Status)
 	}
 
 	// And it cannot rename or remove the tag it is scoped to.
@@ -681,5 +698,27 @@ func TestSavingATokenUnchangedIsNoChange(t *testing.T) {
 	}
 	if st.Changes() != before {
 		t.Error("an identical save counted as a change")
+	}
+}
+
+// Asked rather than learned from a refusal: what a credential reaches and what it must write.
+func TestATokenCanAskWhatItsScopeRequires(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+
+	scoped := mintToken(t, s, c, "claude", "and(work,inbox)")
+	got := scoped.json(scoped.do("GET", "/api/scope", ""))
+	if got["scope"] != "and(work,inbox)" {
+		t.Errorf("scope = %v", got["scope"])
+	}
+	if req := got["requires"].([]any); len(req) != 2 || req[0] != "work" || req[1] != "inbox" {
+		t.Errorf("requires = %v, want work and inbox", req)
+	}
+
+	// Unscoped, it says so rather than answering with nothing at all.
+	open := mintToken(t, s, c, "open", "")
+	got = open.json(open.do("GET", "/api/scope", ""))
+	if got["scope"] != "" || len(got["requires"].([]any)) != 0 {
+		t.Errorf("an unscoped token's scope = %v", got)
 	}
 }

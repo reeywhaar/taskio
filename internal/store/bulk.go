@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	"taskio/internal/filter"
@@ -82,10 +83,12 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 		return err
 	}
 	// A scoped token's own tags cannot be removed, here as everywhere: a write may not take a
-	// task out of the writer's reach.
-	keep := map[string]bool{}
+	// task out of the writer's reach. Refused rather than skipped — the API says so first, and
+	// this is what stops a caller that forgot to.
 	for _, slug := range filter.Slugs(scope) {
-		keep[slug] = true
+		if slices.Contains(remove, slug) {
+			return Invalid("A token cannot remove %s: its scope requires it.", slug)
+		}
 	}
 
 	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
@@ -101,9 +104,6 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 				}
 			}
 			for _, slug := range remove {
-				if keep[slug] {
-					continue
-				}
 				if _, err := tx.ExecContext(ctx,
 					`DELETE FROM task_tags WHERE task_seq = ? AND slug = ?`, seq, slug); err != nil {
 					return err

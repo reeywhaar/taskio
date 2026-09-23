@@ -11,6 +11,7 @@ const (
 	CodeFilterInvalid        = "filter_invalid"
 	CodeCursorInvalid        = "cursor_invalid"
 	CodeOutOfScope           = "out_of_scope"
+	CodeScopeTagsMissing     = "scope_tags_missing"
 	CodePrefixAmbiguous      = "prefix_ambiguous"
 	CodeUnauthenticated      = "unauthenticated"
 	CodeNotFound             = "not_found"
