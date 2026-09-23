@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: "1.27"
           cache: true
@@ -47,7 +47,7 @@ jobs:
       - name: Set up Node
         # `current` rather than a pinned major: the image pins node:26 because a build that
         # ships has to be reproducible, and this job only checks.
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: current
           cache: npm
@@ -85,20 +85,20 @@ jobs:
       packages: write
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Sign in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -124,10 +124,13 @@ jobs:
           set -eu
           docker pull "$IMAGE:${{ github.sha }}"
           docker run --rm "$IMAGE:${{ github.sha }}" version
-          docker run -d --name taskio-smoke -p 8080:80 \
+          # A volume, because the server never creates /data: without one it exits at start.
+          docker run -d --name taskio-smoke -p 8080:80 -v taskio-smoke:/data \
             -e TASKIO_PUBLIC_URL=http://localhost:8080 "$IMAGE:${{ github.sha }}"
+          # The container's own logs, however this ends: a failure without them is a guess.
+          trap 'docker logs taskio-smoke; docker rm -f taskio-smoke >/dev/null' EXIT
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:8080/healthz >/dev/null; then break; fi
+            if curl -fsS http://localhost:8080/healthz >/dev/null 2>&1; then break; fi
             sleep 1
           done
           curl -fsS http://localhost:8080/healthz | grep -q '"ok":true'
@@ -135,14 +138,20 @@ jobs:
           curl -sS http://localhost:8080/api/nope | grep -q '"ok":false'
           # Each shell carries the root div rather than the "has not been built" placeholder,
           # which is the failure that otherwise reaches users looking like a successful publish.
-          for page in / /login /settings; do
-            curl -sS "http://localhost:8080$page" | grep -q 'id="root"'
+          curl -fsS http://localhost:8080/login | grep -q 'id="root"'
+          # The rest are only served signed in. An empty database prints an invitation to
+          # become its administrator, and accepting it is the way in.
+          token=$(docker logs taskio-smoke 2>&1 | grep -o '/invite/[A-Za-z0-9_-]*' | head -1 | cut -d/ -f3)
+          test -n "$token"
+          curl -fsS -c jar -H 'Content-Type: application/json' \
+            -d '{"username":"smoke","password":"a smoke-test password"}' \
+            "http://localhost:8080/api/auth/invites/$token/accept"
+          for page in / /settings /admin; do
+            curl -fsS -b jar "http://localhost:8080$page" | grep -q 'id="root"'
           done
           # The page an agent reads, unauthenticated and with the text in it.
           curl -sS http://localhost:8080/docs | grep -q 'taskio API'
           curl -sSI http://localhost:8080/docs.md | grep -qi 'text/markdown'
-          docker logs taskio-smoke
-          docker rm -f taskio-smoke
 
   # A job of its own rather than steps on `publish`, because a failing `test` *skips*
   # `publish` rather than failing it, and a step in a job that never starts cannot report
