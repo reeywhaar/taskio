@@ -694,6 +694,25 @@ editor's three buttons are Delete, Mark done and Save, none of which is "not thi
 So the close is on the dialog rather than in each footer: one control, always drawn, next to the
 title. It closes without saving, which is the whole point of it.
 
+## A button that stops to ask ends in an ellipsis
+
+The macOS rule. "…" says the press is not the whole of it: the command stops to ask something,
+and nothing happens until it is answered. A choice to make — Tag…, Move…. A question before it
+goes ahead — Revoke…, and Delete… where it confirms. A form it cannot run without — Change
+password…. Sign out… has one only on the browser in use, because only that one asks.
+
+A button that does its thing on the press has none, even when something opens. Delete in the task
+dialog deletes. Preview shows the description and asks nothing, and a recovery link is made the
+moment it is pressed.
+
+Nor does one that opens a thing to be written, new or not — New task, Mint a token, Edit, Change
+limits — for the reason New Message has none in Mail: the window is the thing, and writing in it
+is not answering a question. Nor a label that names a thing rather than a command: Priority is
+what is set, not an unfinished verb. Nor the button a dialog ends with, which is the answer.
+
+The mark is worth something only while every button keeps it, so a new button is held to it in
+review, and `Button` says so where buttons are written.
+
 ## Every button that does something to a task writes the fields first
 
 Delete and Mark done save what is in the fields before they do anything else — only when the

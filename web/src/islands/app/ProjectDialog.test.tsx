@@ -81,7 +81,7 @@ describe("deleting a project", () => {
         onGone={onGone}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
 
     const go = screen.getByRole("button", { name: "Delete project" });
     expect(go.hasAttribute("disabled")).toBe(true);
@@ -107,6 +107,6 @@ describe("deleting a project", () => {
         onGone={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete…" })).toBeNull();
   });
 });

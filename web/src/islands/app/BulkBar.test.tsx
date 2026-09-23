@@ -130,7 +130,7 @@ describe("BulkBar", () => {
 
   it("sets one priority across the selection", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Priority" }));
+    fireEvent.click(screen.getByRole("button", { name: "Priority…" }));
     fireEvent.change(screen.getByRole("spinbutton"), {
       target: { value: "-2" },
     });
@@ -223,7 +223,7 @@ describe("tagging a selection", () => {
 
   const open = (picked: Task[]) => {
     const rendered = bar("todo", picked);
-    fireEvent.click(screen.getByRole("button", { name: "Tag" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tag…" }));
     return rendered;
   };
 
@@ -308,7 +308,7 @@ describe("tagging a selection", () => {
     expect(postTasksBulkTags).not.toHaveBeenCalled();
 
     // And the presses go with it: opening again reads the selection afresh.
-    fireEvent.click(screen.getByRole("button", { name: "Tag" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tag…" }));
     expect(pill("work")).toBe("false");
   });
 });
@@ -320,11 +320,11 @@ describe("moving a selection", () => {
 
   it("moves it to the project pressed, and nowhere for the one it is in", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Main" }));
     expect(postTasksBulkProject).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move…" }));
     fireEvent.click(await screen.findByRole("button", { name: "Garden" }));
     await waitFor(() =>
       expect(postTasksBulkProject).toHaveBeenCalledWith(ids, "garden"),
@@ -340,7 +340,7 @@ describe("deleting a selection", () => {
 
   it("asks, and deletes on a yes", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
     const asked = screen.getByRole("dialog");
     expect(within(asked).getByText("Delete 2 tasks?")).toBeDefined();
     fireEvent.click(within(asked).getByRole("button", { name: "Delete" }));
@@ -349,7 +349,7 @@ describe("deleting a selection", () => {
 
   it("deletes nothing on a no", async () => {
     bar();
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Cancel",

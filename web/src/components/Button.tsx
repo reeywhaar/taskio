@@ -41,6 +41,11 @@ const styles: Record<Variant, string> = {
   danger: "raised bg-bg text-accent",
 };
 
+/*
+ * A label ends in "…" when the command stops to ask — a choice, a confirmation, a form it cannot
+ * run without — and not when it acts on the press, opens a thing to be written, or names a thing.
+ * See docs/interface.md.
+ */
 export function Button({
   variant = "quiet",
   size = "field",

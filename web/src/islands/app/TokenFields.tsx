@@ -244,7 +244,7 @@ function Rows({
         {free.length > 0 ? (
           <div>
             <Button size="bar" onClick={() => setAdding(true)}>
-              + Add project
+              + Add project…
             </Button>
           </div>
         ) : null}

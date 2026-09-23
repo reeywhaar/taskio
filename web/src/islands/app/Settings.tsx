@@ -89,7 +89,7 @@ function Password() {
           setOpen(true);
         }}
       >
-        Change password
+        Change password…
       </Button>
       {changed ? (
         <p className="mt-2 text-sm text-muted">
@@ -156,7 +156,7 @@ function Recovery() {
 
       {relay ? (
         <Button className="mt-2" onClick={() => setProving(true)}>
-          {current ? "Change it" : "Add one"}
+          {current ? "Change it…" : "Add one…"}
         </Button>
       ) : (
         /* An address already on file keeps the section even when the relay goes away, so it
@@ -408,7 +408,7 @@ export function Tokens() {
                     if (yes) revoke.mutate(token.id);
                   }}
                 >
-                  Revoke
+                  Revoke…
                 </Button>
               </>
             ) : null}
@@ -478,7 +478,7 @@ function Sessions() {
                 if (yes) revoke.mutate(session.id);
               }}
             >
-              Sign out
+              {session.current ? "Sign out…" : "Sign out"}
             </Button>
           </li>
         ))}

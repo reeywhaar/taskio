@@ -189,7 +189,7 @@ function RelayPanel() {
         </Button>
         {configured ? (
           <>
-            <Button onClick={() => setTesting(true)}>Send a test</Button>
+            <Button onClick={() => setTesting(true)}>Send a test…</Button>
             <Button variant="link" onClick={() => remove.mutate()}>
               Forget it
             </Button>

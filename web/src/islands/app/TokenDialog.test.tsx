@@ -42,7 +42,9 @@ vi.mock("@app/api/actions/projects", () => ({
 
 /** The project is chosen first, and then written on the row rather than offered as a field. */
 const add = async (name: string) => {
-  fireEvent.click(await screen.findByRole("button", { name: "+ Add project" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "+ Add project…" }),
+  );
   fireEvent.click(await screen.findByRole("button", { name }));
 };
 
@@ -113,7 +115,7 @@ describe("TokenDialog", () => {
     await add("Main");
     await add("Garden");
     // Every project is on a row now, so there is nothing left to add.
-    expect(screen.queryByRole("button", { name: "+ Add project" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+ Add project…" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
 
     await waitFor(() =>

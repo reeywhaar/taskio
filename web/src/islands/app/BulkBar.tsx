@@ -228,21 +228,21 @@ export function BulkBar({
             disabled={ids.length === 0}
             onClick={() => setAsking("priority")}
           >
-            Priority
+            Priority…
           </Button>
           <Button
             size="compact"
             disabled={busy || ids.length === 0}
             onClick={() => setAsking("tag")}
           >
-            Tag
+            Tag…
           </Button>
           <Button
             size="compact"
             disabled={busy || ids.length === 0}
             onClick={() => setAsking("project")}
           >
-            Move
+            Move…
           </Button>
           <Button
             size="compact"
@@ -266,7 +266,7 @@ export function BulkBar({
               if (yes) void run(() => postTasksBulkDelete(ids));
             }}
           >
-            Delete
+            Delete…
           </Button>
         </div>
 

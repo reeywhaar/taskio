@@ -135,7 +135,7 @@ export function ProjectDialog({
           <>
             {project && !project.default ? (
               <Button variant="danger" onClick={() => setConfirming(true)}>
-                Delete
+                Delete…
               </Button>
             ) : null}
             <span className="flex-1" />

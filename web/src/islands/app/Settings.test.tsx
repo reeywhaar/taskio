@@ -66,7 +66,7 @@ describe("a token's row", () => {
   /** The one thing on the row that cannot be taken back, so it is asked first. */
   it("asks before revoking, and a no does nothing", async () => {
     mount(<Tokens />);
-    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke…" }));
 
     const asked = screen.getByRole("dialog");
     expect(within(asked).getByText("the laptop")).toBeDefined();
@@ -77,7 +77,7 @@ describe("a token's row", () => {
 
   it("revokes on a yes", async () => {
     mount(<Tokens />);
-    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke…" }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Revoke",
