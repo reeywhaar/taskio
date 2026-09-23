@@ -240,14 +240,19 @@
   --fog: #51382726;
   --sheen: linear-gradient(0deg, var(--sheen-stops));
   --sheen-in: linear-gradient(180deg, var(--sheen-stops));
-  /* Named once, because focus draws it again with a line on top. */
+  /* Named once, because focus draws it again with a line on top.
+
+     The cast side is the one that says "sunk", and it was drawn at the lit side's strengths:
+     the rim came out 1.16:1 against the field in light and 1.13 in dark, which is a field you
+     find by where its words are. Two and a half times that is 1.36 and 1.33 — past it the 1px
+     layer is already at full strength, and the rest only widens the shadow into the field. */
   --well:
     inset -1px -1px 1.5px color-mix(in srgb, var(--lit) 55%, transparent),
     inset -2px -2px 4px color-mix(in srgb, var(--lit) 32%, transparent),
     inset -4px -4px 8px color-mix(in srgb, var(--lit) 16%, transparent),
-    inset 1px 1px 1.5px color-mix(in srgb, var(--cast) 55%, transparent),
-    inset 2px 2px 4px color-mix(in srgb, var(--cast) 32%, transparent),
-    inset 3px 4px 9px color-mix(in srgb, var(--cast) 16%, transparent);
+    inset 1px 1px 1.5px var(--cast),
+    inset 2px 2px 4px color-mix(in srgb, var(--cast) 80%, transparent),
+    inset 3px 4px 9px color-mix(in srgb, var(--cast) 40%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
