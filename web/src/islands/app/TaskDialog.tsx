@@ -14,6 +14,7 @@ import type { Project, TaskDetail, TaskStub } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
+import { PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { projectNamed } from "@app/islands/app/ProjectPicker";
@@ -171,6 +172,17 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  // A property rather than a status, so it stays open: the task is still the one being edited.
+  const togglePinned = useMutation({
+    mutationFn: async () => {
+      await flush();
+      await patchTasksById(id, { pinned: !task.data?.pinned });
+    },
+    onSuccess: () => invalidate(),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
+  });
+
   const remove = useMutation({
     mutationFn: async () => {
       await flush();
@@ -194,6 +206,20 @@ export function TaskDialog({
         task.data ? (
           <>
             <TaskId id={task.data.id} />
+            {/* The row's own control, beside the id: the same icon for the same thing. */}
+            <button
+              type="button"
+              aria-label={task.data.pinned ? "Unpin" : "Pin"}
+              title={task.data.pinned ? "Unpin" : "Pin"}
+              aria-pressed={task.data.pinned}
+              disabled={togglePinned.isPending}
+              onClick={() => togglePinned.mutate()}
+              className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
+                task.data.pinned ? "text-brand" : "text-faint hover:text-fg"
+              }`}
+            >
+              <PinIcon />
+            </button>
             {status === "done" ? (
               <span className="text-xs text-muted">finished</span>
             ) : null}

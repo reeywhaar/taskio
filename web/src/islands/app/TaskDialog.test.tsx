@@ -284,3 +284,34 @@ describe("a task from another project", () => {
     expect(onElsewhere).not.toHaveBeenCalled();
   });
 });
+
+describe("pinning from the dialog", () => {
+  it("pins, saving what was typed first, and stays open", async () => {
+    const onClose = vi.fn();
+    await withVerdict(onClose);
+    fireEvent.click(screen.getByRole("button", { name: "Pin" }));
+
+    await waitFor(() => expect(calls).toEqual(["patch", "patch"]));
+    expect(patch.mock.calls[0]![1]).toMatchObject({
+      description: "Verdict: not worth it",
+    });
+    expect(patch.mock.calls[1]![1]).toEqual({ pinned: true });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("unpins a pinned task", async () => {
+    task = { ...detail("todo"), pinned: true };
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Unpin" }));
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("8qw4tz9k", { pinned: false }),
+    );
+  });
+});
