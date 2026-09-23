@@ -31,7 +31,11 @@ func renderGroup(g *store.Group) groupBody {
 // its scope does not reach — and a group is a list of tag names. /docs is what an agent needs
 // to work the list, and a saved filter is not part of working it.
 func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) {
-	list, err := s.store.Groups(r.Context(), principalOf(r).ID)
+	project, ok := s.projectOf(w, r)
+	if !ok {
+		return
+	}
+	list, err := s.store.Groups(r.Context(), principalOf(r).ID, project.ID)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -54,7 +58,11 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	g, err := s.store.CreateGroup(r.Context(), principalOf(r).ID, req.Name, req.Tags, req.Color)
+	project, ok := s.projectOf(w, r)
+	if !ok {
+		return
+	}
+	g, err := s.store.CreateGroup(r.Context(), principalOf(r).ID, project.ID, req.Name, req.Tags, req.Color)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -86,7 +94,11 @@ func (s *Server) putGroupOrder(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	if err := s.store.SetGroupOrder(r.Context(), principalOf(r).ID, req.IDs); err != nil {
+	project, ok := s.projectOf(w, r)
+	if !ok {
+		return
+	}
+	if err := s.store.SetGroupOrder(r.Context(), principalOf(r).ID, project.ID, req.IDs); err != nil {
 		s.fail(w, r, err)
 		return
 	}

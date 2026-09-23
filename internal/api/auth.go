@@ -175,13 +175,13 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			refuse(w, http.StatusUnauthorized, CodeUnauthenticated, "That token is not one this accepts.")
 			return
 		}
-		scope, err := tok.ScopeFilter()
+		reach, err := tok.Reach()
 		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
 
-		r = r.WithContext(contextWith(contextWith(r.Context(), ctxPrincipal, p), ctxScope, scope))
+		r = r.WithContext(contextWith(contextWith(r.Context(), ctxPrincipal, p), ctxReach, reach))
 		next.ServeHTTP(w, r)
 	})
 }
@@ -232,7 +232,7 @@ type ctxKey int
 const (
 	ctxPrincipal ctxKey = iota
 	ctxSession
-	ctxScope
+	ctxReach
 )
 
 func withPrincipal(r *http.Request, p *store.Principal, sess *store.Session) *http.Request {

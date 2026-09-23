@@ -247,7 +247,7 @@ func TestCloseEmptiesTheWriteAheadLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 50; i++ {
-		if _, err := st.CreateTask(ctx, p.ID, nil, TaskNew{Title: "Fix the tap", Description: strings.Repeat("x", 4096)}); err != nil {
+		if _, err := st.CreateTask(ctx, p.ID, home(t, st, p.ID), nil, TaskNew{Title: "Fix the tap", Description: strings.Repeat("x", 4096)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -270,7 +270,7 @@ func TestCloseEmptiesTheWriteAheadLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	page, err := reopened.ListTasks(ctx, p.ID, nil, TaskQuery{}, "")
+	page, err := reopened.ListTasks(ctx, p.ID, home(t, reopened, p.ID), nil, TaskQuery{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,4 +311,14 @@ func TestAPrefixNamingTwoTasksIsAmbiguousRatherThanAConflict(t *testing.T) {
 	if err != nil || task.ID != "wxyz0000" {
 		t.Errorf("an unambiguous prefix gave %v, %v", task, err)
 	}
+}
+
+// home is the account's default project, where a test's tasks go unless it says otherwise.
+func home(t *testing.T, st *Store, principalID string) string {
+	t.Helper()
+	p, err := st.DefaultProject(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p.ID
 }

@@ -97,7 +97,7 @@ func (s *Store) inlineAssets(ctx context.Context, principalID, text string) (str
 // sentence because a word in it looks like an id and is not would be the worst possible trade,
 // and resolution runs inside what the writer can see, so a scoped token cannot discover that a
 // task exists by mentioning it and watching the rewrite.
-func (s *Store) normalizeMentions(ctx context.Context, principalID string, scope []string, text string) string {
+func (s *Store) normalizeMentions(ctx context.Context, principalID string, reach Reach, text string) string {
 	return mentionRef.ReplaceAllStringFunc(text, func(match string) string {
 		parts := mentionRef.FindStringSubmatch(match)
 		lead, ref := parts[1], parts[2]
@@ -109,39 +109,31 @@ func (s *Store) normalizeMentions(ctx context.Context, principalID string, scope
 		if err != nil {
 			return match
 		}
-		if !s.visible(ctx, principalID, id, scope) {
+		if !s.visible(ctx, principalID, id, reach) {
 			return match
 		}
 		return lead + "@" + id
 	})
 }
 
-// visible reports whether a task carries every slug a scope names.
+// visible reports whether a task is one this reach may touch — in a project it reaches, and
+// inside that project's scope.
 //
 // Resolution runs inside what the writer can see, so a confined credential cannot discover that
 // a task exists by mentioning it and watching the rewrite.
-func (s *Store) visible(ctx context.Context, principalID, id string, scope []string) bool {
-	if len(scope) == 0 {
+func (s *Store) visible(ctx context.Context, principalID, id string, reach Reach) bool {
+	if reach == nil {
 		return true
 	}
-	for _, slug := range scope {
-		var n int
-		err := s.reader.QueryRowContext(ctx,
-			`SELECT count(*) FROM tasks JOIN task_tags ON task_tags.task_seq = tasks.seq
-			  WHERE tasks.id = ? AND tasks.principal_id = ? AND task_tags.slug = ?`,
-			id, principalID, slug).Scan(&n)
-		if err != nil || n == 0 {
-			return false
-		}
-	}
-	return true
+	task, err := loadTask(ctx, s.reader, principalID, id)
+	return err == nil && reach.Allows(task)
 }
 
 // syncContent rebuilds the two join tables from the saved text.
 //
 // Both from the text rather than from what the request asked for, so neither can drift from the
 // words — and in the same transaction as the write, so they cannot disagree with it either.
-func syncContent(ctx context.Context, tx *sql.Tx, seq int64, principalID string, scope []string, title, description string) error {
+func syncContent(ctx context.Context, tx *sql.Tx, seq int64, principalID string, reach Reach, title, description string) error {
 	text := title + "\n" + description
 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM task_assets WHERE task_seq = ?`, seq); err != nil {
@@ -174,7 +166,7 @@ func syncContent(ctx context.Context, tx *sql.Tx, seq int64, principalID string,
 		var to int64
 		err := tx.QueryRowContext(ctx,
 			`SELECT seq FROM tasks WHERE id = ? AND principal_id = ?`, m[2], principalID).Scan(&to)
-		if err != nil || !linkVisible(ctx, tx, to, scope) {
+		if err != nil || !linkVisible(ctx, tx, to, reach) {
 			continue
 		}
 		if _, err := tx.ExecContext(ctx,
@@ -186,15 +178,12 @@ func syncContent(ctx context.Context, tx *sql.Tx, seq int64, principalID string,
 }
 
 // linkVisible is visible, inside the transaction that is writing.
-func linkVisible(ctx context.Context, tx *sql.Tx, seq int64, scope []string) bool {
-	for _, slug := range scope {
-		var n int
-		if err := tx.QueryRowContext(ctx,
-			`SELECT count(*) FROM task_tags WHERE task_seq = ? AND slug = ?`, seq, slug).Scan(&n); err != nil || n == 0 {
-			return false
-		}
+func linkVisible(ctx context.Context, tx *sql.Tx, seq int64, reach Reach) bool {
+	if reach == nil {
+		return true
 	}
-	return true
+	task, err := loadTaskBySeq(ctx, tx, seq)
+	return err == nil && reach.Allows(task)
 }
 
 // Mentions is what a task names, and what names it.

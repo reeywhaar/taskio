@@ -11,7 +11,9 @@ import (
 
 // taskBody is one task as everything outside sees it.
 type taskBody struct {
-	ID          string   `json:"id"`
+	ID string `json:"id"`
+	// Project is the slug of the project it is in.
+	Project     string   `json:"project"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
@@ -25,9 +27,11 @@ type taskBody struct {
 	DeletedAt   *int64   `json:"deleted_at"`
 }
 
-func renderTask(t *store.Task) taskBody {
+// renderTask draws one; slugs names the account's projects by id, for its project.
+func renderTask(t *store.Task, slugs map[string]string) taskBody {
 	body := taskBody{
 		ID:          t.ID,
+		Project:     slugs[t.ProjectID],
 		Title:       t.Title,
 		Description: t.Description,
 		Tags:        t.Tags,
@@ -54,6 +58,10 @@ func renderTask(t *store.Task) taskBody {
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	project, ok := s.projectOf(w, r)
+	if !ok {
+		return
+	}
 
 	var parsed *filter.Node
 	if raw := q.Get("tags"); raw != "" {
@@ -99,25 +107,41 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		query.Cursor = c
 	}
 
-	page, err := s.store.ListTasks(r.Context(), principalOf(r).ID, scopeOf(r), query, q.Get("q"))
+	page, err := s.store.ListTasks(r.Context(), principalOf(r).ID, project.ID,
+		reachOf(r).Scope(project.ID), query, q.Get("q"))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	slugs, err := s.projectSlugs(r)
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
 
-	out := map[string]any{"tasks": renderTasks(page.Tasks), "total": page.Total}
+	out := map[string]any{"tasks": renderTasks(page.Tasks, slugs), "total": page.Total}
 	if page.Next != nil {
 		out["next_cursor"] = page.Next.String()
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-func renderTasks(list []*store.Task) []taskBody {
+func renderTasks(list []*store.Task, slugs map[string]string) []taskBody {
 	out := make([]taskBody, 0, len(list))
 	for _, t := range list {
-		out = append(out, renderTask(t))
+		out = append(out, renderTask(t, slugs))
 	}
 	return out
+}
+
+// renderOne writes one task, with its project named.
+func (s *Server) renderOne(w http.ResponseWriter, r *http.Request, status int, t *store.Task) {
+	slugs, err := s.projectSlugs(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, status, renderTask(t, slugs))
 }
 
 type createTaskRequest struct {
@@ -136,13 +160,14 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	// A scoped token names its tags itself. See missingScopeTags.
-	if missing := missingScopeTags(r, req.Tags); len(missing) > 0 {
-		refuseMissingTags(w, missing)
+	// Into the project the request names — for a token confined there, carrying what its scope
+	// requires, which it names itself: nothing is added for it. See store.Reach.check.
+	project, ok := s.projectOf(w, r)
+	if !ok {
 		return
 	}
 
-	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, scopeTags(r), store.TaskNew{
+	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, project.ID, reachOf(r), store.TaskNew{
 		Title:       req.Title,
 		Description: req.Description,
 		Tags:        req.Tags,
@@ -154,7 +179,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, renderTask(task))
+	s.renderOne(w, r, http.StatusCreated, task)
 }
 
 // getTask carries the mentions with it, so a client draws a chip with a title on it and a model
@@ -170,31 +195,39 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
+	slugs, err := s.projectSlugs(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
 	body := map[string]any{}
-	for k, v := range asMap(renderTask(task)) {
+	for k, v := range asMap(renderTask(task, slugs)) {
 		body[k] = v
 	}
-	body["mentions"] = renderStubs(mentions.Mentions, scopeOf(r))
-	body["mentioned_by"] = renderStubs(mentions.MentionedBy, scopeOf(r))
+	body["mentions"] = renderStubs(mentions.Mentions, reachOf(r), slugs)
+	body["mentioned_by"] = renderStubs(mentions.MentionedBy, reachOf(r), slugs)
 	writeJSON(w, http.StatusOK, body)
 }
 
 // taskStub is a mention: enough to draw a link with a title on it.
 type taskStub struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Status string `json:"status"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Project is where it is, which can be a project other than this one: a mention is by id,
+	// and ids belong to the account.
+	Project string `json:"project"`
+	Status  string `json:"status"`
 }
 
-// renderStubs filters to the scope, on the same reasoning as everything else: what refers to a
+// renderStubs filters to the reach, on the same reasoning as everything else: what refers to a
 // task is not something a confined credential learns for free.
-func renderStubs(list []*store.Task, scope *filter.Node) []taskStub {
+func renderStubs(list []*store.Task, reach store.Reach, slugs map[string]string) []taskStub {
 	out := []taskStub{}
 	for _, t := range list {
-		if scope != nil && !matchesScope(t, scope) {
+		if !reach.Allows(t) {
 			continue
 		}
-		out = append(out, taskStub{ID: t.ID, Title: t.Title, Status: t.Status()})
+		out = append(out, taskStub{ID: t.ID, Title: t.Title, Project: slugs[t.ProjectID], Status: t.Status()})
 	}
 	return out
 }
@@ -213,9 +246,12 @@ type patchTaskRequest struct {
 	Priority    *int      `json:"priority"`
 	Pinned      *bool     `json:"pinned"`
 	Color       *string   `json:"color"`
+	// Project moves it, with its tags, to the project with this slug.
+	Project *string `json:"project"`
 }
 
-// patchTask changes wording and tags. Absent leaves a field alone and empty clears it.
+// patchTask changes wording and tags, and moves a task between projects. Absent leaves a field
+// alone and empty clears it.
 func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 	var req patchTaskRequest
 	if !decode(w, r, &req) {
@@ -226,28 +262,31 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	// Only when the edit sets the tags at all: a PATCH that leaves them out does not touch
-	// them, so there is nothing for it to have dropped.
-	if req.Tags != nil {
-		if missing := missingScopeTags(r, *req.Tags); len(missing) > 0 {
-			refuseMissingTags(w, missing)
+	// A move is to a project this caller reaches, and what the task carries has to satisfy the
+	// scope it lands in. An edit that neither moves it nor sets its tags is not asked either.
+	var move *string
+	if req.Project != nil {
+		target, ok := s.namedProject(w, r, *req.Project)
+		if !ok {
 			return
 		}
+		move = &target.ID
 	}
 
-	updated, err := s.store.UpdateTask(r.Context(), principalOf(r).ID, scopeTags(r), task.ID, store.TaskPatch{
+	updated, err := s.store.UpdateTask(r.Context(), principalOf(r).ID, reachOf(r), task.ID, store.TaskPatch{
 		Title:       req.Title,
 		Description: req.Description,
 		Tags:        req.Tags,
 		Priority:    req.Priority,
 		Pinned:      req.Pinned,
 		Color:       req.Color,
+		Project:     move,
 	})
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, renderTask(updated))
+	s.renderOne(w, r, http.StatusOK, updated)
 }
 
 func (s *Server) setDone(done bool) http.HandlerFunc {
@@ -262,7 +301,7 @@ func (s *Server) setDone(done bool) http.HandlerFunc {
 			s.fail(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, renderTask(updated))
+		s.renderOne(w, r, http.StatusOK, updated)
 	}
 }
 
@@ -288,7 +327,7 @@ func (s *Server) task(r *http.Request) (*store.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	if scope := scopeOf(r); scope != nil && !matchesScope(task, scope) {
+	if !reachOf(r).Allows(task) {
 		// Authenticated, and the task is theirs; what is refused is this credential's reach. A
 		// 404 would have an agent conclude the task is gone and act on it.
 		return nil, errOutOfScope

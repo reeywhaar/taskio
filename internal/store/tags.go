@@ -50,8 +50,8 @@ func NormalizeSlug(raw string) string {
 //
 // scope narrows it to a token's slice, on the same reasoning as the task list: whether a word
 // exists elsewhere on the account is not something a confined credential learns for free.
-func (s *Store) Tags(ctx context.Context, principalID string, scope *filter.Node) ([]Tag, error) {
-	where, args := scopeClause(principalID, scope)
+func (s *Store) Tags(ctx context.Context, principalID, projectID string, scope *filter.Node) ([]Tag, error) {
+	where, args := scopeClause(principalID, projectID, scope)
 	// The arrangement first, then anything it does not name, alphabetically. Writing a tag
 	// puts it in the arrangement (see noteTags), so the fallback is for tags that predate that
 	// and for the ones past the cap — both of which still sort after everything placed.
@@ -59,7 +59,7 @@ func (s *Store) Tags(ctx context.Context, principalID string, scope *filter.Node
 		`SELECT task_tags.slug, MIN(COALESCE(tag_order.position, `+unplaced+`)) AS place
 		   FROM task_tags
 		   JOIN tasks ON tasks.seq = task_tags.task_seq
-		   LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		   LEFT JOIN tag_order ON tag_order.project_id = tasks.project_id
 		                      AND tag_order.slug = task_tags.slug
 		  WHERE `+where+`
 		  GROUP BY task_tags.slug
@@ -96,7 +96,7 @@ const TagOrderMax = 512
 // Slugs nothing carries are kept rather than refused. A tag goes out of use whenever its last
 // task is finished off, and an arrangement that threw those away would rearrange itself behind
 // somebody's back.
-func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []string) error {
+func (s *Store) SetTagOrder(ctx context.Context, principalID, projectID string, slugs []string) error {
 	if len(slugs) > TagOrderMax {
 		return Invalid("That is more than %d tags in one arrangement.", TagOrderMax)
 	}
@@ -120,7 +120,7 @@ func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []str
 	}
 	defer tx.Rollback()
 
-	if err := writeTagOrder(ctx, tx, principalID, clean); err != nil {
+	if err := writeTagOrder(ctx, tx, projectID, clean); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -150,7 +150,7 @@ func (s *Store) SetTagOrder(ctx context.Context, principalID string, slugs []str
 // before this, no arrangement named anything nobody had dragged, and treating those as new would
 // send a tag somebody has used for months to the end the next time they wrote it. So it runs
 // before the tags themselves are written, and what the account already has is the answer.
-func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []string) error {
+func noteTags(ctx context.Context, tx *sql.Tx, projectID string, slugs []string) error {
 	unnamed := []string{}
 	asked := map[string]bool{}
 	for _, slug := range slugs {
@@ -160,8 +160,8 @@ func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []strin
 		asked[slug] = true
 		var named int
 		if err := tx.QueryRowContext(ctx,
-			`SELECT count(*) FROM tag_order WHERE principal_id = ? AND slug = ?`,
-			principalID, slug).Scan(&named); err != nil {
+			`SELECT count(*) FROM tag_order WHERE project_id = ? AND slug = ?`,
+			projectID, slug).Scan(&named); err != nil {
 			return fmt.Errorf("note tags: %w", err)
 		}
 		if named == 0 {
@@ -172,7 +172,7 @@ func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []strin
 		return nil
 	}
 
-	order, err := tagOrder(ctx, tx, principalID)
+	order, err := tagOrder(ctx, tx, projectID)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []strin
 	if len(fresh) == 0 {
 		return nil
 	}
-	return writeTagOrder(ctx, tx, principalID, append(order, fresh...))
+	return writeTagOrder(ctx, tx, projectID, append(order, fresh...))
 }
 
 // tagOrder is the order an account's cloud is in: what it has arranged, then what it has not.
@@ -197,21 +197,21 @@ func noteTags(ctx context.Context, tx *sql.Tx, principalID string, slugs []strin
 // Both what the tasks carry and what the arrangement names, because a slug nothing carries any
 // more keeps its place — dragging the tag back into use finds it where it was left, and a
 // rewrite that dropped it would take that away.
-func tagOrder(ctx context.Context, q querier, principalID string) ([]string, error) {
+func tagOrder(ctx context.Context, q querier, projectID string) ([]string, error) {
 	rows, err := q.QueryContext(ctx,
 		`SELECT slug, MIN(place) FROM (
 		          SELECT task_tags.slug AS slug,
 		                 COALESCE(tag_order.position, `+unplaced+`) AS place
 		            FROM task_tags
 		            JOIN tasks ON tasks.seq = task_tags.task_seq
-		            LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		            LEFT JOIN tag_order ON tag_order.project_id = tasks.project_id
 		                               AND tag_order.slug = task_tags.slug
-		           WHERE tasks.principal_id = ?
+		           WHERE tasks.project_id = ?
 		          UNION ALL
-		          SELECT slug, position FROM tag_order WHERE principal_id = ?
+		          SELECT slug, position FROM tag_order WHERE project_id = ?
 		        )
 		  GROUP BY slug
-		  ORDER BY MIN(place), slug`, principalID, principalID)
+		  ORDER BY MIN(place), slug`, projectID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("tag order: %w", err)
 	}
@@ -234,18 +234,18 @@ func tagOrder(ctx context.Context, q querier, principalID string) ([]string, err
 // Past the cap it keeps the front of the list rather than refusing: what is dropped is the
 // newest end, which sorts after everything placed anyway. A caller who asked for the
 // arrangement directly is told instead — see SetTagOrder.
-func writeTagOrder(ctx context.Context, tx *sql.Tx, principalID string, slugs []string) error {
+func writeTagOrder(ctx context.Context, tx *sql.Tx, projectID string, slugs []string) error {
 	if len(slugs) > TagOrderMax {
 		slugs = slugs[:TagOrderMax]
 	}
 	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM tag_order WHERE principal_id = ?`, principalID); err != nil {
+		`DELETE FROM tag_order WHERE project_id = ?`, projectID); err != nil {
 		return fmt.Errorf("set tag order: %w", err)
 	}
 	for at, slug := range slugs {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO tag_order (principal_id, slug, position) VALUES (?, ?, ?)`,
-			principalID, slug, at); err != nil {
+			`INSERT INTO tag_order (project_id, slug, position) VALUES (?, ?, ?)`,
+			projectID, slug, at); err != nil {
 			return fmt.Errorf("set tag order: %w", err)
 		}
 	}
@@ -257,7 +257,7 @@ func writeTagOrder(ctx context.Context, tx *sql.Tx, principalID string, slugs []
 // For a session that is the whole account; for a scoped token it is the scope, which makes it a
 // partial operation — the honest outcome, since renaming everywhere would let a confined
 // credential relabel tasks it cannot read.
-func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter.Node, from, to string) (int64, error) {
+func (s *Store) RenameTag(ctx context.Context, principalID, projectID string, scope *filter.Node, from, to string) (int64, error) {
 	to = NormalizeSlug(to)
 	if !filter.ValidSlug(to) {
 		return 0, Invalid("%q is not a tag: tags are lowercase letters, digits, - and _.", to)
@@ -265,7 +265,7 @@ func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter
 	if from == to {
 		return 0, nil
 	}
-	where, args := scopeClause(principalID, scope)
+	where, args := scopeClause(principalID, projectID, scope)
 
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
@@ -294,18 +294,18 @@ func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter
 	// that sent it to the end would rearrange a list nobody touched. A new word that inherits no
 	// place had none to inherit — the old word had not got one either.
 	//
-	// Only when the rename covered the whole account. A scoped token renames its slice, so the
+	// Only when the rename covered the whole project. A scoped token renames its slice, so the
 	// old slug is still out there on tasks it cannot see, and its place is still its own.
 	if scope == nil {
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE OR IGNORE tag_order SET slug = ? WHERE principal_id = ? AND slug = ?`,
-			to, principalID, from); err != nil {
+			`UPDATE OR IGNORE tag_order SET slug = ? WHERE project_id = ? AND slug = ?`,
+			to, projectID, from); err != nil {
 			return 0, fmt.Errorf("rename tag: %w", err)
 		}
 		// Left behind when the new name already had a place of its own, which is a merge.
 		if _, err := tx.ExecContext(ctx,
-			`DELETE FROM tag_order WHERE principal_id = ? AND slug = ?`,
-			principalID, from); err != nil {
+			`DELETE FROM tag_order WHERE project_id = ? AND slug = ?`,
+			projectID, from); err != nil {
 			return 0, fmt.Errorf("rename tag: %w", err)
 		}
 	}
@@ -322,8 +322,8 @@ func (s *Store) RenameTag(ctx context.Context, principalID string, scope *filter
 // RemoveTag takes a slug off every task the caller can reach, and reports how many.
 //
 // Not a delete of anything: the tag stops existing because nothing says it any more.
-func (s *Store) RemoveTag(ctx context.Context, principalID string, scope *filter.Node, slug string) (int64, error) {
-	where, args := scopeClause(principalID, scope)
+func (s *Store) RemoveTag(ctx context.Context, principalID, projectID string, scope *filter.Node, slug string) (int64, error) {
+	where, args := scopeClause(principalID, projectID, scope)
 	res, err := s.writer.ExecContext(ctx,
 		`DELETE FROM task_tags WHERE slug = ? AND task_seq IN (SELECT seq FROM tasks WHERE `+where+`)`,
 		append([]any{slug}, args...)...)
@@ -337,10 +337,11 @@ func (s *Store) RemoveTag(ctx context.Context, principalID string, scope *filter
 	return n, nil
 }
 
-// scopeClause is the WHERE every scoped read and write shares.
-func scopeClause(principalID string, scope *filter.Node) (string, []any) {
-	where := "tasks.principal_id = ?"
-	args := []any{principalID}
+// scopeClause is the WHERE every read and write inside one project shares: the account, the
+// project, and whatever confines the caller there.
+func scopeClause(principalID, projectID string, scope *filter.Node) (string, []any) {
+	where := "tasks.principal_id = ? AND tasks.project_id = ?"
+	args := []any{principalID, projectID}
 	if scope != nil {
 		sql, scopeArgs := filter.Compile(scope, "tasks.seq")
 		where += " AND " + sql
@@ -359,7 +360,7 @@ func loadTags(ctx context.Context, q querier, seq int64) ([]string, error) {
 		`SELECT task_tags.slug
 		   FROM task_tags
 		   JOIN tasks ON tasks.seq = task_tags.task_seq
-		   LEFT JOIN tag_order ON tag_order.principal_id = tasks.principal_id
+		   LEFT JOIN tag_order ON tag_order.project_id = tasks.project_id
 		                      AND tag_order.slug = task_tags.slug
 		  WHERE task_tags.task_seq = ?
 		  ORDER BY COALESCE(tag_order.position, `+unplaced+`), task_tags.slug`, seq)

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -48,11 +49,12 @@ type Token struct {
 	PrincipalID string
 	Label       string
 	Hint        string
-	Scope       string
-	CreatedAt   time.Time
-	ExpiresAt   *time.Time
-	LastUsedAt  *time.Time
-	RevokedAt   *time.Time
+	// Projects is what it reaches: one row per project, each with its own scope.
+	Projects   []TokenProject
+	CreatedAt  time.Time
+	ExpiresAt  *time.Time
+	LastUsedAt *time.Time
+	RevokedAt  *time.Time
 	// LastIP and LastAgent are where it was used from, for the one question a token raises:
 	// used by what, from where.
 	LastIP    string
@@ -81,22 +83,102 @@ func (t *Token) Live(now time.Time) bool {
 		!t.Idle(now)
 }
 
-// ScopeFilter parses the scope, or nil for a token that reaches the whole account.
-func (t *Token) ScopeFilter() (*filter.Node, error) {
-	if t.Scope == "" {
-		return nil, nil
+// TokenProject is one project a token reaches, and what confines it there.
+type TokenProject struct {
+	ProjectID string
+	// Scope is a flat and() or or() of the project's tags, or empty for the whole project.
+	Scope string
+}
+
+// Reach is what the token may touch: each project it reaches, with its scope parsed.
+func (t *Token) Reach() (Reach, error) {
+	reach := Reach{}
+	for _, row := range t.Projects {
+		var scope *filter.Node
+		if row.Scope != "" {
+			var err error
+			if scope, err = filter.Parse(row.Scope); err != nil {
+				return nil, err
+			}
+		}
+		reach[row.ProjectID] = scope
 	}
-	return filter.Parse(t.Scope)
+	return reach, nil
+}
+
+// cleanRows validates a token's projects: at least one, each a live project of the account
+// named once, each scope in the grammar a scope may use.
+func (s *Store) cleanRows(ctx context.Context, principalID string, rows []TokenProject) ([]TokenProject, error) {
+	if len(rows) == 0 {
+		return nil, Invalid("A token needs a project to reach.")
+	}
+	out := make([]TokenProject, 0, len(rows))
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if seen[row.ProjectID] {
+			return nil, Invalid("A token names each project once.")
+		}
+		seen[row.ProjectID] = true
+		p, err := s.ProjectByID(ctx, principalID, row.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		if p.DeletedAt != nil {
+			return nil, Gone("Project %s was deleted.", p.Slug)
+		}
+		scope, err := canonicalScope(row.Scope)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, TokenProject{ProjectID: row.ProjectID, Scope: scope})
+	}
+	return out, nil
+}
+
+// loadRows reads what one token reaches, in the order it was given.
+func loadRows(ctx context.Context, q querier, tokenID string) ([]TokenProject, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT token_projects.project_id, token_projects.scope
+		   FROM token_projects JOIN projects ON projects.id = token_projects.project_id
+		  WHERE token_projects.token_id = ?
+		  ORDER BY projects.position, projects.created_at`, tokenID)
+	if err != nil {
+		return nil, fmt.Errorf("token projects: %w", err)
+	}
+	defer rows.Close()
+	out := []TokenProject{}
+	for rows.Next() {
+		var row TokenProject
+		if err := rows.Scan(&row.ProjectID, &row.Scope); err != nil {
+			return nil, err
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func writeRows(ctx context.Context, tx *sql.Tx, tokenID string, rows []TokenProject) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM token_projects WHERE token_id = ?`, tokenID); err != nil {
+		return fmt.Errorf("token projects: %w", err)
+	}
+	for _, row := range rows {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO token_projects (token_id, project_id, scope) VALUES (?, ?, ?)`,
+			tokenID, row.ProjectID, row.Scope); err != nil {
+			return fmt.Errorf("token projects: %w", err)
+		}
+	}
+	return nil
 }
 
 // CreateToken mints one and returns it with the secret, readable exactly once.
-func (s *Store) CreateToken(ctx context.Context, principalID, label, scope string, expires *time.Time, idle time.Duration) (*Token, string, error) {
+func (s *Store) CreateToken(ctx context.Context, principalID, label string, projects []TokenProject, expires *time.Time, idle time.Duration) (*Token, string, error) {
 	label, err := cleanLabel(label)
 	if err != nil {
 		return nil, "", err
 	}
 
-	scope, err = canonicalScope(scope)
+	projects, err = s.cleanRows(ctx, principalID, projects)
 	if err != nil {
 		return nil, "", err
 	}
@@ -112,7 +194,7 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 		PrincipalID: principalID,
 		Label:       label,
 		Hint:        raw[:hintLen],
-		Scope:       scope,
+		Projects:    projects,
 		CreatedAt:   s.Now(),
 		ExpiresAt:   expires,
 		IdleTTL:     idle,
@@ -124,12 +206,23 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 	if expires != nil {
 		exp = unix(*expires)
 	}
-	_, err = s.writer.ExecContext(ctx,
-		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, scope, created_at, expires_at, idle_ttl)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		tok.ID, principalID, label, tokenKey(value), tok.Hint, scope, unix(tok.CreatedAt), exp,
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, created_at, expires_at, idle_ttl)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tok.ID, principalID, label, tokenKey(value), tok.Hint, unix(tok.CreatedAt), exp,
 		int64(idle/time.Second))
 	if err != nil {
+		return nil, "", fmt.Errorf("create token: %w", err)
+	}
+	if err := writeRows(ctx, tx, tok.ID, projects); err != nil {
+		return nil, "", err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, "", fmt.Errorf("create token: %w", err)
 	}
 	s.changed(principalID)
@@ -139,7 +232,7 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label, scope strin
 // Tokens lists one account's, newest first.
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		`SELECT id, label, hint, created_at, expires_at, last_used_at, revoked_at,
 		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE principal_id = ? ORDER BY created_at DESC`, principalID)
 	if err != nil {
@@ -152,7 +245,7 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 		tok := &Token{PrincipalID: principalID}
 		var created, idle int64
 		var expires, used, revoked sql.NullInt64
-		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &tok.Scope, &created,
+		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &created,
 			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle); err != nil {
 			return nil, err
 		}
@@ -163,7 +256,16 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 		tok.RevokedAt = nullTime(revoked)
 		out = append(out, tok)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	for _, tok := range out {
+		if tok.Projects, err = loadRows(ctx, s.reader, tok.ID); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // canonicalScope validates a scope and returns the spelling it is stored under.
@@ -179,10 +281,10 @@ func canonicalScope(scope string) (string, error) {
 	if err != nil {
 		return "", Invalid("%s", err.Error())
 	}
-	if !isFlatAnd(parsed) {
-		// Only an unnested and() of slugs answers "create it with these tags", which is what a
-		// scope has to do.
-		return "", Invalid("A scope is a flat and() of tags, like and(work,inbox).")
+	if !isFlat(parsed) {
+		// Unnested, so what a write has to carry can be said in a sentence: every tag of an
+		// and(), or one of an or(). Several tags picked for a token make an or().
+		return "", Invalid("A scope is a flat and() or or() of tags, like or(work,inbox).")
 	}
 	return filter.Print(parsed), nil
 }
@@ -202,7 +304,8 @@ func cleanLabel(label string) (string, error) {
 // TokenChange is what an edit asks for. A nil field is left as it is.
 type TokenChange struct {
 	Label *string
-	Scope *string
+	// Projects replaces what it reaches, rows and all.
+	Projects *[]TokenProject
 	// Expires set to the zero time clears it: the token stops expiring.
 	Expires *time.Time
 	Idle    *time.Duration
@@ -238,10 +341,14 @@ func (s *Store) UpdateToken(ctx context.Context, principalID, id string, change 
 			return nil, err
 		}
 	}
-	if change.Scope != nil {
-		if tok.Scope, err = canonicalScope(*change.Scope); err != nil {
+	rowsChanged := false
+	if change.Projects != nil {
+		rows, err := s.cleanRows(ctx, principalID, *change.Projects)
+		if err != nil {
 			return nil, err
 		}
+		rowsChanged = !slices.Equal(rows, tok.Projects)
+		tok.Projects = rows
 	}
 	if change.Expires != nil {
 		switch {
@@ -270,16 +377,31 @@ func (s *Store) UpdateToken(ctx context.Context, principalID, id string, change 
 	}
 	idle := int64(tok.IdleTTL / time.Second)
 	// The comparison in the WHERE clause is what makes an identical save no change at all: no
-	// row, no notification, and nothing for the backup loop to count.
-	res, err := s.writer.ExecContext(ctx,
-		`UPDATE tokens SET label = ?, scope = ?, expires_at = ?, idle_ttl = ?
+	// row, no notification, and nothing for the backup loop to count. The rows are compared in
+	// Go, because they are another table.
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx,
+		`UPDATE tokens SET label = ?, expires_at = ?, idle_ttl = ?
 		  WHERE principal_id = ? AND id = ? AND revoked_at IS NULL
-		    AND (label <> ? OR scope <> ? OR expires_at IS NOT ? OR idle_ttl <> ?)`,
-		tok.Label, tok.Scope, exp, idle, principalID, id, tok.Label, tok.Scope, exp, idle)
+		    AND (label <> ? OR expires_at IS NOT ? OR idle_ttl <> ?)`,
+		tok.Label, exp, idle, principalID, id, tok.Label, exp, idle)
 	if err != nil {
 		return nil, fmt.Errorf("update token: %w", err)
 	}
-	if n, _ := res.RowsAffected(); n > 0 {
+	n, _ := res.RowsAffected()
+	if rowsChanged {
+		if err := writeRows(ctx, tx, id, tok.Projects); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	if n > 0 || rowsChanged {
 		s.changed(principalID)
 	}
 	return &tok, nil
@@ -291,10 +413,10 @@ func (s *Store) token(ctx context.Context, principalID, id string) (*Token, erro
 	var created, idle int64
 	var expires, used, revoked sql.NullInt64
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		`SELECT label, hint, created_at, expires_at, last_used_at, revoked_at,
 		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
-		Scan(&tok.Label, &tok.Hint, &tok.Scope, &created, &expires, &used, &revoked,
+		Scan(&tok.Label, &tok.Hint, &created, &expires, &used, &revoked,
 			&tok.LastIP, &tok.LastAgent, &idle)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no such token.")
@@ -307,6 +429,9 @@ func (s *Store) token(ctx context.Context, principalID, id string) (*Token, erro
 	tok.LastUsedAt = nullTime(used)
 	tok.RevokedAt = nullTime(revoked)
 	tok.IdleTTL = time.Duration(idle) * time.Second
+	if tok.Projects, err = loadRows(ctx, s.reader, id); err != nil {
+		return nil, err
+	}
 	return tok, nil
 }
 
@@ -434,10 +559,10 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 	var expires, used, revoked sql.NullInt64
 	var idle int64
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT id, principal_id, label, hint, scope, created_at, expires_at, last_used_at, revoked_at,
+		`SELECT id, principal_id, label, hint, created_at, expires_at, last_used_at, revoked_at,
 		        last_ip, last_agent, idle_ttl
 		   FROM tokens WHERE secret_hash = ?`, key).
-		Scan(&tok.ID, &tok.PrincipalID, &tok.Label, &tok.Hint, &tok.Scope, &created,
+		Scan(&tok.ID, &tok.PrincipalID, &tok.Label, &tok.Hint, &created,
 			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -453,6 +578,9 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 
 	if !tok.Live(now) {
 		return nil, ErrNotFound
+	}
+	if tok.Projects, err = loadRows(ctx, s.reader, tok.ID); err != nil {
+		return nil, err
 	}
 	// Stamping what was seen is the process noticing itself, so it does not mark the database
 	// changed and does not schedule a backup.
@@ -488,12 +616,12 @@ func tokenKey(value string) []byte {
 // carries and what a listing shows.
 func tokenID(value string) string { return hex.EncodeToString(tokenKey(value))[:12] }
 
-// isFlatAnd reports whether a scope is an unnested and() of slugs, or a single slug.
-func isFlatAnd(n *filter.Node) bool {
+// isFlat reports whether a scope is an unnested and() or or() of slugs, or a single slug.
+func isFlat(n *filter.Node) bool {
 	switch n.Op {
 	case filter.Leaf:
 		return true
-	case filter.And:
+	case filter.And, filter.Or:
 		for _, a := range n.Args {
 			if a.Op != filter.Leaf {
 				return false

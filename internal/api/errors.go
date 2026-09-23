@@ -12,6 +12,8 @@ const (
 	CodeCursorInvalid        = "cursor_invalid"
 	CodeOutOfScope           = "out_of_scope"
 	CodeScopeTagsMissing     = "scope_tags_missing"
+	CodeProjectRequired      = "project_required"
+	CodeProjectDeleted       = "project_deleted"
 	CodePrefixAmbiguous      = "prefix_ambiguous"
 	CodeUnauthenticated      = "unauthenticated"
 	CodeNotFound             = "not_found"

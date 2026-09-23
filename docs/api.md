@@ -113,40 +113,74 @@ Prefix form, so there is no precedence to get wrong: the parentheses are the str
   expression.
 - At most 1,024 bytes, 8 deep, 64 parts.
 
+## Projects
+
+An account's tasks are split into projects, each with its own tags, groups and arrangement.
+Every task is in exactly one, and every task body says which as `project`, a slug.
+
+**Name the project with `?project=`** on the routes that work inside one — listing, creating,
+the tags. Left out, it means:
+
+| caller | `?project=` left out |
+| --- | --- |
+| a signed-in browser | the default project |
+| a token reaching one project | that project — so a token minted before projects keeps working |
+| a token reaching several | `400 project_required`, naming the slugs to choose from |
+
+The routes on one task (`/api/tasks/{id}`) need no project: the id says where it is.
+
+**Moving** is `PATCH {"project": "web"}`, or `bulk/project` for several. A task takes its tags
+with it; they are the new project's tags from then on.
+
+A project that was deleted is answered `410 project_deleted`, for a token that still names it,
+rather than as missing.
+
 ## Scopes
 
-A token may be confined to a flat `and()` of tags. It then means two things:
+A token reaches one or more projects, and may be confined inside each by a flat `or()` or
+`and()` of that project's tags:
 
-> **A scoped token sees only tasks carrying those tags, and everything it writes has to carry
-> them too.**
+> **A scoped token sees only tasks its scope selects, and everything it writes has to carry
+> what the scope requires.**
 
-**Ask first.** `GET /api/scope` says what this token reaches and what it must write:
+| scope | sees | a task it writes must carry |
+| --- | --- | --- |
+| `or(garden,reading)` | tasks with either | one of them, at least |
+| `and(garden,reading)` | tasks with both | both |
+| `garden` | tasks with it | it |
+
+Several tags picked on the settings page make an `or()`.
+
+**Ask first.** `GET /api/scope` says, project by project, what this token reaches and what it
+must write:
 
 ```json
-{"scope": "and(work,inbox)", "requires": ["work", "inbox"]}
+{"projects": [
+  {"slug": "main", "name": "Main", "default": true,
+   "scope": "or(garden,reading)", "requires": ["garden", "reading"], "match": "any"}
+]}
 ```
 
-A single tag comes back as itself: `{"scope": "work", "requires": ["work"]}`.
+`match` is `any` or `all`, and both it and `requires` are empty where the token is not confined.
+A project since deleted is listed with `"deleted": true`.
 
-Unscoped, both are empty. Put every tag in `requires` into the `tags` of what you create.
-
-**Nothing is added for you.** A create that leaves out a required tag, an edit whose `tags`
-drops one, or a `bulk/tags` that removes one is refused with `400 scope_tags_missing`, naming
-what is missing. Send it again with the tags.
+**Nothing is added for you.** A create or an edit that leaves a task without what its scope
+requires — or a `bulk/tags` that would — is refused with `400 scope_tags_missing`, naming the
+tags. Send it again with them.
 
 An edit that does not send `tags` at all does not touch them, and needs nothing:
 `PATCH {"description": "…"}` works the same with any scope.
 
-It cannot see, edit or delete anything outside the scope, and it cannot rename or remove a tag
+It cannot see, edit or delete anything outside its reach, and it cannot rename or remove a tag
 its scope names.
 
 ## Endpoints
 
 ```
-GET    /api/tasks              ?tags= &q= &status= &limit= &cursor=
-POST   /api/tasks              {title, description?, tags?, priority?, pinned?, color?}
+GET    /api/tasks              ?project= &tags= &q= &status= &limit= &cursor=
+POST   /api/tasks              ?project=  {title, description?, tags?, priority?, pinned?, color?}
 GET    /api/tasks/{id}
-PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?}
+PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?, project?}
 POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 DELETE /api/tasks/{id}
@@ -157,18 +191,19 @@ POST   /api/tasks/bulk/tags      {ids, add?, remove?}
 POST   /api/tasks/bulk/priority  {ids, priority}
 POST   /api/tasks/bulk/pinned    {ids, pinned}
 POST   /api/tasks/bulk/delete    {ids}
+POST   /api/tasks/bulk/project   {ids, project}
 
-GET    /api/scope              what this token reaches and must write
+GET    /api/scope              what this token reaches and must write, per project
 
-GET    /api/tags
-PATCH  /api/tags/{slug}        {slug}
-DELETE /api/tags/{slug}
+GET    /api/tags               ?project=
+PATCH  /api/tags/{slug}        ?project=  {slug}
+DELETE /api/tags/{slug}        ?project=
 
 POST   /api/assets             the bytes
 GET    /api/assets/{id}
 ```
 
-**Routes not listed here belong to the browser** — groups, the tag arrangement, sessions,
+**Routes not listed here belong to the browser** — projects, groups, the tag arrangement, sessions,
 tokens, the event stream, and getting back into an account without a password. They exist, and
 they answer a token with `401`: a credential does not manage credentials, and a saved filter is
 not part of working the list.
@@ -351,7 +386,9 @@ the value that was wrong.
 | `unauthenticated` | 401 | The token is missing, wrong, expired or revoked |
 | `token_forbidden` | 403 | That route is not open to tokens |
 | `out_of_scope` | 403 | The task is outside this token's scope |
-| `scope_tags_missing` | 400 | A write leaves out a tag this token's scope requires. The message names it; `GET /api/scope` lists them all |
+| `scope_tags_missing` | 400 | A write leaves a task without what this token's scope requires. The message names the tags; `GET /api/scope` lists them |
+| `project_required` | 400 | This token reaches several projects and the request named none. The message lists their slugs |
+| `project_deleted` | 410 | The project this names was deleted |
 | `not_found` | 404 | No such task |
 | `prefix_ambiguous` | 409 | Give another character or two |
 | `asset_too_large` | 413 | One image is over the limit; the message names it |

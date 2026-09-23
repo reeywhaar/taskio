@@ -66,7 +66,7 @@ func TestOnlyMeaningfulWritesCountAsChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task, err := st.CreateTask(ctx, p.ID, nil, store.TaskNew{Title: "Fix the tap", Description: "It drips."})
+	task, err := st.CreateTask(ctx, p.ID, mainOf(t, st, p.ID), nil, store.TaskNew{Title: "Fix the tap", Description: "It drips."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestTheArchiveIsAConsistentDatabase(t *testing.T) {
 	}
 	ctx := context.Background()
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", store.RoleUser)
-	st.CreateTask(ctx, p.ID, nil, store.TaskNew{Title: "Fix the tap", Description: ""})
+	st.CreateTask(ctx, p.ID, mainOf(t, st, p.ID), nil, store.TaskNew{Title: "Fix the tap", Description: ""})
 
 	restored := t.TempDir()
 	if err := st.SnapshotTo(ctx, restored+"/"+store.FileName); err != nil {
@@ -124,7 +124,7 @@ func TestTheArchiveIsAConsistentDatabase(t *testing.T) {
 	}
 	defer reopened.Close()
 
-	page, err := reopened.ListTasks(ctx, p.ID, nil, store.TaskQuery{}, "")
+	page, err := reopened.ListTasks(ctx, p.ID, mainOf(t, reopened, p.ID), nil, store.TaskQuery{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,4 +203,14 @@ func membersOf(t *testing.T, raw []byte) []string {
 		names = append(names, h.Name)
 	}
 	return names
+}
+
+// mainOf is the account's default project.
+func mainOf(t *testing.T, st *store.Store, principalID string) string {
+	t.Helper()
+	p, err := st.DefaultProject(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p.ID
 }

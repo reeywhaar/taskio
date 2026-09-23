@@ -38,6 +38,8 @@ type Task struct {
 	Seq         int64
 	ID          string
 	PrincipalID string
+	// ProjectID is the one project it is in. Its tags are that project's tags.
+	ProjectID   string
 	Title       string
 	Description string
 	Tags        []string
@@ -93,7 +95,7 @@ type TaskNew struct {
 	Color       string
 }
 
-func (s *Store) CreateTask(ctx context.Context, principalID string, scope []string, in TaskNew) (*Task, error) {
+func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, reach Reach, in TaskNew) (*Task, error) {
 	title, description, tags := in.Title, in.Description, in.Tags
 	title, err := validTitle(title)
 	if err != nil {
@@ -110,18 +112,22 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	if err != nil {
 		return nil, err
 	}
+	if err := reach.check(projectID, tags); err != nil {
+		return nil, err
+	}
 
 	// Inline images become assets and the text is rewritten before it is stored, so a stored
 	// description never contains a data: URI and the cap below measures prose.
 	if description, err = s.inlineAssets(ctx, principalID, description); err != nil {
 		return nil, err
 	}
-	title = s.normalizeMentions(ctx, principalID, scope, title)
-	description = s.normalizeMentions(ctx, principalID, scope, description)
+	title = s.normalizeMentions(ctx, principalID, reach, title)
+	description = s.normalizeMentions(ctx, principalID, reach, description)
 
 	now := s.Now()
 	task := &Task{
 		PrincipalID: principalID,
+		ProjectID:   projectID,
 		Title:       title,
 		Description: description,
 		Tags:        tags,
@@ -143,9 +149,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, title, description, priority, pinned, color, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -157,13 +163,13 @@ func (s *Store) CreateTask(ctx context.Context, principalID string, scope []stri
 
 	// Before the tags are written, so a slug nobody has used before joins the arrangement at
 	// the end rather than wherever its first letter would put it.
-	if err := noteTags(ctx, tx, principalID, tags); err != nil {
+	if err := noteTags(ctx, tx, projectID, tags); err != nil {
 		return nil, err
 	}
 	if err := writeTags(ctx, tx, task.Seq, tags); err != nil {
 		return nil, err
 	}
-	if err := syncContent(ctx, tx, task.Seq, principalID, scope, title, description); err != nil {
+	if err := syncContent(ctx, tx, task.Seq, principalID, reach, title, description); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -182,6 +188,8 @@ type TaskPatch struct {
 	Priority    *int
 	Pinned      *bool
 	Color       *string
+	// Project moves it, with its tags: the id of the project it goes to.
+	Project *string
 }
 
 // UpdateTask applies a patch and reports the task as it now stands.
@@ -190,7 +198,7 @@ type TaskPatch struct {
 // updated_at and does not mark the database changed — SQLite reports a row affected for an
 // UPDATE writing identical values, so asking in the WHERE is what makes the answer mean
 // anything.
-func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []string, id string, patch TaskPatch) (*Task, error) {
+func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach, id string, patch TaskPatch) (*Task, error) {
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -217,10 +225,27 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 		}
 	}
 	if patch.Title != nil {
-		title = s.normalizeMentions(ctx, principalID, scope, title)
+		title = s.normalizeMentions(ctx, principalID, reach, title)
 	}
 	if patch.Description != nil {
-		description = s.normalizeMentions(ctx, principalID, scope, description)
+		description = s.normalizeMentions(ctx, principalID, reach, description)
+	}
+
+	// Where it ends up, and what it carries there. Checked only when the edit sets the tags or
+	// moves the task: one that does neither leaves both alone, so it cannot have broken either.
+	project, tags := task.ProjectID, task.Tags
+	if patch.Project != nil {
+		project = *patch.Project
+	}
+	if patch.Tags != nil {
+		if tags, err = validTags(*patch.Tags); err != nil {
+			return nil, err
+		}
+	}
+	if patch.Tags != nil || project != task.ProjectID {
+		if err := reach.check(project, tags); err != nil {
+			return nil, err
+		}
 	}
 
 	priority := task.Priority
@@ -254,17 +279,27 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, scope []stri
 		moved = true
 		task.Title, task.Description, task.Priority, task.Pinned, task.Color, task.UpdatedAt = title, description, priority, pinned, color, now
 		// Both joins are rebuilt from the saved text, so neither can drift from the words.
-		if err := syncContent(ctx, tx, task.Seq, principalID, scope, title, description); err != nil {
+		if err := syncContent(ctx, tx, task.Seq, principalID, reach, title, description); err != nil {
 			return nil, err
 		}
 	}
 
-	if patch.Tags != nil {
-		tags, err := validTags(*patch.Tags)
-		if err != nil {
+	// A move takes its tags with it: they are the new project's tags from here, so the ones it
+	// has not seen join its arrangement at the end, as any new tag does.
+	if project != task.ProjectID {
+		if err := noteTags(ctx, tx, project, tags); err != nil {
 			return nil, err
 		}
-		if err := noteTags(ctx, tx, principalID, tags); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE tasks SET project_id = ?, updated_at = ? WHERE seq = ?`,
+			project, unix(now), task.Seq); err != nil {
+			return nil, fmt.Errorf("move task: %w", err)
+		}
+		moved = true
+		task.ProjectID, task.UpdatedAt = project, now
+	}
+
+	if patch.Tags != nil {
+		if err := noteTags(ctx, tx, project, tags); err != nil {
 			return nil, err
 		}
 		changed, err := replaceTags(ctx, tx, task.Seq, task.Tags, tags)
@@ -445,7 +480,7 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
-		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
+		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
 			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not

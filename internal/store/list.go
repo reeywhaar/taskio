@@ -94,8 +94,8 @@ func orderOf(status string) (columns []string, name string) {
 // Without a search term this is one page of rows and one count. With one, every matching title
 // is scored in Go and the page is the best of them — which turns pagination off, because a
 // score is neither in the table nor stable when a task is edited.
-func (s *Store) ListTasks(ctx context.Context, principalID string, scope *filter.Node, q TaskQuery, term string) (*TaskPage, error) {
-	where, args := scopeClause(principalID, scope)
+func (s *Store) ListTasks(ctx context.Context, principalID, projectID string, scope *filter.Node, q TaskQuery, term string) (*TaskPage, error) {
+	where, args := scopeClause(principalID, projectID, scope)
 	if q.Filter != nil {
 		sql, fargs := filter.Compile(q.Filter, "tasks.seq")
 		where += " AND " + sql
@@ -278,7 +278,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 
 // scanTasks reads rows and attaches each task's tags.
 // taskColumns is the row every read of a task selects, in the order scanTasks reads it.
-const taskColumns = "seq, id, principal_id, title, description, priority, pinned, color, created_at, updated_at, done_at, deleted_at"
+const taskColumns = "seq, id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, done_at, deleted_at"
 
 // cursorKeys reads the sort values off the last row of a page, in the order they sort.
 func cursorKeys(columns []string, t *Task) []int64 {
@@ -318,7 +318,7 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 			created, updated int64
 			done, deleted    sql.NullInt64
 		)
-		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
+		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
 			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
@@ -364,7 +364,7 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE seq = ?`, seq).
-		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.Title, &t.Description,
+		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
 			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &done, &deleted)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)

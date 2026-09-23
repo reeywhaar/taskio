@@ -184,11 +184,12 @@ func TestAScopedTokenSeesOnlyItsOwnTags(t *testing.T) {
 	}
 }
 
-// A scope is a flat and() of tags, because only that answers "create it with these tags".
-func TestAScopeMustBeAFlatAnd(t *testing.T) {
+// A scope is a flat and() or or() of tags, so what a write has to carry can be said in one
+// sentence: every tag, or one of them.
+func TestAScopeMustBeFlat(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
-	for _, scope := range []string{"not(private)", "or(work,home)", "and(work,not(private))"} {
+	for _, scope := range []string{"not(private)", "or(work,and(home,x))", "and(work,not(private))"} {
 		resp := c.do("POST", "/api/tokens", `{"label":"x","scope":"`+scope+`"}`)
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("scope %q = %s, want 400", scope, resp.Status)
@@ -286,7 +287,7 @@ func TestAnExpiredTokenStopsWorking(t *testing.T) {
 
 	p, _ := st.Authenticate(ctx, "misha", "a good password")
 	past := time.Now().Add(-time.Hour)
-	_, secret, err := st.CreateToken(ctx, p.ID, "expired", "", &past, 0)
+	_, secret, err := st.CreateToken(ctx, p.ID, "expired", homeRow(t, st, p.ID, ""), &past, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,20 +380,20 @@ func TestAnEditedScopeIsStoredCanonically(t *testing.T) {
 	}
 }
 
-func TestAScopeThatIsNotAFlatAndIsRefused(t *testing.T) {
+func TestANestedScopeIsRefused(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 	mintToken(t, s, c, "claude", "")
 	c.task(`{"title":"Fix the tap","tags":["home","work"]}`)
 
 	id := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)[0].(map[string]any)["id"].(string)
-	resp := c.do("PATCH", "/api/tokens/"+id, `{"scope":"or(home,work)"}`)
+	resp := c.do("PATCH", "/api/tokens/"+id, `{"scope":"or(home,not(work))"}`)
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("or() scope = %s, want a refusal", resp.Status)
+		t.Fatalf("a nested scope = %s, want a refusal", resp.Status)
 	}
 	var body errorBody
 	json.NewDecoder(resp.Body).Decode(&body)
-	if body.Message == "" || !strings.Contains(body.Message, "flat and()") {
+	if body.Message == "" || !strings.Contains(body.Message, "flat and() or or()") {
 		t.Errorf("refusal does not say what a scope may be: %q", body.Message)
 	}
 }
@@ -498,7 +499,7 @@ func TestATokenLeftAloneStopsWorking(t *testing.T) {
 
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	_, secret, err := st.CreateToken(ctx, p.ID, "idle", "", nil, 7*24*time.Hour)
+	_, secret, err := st.CreateToken(ctx, p.ID, "idle", homeRow(t, st, p.ID, ""), nil, 7*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -527,7 +528,7 @@ func TestATokenRecordsWhereItWasUsedFrom(t *testing.T) {
 	ctx := context.Background()
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	_, secret, err := st.CreateToken(ctx, p.ID, "agent", "", nil, 0)
+	_, secret, err := st.CreateToken(ctx, p.ID, "agent", homeRow(t, st, p.ID, ""), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +555,7 @@ func TestAForwardedAddressIsTheCaller(t *testing.T) {
 	ctx := context.Background()
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	_, secret, err := st.CreateToken(ctx, p.ID, "agent", "", nil, 0)
+	_, secret, err := st.CreateToken(ctx, p.ID, "agent", homeRow(t, st, p.ID, ""), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +585,7 @@ func TestATokenCanBeRenamedAndGivenAnExpiry(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "and(work)", nil, 7*24*time.Hour)
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", homeRow(t, st, p.ID, "and(work)"), nil, 7*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +630,7 @@ func TestAnEditNeverStopsALiveToken(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "", nil, 0)
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", homeRow(t, st, p.ID, ""), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,7 +661,7 @@ func TestALapsedTokenCanBeGivenLonger(t *testing.T) {
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
 	soon := now.Add(time.Hour)
-	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", "", &soon, 0)
+	tok, secret, err := st.CreateToken(ctx, p.ID, "claude", homeRow(t, st, p.ID, ""), &soon, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -687,7 +688,7 @@ func TestSavingATokenUnchangedIsNoChange(t *testing.T) {
 	ctx := context.Background()
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	tok, _, err := st.CreateToken(ctx, p.ID, "claude", "and(work)", nil, 0)
+	tok, _, err := st.CreateToken(ctx, p.ID, "claude", homeRow(t, st, p.ID, "and(work)"), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,24 +702,46 @@ func TestSavingATokenUnchangedIsNoChange(t *testing.T) {
 	}
 }
 
-// Asked rather than learned from a refusal: what a credential reaches and what it must write.
+// Asked rather than learned from a refusal: what a credential reaches and what it must write,
+// project by project.
 func TestATokenCanAskWhatItsScopeRequires(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
 
 	scoped := mintToken(t, s, c, "claude", "and(work,inbox)")
 	got := scoped.json(scoped.do("GET", "/api/scope", ""))
-	if got["scope"] != "and(work,inbox)" {
-		t.Errorf("scope = %v", got["scope"])
+	projects := got["projects"].([]any)
+	if len(projects) != 1 {
+		t.Fatalf("projects = %v, want the default one", projects)
 	}
-	if req := got["requires"].([]any); len(req) != 2 || req[0] != "work" || req[1] != "inbox" {
+	main := projects[0].(map[string]any)
+	if main["slug"] != "main" || main["default"] != true || main["scope"] != "and(work,inbox)" || main["match"] != "all" {
+		t.Errorf("default project = %v", main)
+	}
+	if req := main["requires"].([]any); len(req) != 2 || req[0] != "work" || req[1] != "inbox" {
 		t.Errorf("requires = %v, want work and inbox", req)
+	}
+
+	// Several tags picked for a token mean any one of them.
+	either := mintToken(t, s, c, "either", "or(work,inbox)")
+	if m := either.json(either.do("GET", "/api/scope", ""))["projects"].([]any)[0].(map[string]any); m["match"] != "any" {
+		t.Errorf("an or() scope matches %v, want any", m["match"])
 	}
 
 	// Unscoped, it says so rather than answering with nothing at all.
 	open := mintToken(t, s, c, "open", "")
-	got = open.json(open.do("GET", "/api/scope", ""))
-	if got["scope"] != "" || len(got["requires"].([]any)) != 0 {
-		t.Errorf("an unscoped token's scope = %v", got)
+	m := open.json(open.do("GET", "/api/scope", ""))["projects"].([]any)[0].(map[string]any)
+	if m["scope"] != "" || m["match"] != "" || len(m["requires"].([]any)) != 0 {
+		t.Errorf("an unscoped token's project = %v", m)
 	}
+}
+
+// homeRow is a token's reach as it was before projects: the default project, confined by scope.
+func homeRow(t *testing.T, st *store.Store, principalID, scope string) []store.TokenProject {
+	t.Helper()
+	p, err := st.DefaultProject(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return []store.TokenProject{{ProjectID: p.ID, Scope: scope}}
 }

@@ -171,6 +171,35 @@ func compile(b *strings.Builder, args *[]any, n *Node, taskSeq string) {
 	}
 }
 
+// Match reports whether a task carrying these tags is one the filter selects — the answer
+// Compile gives in SQL, for a task already in hand. A nil filter selects everything.
+func Match(n *Node, tags []string) bool {
+	if n == nil {
+		return true
+	}
+	switch n.Op {
+	case Leaf:
+		return contains(tags, n.Slug)
+	case Not:
+		return !Match(n.Args[0], tags)
+	case And:
+		for _, a := range n.Args {
+			if !Match(a, tags) {
+				return false
+			}
+		}
+		return true
+	case Or:
+		for _, a := range n.Args {
+			if Match(a, tags) {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
 // AndAll combines filters into one, dropping the nils.
 //
 // A token's scope and a request's filter go through here, so the union is checked against the

@@ -22,8 +22,10 @@ const GroupNameMax = 40
 type Group struct {
 	ID          string
 	PrincipalID string
-	Name        string
-	Tags        []string
+	// ProjectID is the project it filters: a group is a saved view of one project's tags.
+	ProjectID string
+	Name      string
+	Tags      []string
 	// Color is #rrggbb, or empty for the brand color. What the tab wears while the group is
 	// the one being looked at, so two windows are two colors rather than two of the same icon.
 	Color     string
@@ -46,10 +48,10 @@ func validColor(color string) (string, error) {
 
 // Groups lists an account's in the order they are drawn in: where they were dragged to, then
 // oldest first, so a group nobody has moved does not move when another one is added.
-func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error) {
+func (s *Store) Groups(ctx context.Context, principalID, projectID string) ([]*Group, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, name, color, created_at FROM groups
-		  WHERE principal_id = ? ORDER BY position, created_at, id`, principalID)
+		  WHERE principal_id = ? AND project_id = ? ORDER BY position, created_at, id`, principalID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list groups: %w", err)
 	}
@@ -58,7 +60,7 @@ func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error
 	out := []*Group{}
 	byID := map[string]*Group{}
 	for rows.Next() {
-		g := &Group{PrincipalID: principalID, Tags: []string{}}
+		g := &Group{PrincipalID: principalID, ProjectID: projectID, Tags: []string{}}
 		var created int64
 		if err := rows.Scan(&g.ID, &g.Name, &g.Color, &created); err != nil {
 			return nil, err
@@ -78,8 +80,8 @@ func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error
 	tags, err := s.reader.QueryContext(ctx,
 		`SELECT group_tags.group_id, group_tags.slug
 		   FROM group_tags JOIN groups ON groups.id = group_tags.group_id
-		  WHERE groups.principal_id = ?
-		  ORDER BY group_tags.slug`, principalID)
+		  WHERE groups.principal_id = ? AND groups.project_id = ?
+		  ORDER BY group_tags.slug`, principalID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list group tags: %w", err)
 	}
@@ -97,7 +99,7 @@ func (s *Store) Groups(ctx context.Context, principalID string) ([]*Group, error
 }
 
 // CreateGroup writes one, with its tags, in one transaction.
-func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags []string, color string) (*Group, error) {
+func (s *Store) CreateGroup(ctx context.Context, principalID, projectID, name string, tags []string, color string) (*Group, error) {
 	name, slugs, color, err := validGroup(name, tags, color)
 	if err != nil {
 		return nil, err
@@ -106,6 +108,7 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 	g := &Group{
 		ID:          ids.New(ids.Group, s.Now().UnixMilli()),
 		PrincipalID: principalID,
+		ProjectID:   projectID,
 		Name:        name,
 		Tags:        slugs,
 		Color:       color,
@@ -121,10 +124,10 @@ func (s *Store) CreateGroup(ctx context.Context, principalID, name string, tags 
 	// arranged group sits: a new group belongs at the end of somebody's arrangement, not tied
 	// with the top of it and broken apart by whatever the tiebreak happens to say.
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO groups (id, principal_id, name, color, created_at, position)
-		 VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1
-		                           FROM groups WHERE principal_id = ?))`,
-		g.ID, principalID, g.Name, g.Color, unix(g.CreatedAt), principalID); err != nil {
+		`INSERT INTO groups (id, principal_id, project_id, name, color, created_at, position)
+		 VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1
+		                              FROM groups WHERE principal_id = ? AND project_id = ?))`,
+		g.ID, principalID, projectID, g.Name, g.Color, unix(g.CreatedAt), principalID, projectID); err != nil {
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 	if err := writeGroupTags(ctx, tx, g.ID, g.Tags); err != nil {
@@ -190,8 +193,8 @@ func (s *Store) UpdateGroup(ctx context.Context, principalID, id, name string, t
 // Ids this does not name keep their place after the ones it does, oldest first. A group written
 // in another tab while this one was being dragged then lands at the end rather than at the top,
 // which is where a position of zero would have put it.
-func (s *Store) SetGroupOrder(ctx context.Context, principalID string, ids []string) error {
-	current, err := s.Groups(ctx, principalID)
+func (s *Store) SetGroupOrder(ctx context.Context, principalID, projectID string, ids []string) error {
+	current, err := s.Groups(ctx, principalID, projectID)
 	if err != nil {
 		return err
 	}

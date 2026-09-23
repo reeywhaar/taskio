@@ -33,6 +33,8 @@ const (
 	Group = "gr_"
 	// Recovery is a link back into an account, not the address one can be sent to.
 	Recovery = "r_"
+	// Project takes two letters because a principal already has the one it would want.
+	Project = "pj_"
 )
 
 // How long each kind is.

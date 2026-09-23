@@ -35,9 +35,19 @@ func tokenCreateCmd() *cobra.Command {
 			user, _ := cmd.Flags().GetString("user")
 			label, _ := cmd.Flags().GetString("label")
 			scope, _ := cmd.Flags().GetString("scope")
+			slug, _ := cmd.Flags().GetString("project")
 			expires, _ := cmd.Flags().GetString("expires")
 
 			p, err := principalNamed(cmd.Context(), st, user)
+			if err != nil {
+				return err
+			}
+			// One project, the default unless named: a token reaching several is minted from the
+			// settings page, where they can be seen side by side.
+			project, err := st.DefaultProject(cmd.Context(), p.ID)
+			if slug != "" {
+				project, err = st.ProjectBySlug(cmd.Context(), p.ID, slug)
+			}
 			if err != nil {
 				return err
 			}
@@ -60,16 +70,17 @@ func tokenCreateCmd() *cobra.Command {
 				idleFor = d
 			}
 
-			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label, scope, at, idleFor)
+			tok, secret, err := st.CreateToken(cmd.Context(), p.ID, label,
+				[]store.TokenProject{{ProjectID: project.ID, Scope: scope}}, at, idleFor)
 			if err != nil {
 				return err
 			}
 			// Printed once and never again, which is said on the line above it.
 			cmd.PrintErrln("This is the only time this token is shown.")
 			cmd.Println(secret)
-			cmd.PrintErrf("id %s", tok.ID)
-			if tok.Scope != "" {
-				cmd.PrintErrf("  scope %s", tok.Scope)
+			cmd.PrintErrf("id %s  project %s", tok.ID, project.Slug)
+			if scope := tok.Projects[0].Scope; scope != "" {
+				cmd.PrintErrf("  scope %s", scope)
 			}
 			if at != nil {
 				cmd.PrintErrf("  expires %s", at.Format(time.RFC3339))
@@ -80,7 +91,8 @@ func tokenCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().String("user", "", "the account it belongs to")
 	cmd.Flags().String("label", "", "what it is for")
-	cmd.Flags().String("scope", "", "confine it, e.g. and(work)")
+	cmd.Flags().String("scope", "", "confine it inside its project, e.g. or(work,inbox)")
+	cmd.Flags().String("project", "", "the project it reaches, by slug; the default if left out")
 	cmd.Flags().String("expires", "", "how long it lasts, e.g. 720h")
 	cmd.Flags().String("idle", "", "retire it after this long unused, e.g. 168h")
 	cmd.MarkFlagRequired("user")
@@ -117,7 +129,18 @@ func tokenListCmd() *cobra.Command {
 				case !tok.Live(now):
 					state = "expired"
 				}
-				cmd.Printf("%s  %-20s %-8s %s\n", tok.ID, tok.Label, state, tok.Scope)
+				reach := []string{}
+				for _, row := range tok.Projects {
+					name := row.ProjectID
+					if pr, err := st.ProjectByID(cmd.Context(), p.ID, row.ProjectID); err == nil {
+						name = pr.Slug
+					}
+					if row.Scope != "" {
+						name += ":" + row.Scope
+					}
+					reach = append(reach, name)
+				}
+				cmd.Printf("%s  %-20s %-8s %s\n", tok.ID, tok.Label, state, strings.Join(reach, " "))
 			}
 			return nil
 		},

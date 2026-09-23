@@ -16,7 +16,6 @@ import (
 
 	"taskio/internal/app"
 	"taskio/internal/config"
-	"taskio/internal/filter"
 	"taskio/internal/session"
 	"taskio/internal/store"
 )
@@ -130,6 +129,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/bulk/priority", s.requireAuth(s.bulkPriority))
 	s.handleAgent("POST /api/tasks/bulk/pinned", s.requireAuth(s.bulkPinned))
 	s.handleAgent("POST /api/tasks/bulk/delete", s.requireAuth(s.bulkDelete))
+	s.handleAgent("POST /api/tasks/bulk/project", s.requireAuth(s.bulkProject))
 
 	s.handleAgent("POST /api/assets", s.requireAuth(s.putAsset))
 	s.handleAgent("GET /api/assets/{id}", s.requireAuth(s.getAsset))
@@ -146,6 +146,12 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	// called order because "order" is a slug like any other — so the method is what keeps them
 	// apart, and PUT is not something the slug routes answer.
 	s.handle("PUT /api/tags/order", s.requireSession(s.setTagOrder))
+
+	s.handle("GET /api/projects", s.requireSession(s.listProjects))
+	s.handle("POST /api/projects", s.requireSession(s.createProject))
+	s.handle("PUT /api/projects/order", s.requireSession(s.putProjectOrder))
+	s.handle("PATCH /api/projects/{id}", s.requireSession(s.patchProject))
+	s.handle("DELETE /api/projects/{id}", s.requireSession(s.deleteProject))
 
 	s.handle("GET /api/groups", s.requireSession(s.listGroups))
 	s.handle("POST /api/groups", s.requireSession(s.createGroup))
@@ -302,7 +308,11 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 		// Authenticated, and the thing is theirs; what is refused is this credential's reach.
 		// A 404 would have an agent conclude the task is gone and act on it.
 		refuse(w, http.StatusForbidden, CodeOutOfScope,
-			"This token is scoped to "+scopeSentence(r)+", and that task is outside it.")
+			"That task is outside what this token reaches. GET /api/scope says what it does.")
+	case errors.Is(err, store.ErrTagsRequired):
+		refuse(w, http.StatusBadRequest, CodeScopeTagsMissing, sentence(err, "That leaves out tags this token requires."))
+	case errors.Is(err, store.ErrGone):
+		refuse(w, http.StatusGone, CodeProjectDeleted, sentence(err, "That project was deleted."))
 	case errors.Is(err, store.ErrNotFound):
 		refuse(w, http.StatusNotFound, CodeNotFound, sentence(err, "There is no such thing."))
 	case errors.Is(err, store.ErrAmbiguous):
@@ -335,14 +345,6 @@ func codeForTooLarge(err error) string {
 	default:
 		return CodeAssetTooLarge
 	}
-}
-
-// scopeSentence names the scope in a refusal, so a caller knows why rather than only that.
-func scopeSentence(r *http.Request) string {
-	if scope := scopeOf(r); scope != nil {
-		return filter.Print(scope)
-	}
-	return "a narrower view"
 }
 
 // sentence is the error's own text when it carries one written for a reader.

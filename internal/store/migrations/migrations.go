@@ -30,6 +30,7 @@ var all = []Migration{
 	recoveryLinks,
 	taskDeleted,
 	tokenSeen,
+	projects,
 }
 
 // exec runs a statement block as one migration.

@@ -3,11 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
-	"strings"
-
-	"taskio/internal/filter"
 )
 
 // BulkTags is what a bulk tag change asks for. Remove is applied after Add, so a slug in both
@@ -18,14 +16,15 @@ type BulkTags struct {
 }
 
 // BulkDone marks a set done or undone, in one transaction.
-func (s *Store) BulkDone(ctx context.Context, principalID string, scope *filter.Node, refs []string, done bool) error {
-	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+func (s *Store) BulkDone(ctx context.Context, principalID string, reach Reach, refs []string, done bool) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
 		now := s.Now()
 		var at any
 		if done {
 			at = unix(now)
 		}
-		for _, seq := range seqs {
+		for _, task := range tasks {
+			seq := task.Seq
 			if _, err := tx.ExecContext(ctx,
 				`UPDATE tasks SET done_at = ?, updated_at = ?
 				  WHERE seq = ? AND ((done_at IS NULL) = ?)`,
@@ -41,10 +40,11 @@ func (s *Store) BulkDone(ctx context.Context, principalID string, scope *filter.
 //
 // The statement carries its own comparison, so a set already at that number is not a write: no
 // updated_at moves, nothing is marked changed, and nobody's tab is woken for it.
-func (s *Store) BulkPriority(ctx context.Context, principalID string, scope *filter.Node, refs []string, priority int) error {
-	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+func (s *Store) BulkPriority(ctx context.Context, principalID string, reach Reach, refs []string, priority int) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
 		now := s.Now()
-		for _, seq := range seqs {
+		for _, task := range tasks {
+			seq := task.Seq
 			if _, err := tx.ExecContext(ctx,
 				`UPDATE tasks SET priority = ?, updated_at = ?
 				  WHERE seq = ? AND priority <> ?`,
@@ -57,10 +57,11 @@ func (s *Store) BulkPriority(ctx context.Context, principalID string, scope *fil
 }
 
 // BulkPinned pins or unpins a set.
-func (s *Store) BulkPinned(ctx context.Context, principalID string, scope *filter.Node, refs []string, pinned bool) error {
-	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+func (s *Store) BulkPinned(ctx context.Context, principalID string, reach Reach, refs []string, pinned bool) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
 		now := s.Now()
-		for _, seq := range seqs {
+		for _, task := range tasks {
+			seq := task.Seq
 			if _, err := tx.ExecContext(ctx,
 				`UPDATE tasks SET pinned = ?, updated_at = ?
 				  WHERE seq = ? AND pinned <> ?`,
@@ -73,7 +74,7 @@ func (s *Store) BulkPinned(ctx context.Context, principalID string, scope *filte
 }
 
 // BulkTagChange adds and removes tags across a set.
-func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *filter.Node, refs []string, change BulkTags) error {
+func (s *Store) BulkTagChange(ctx context.Context, principalID string, reach Reach, refs []string, change BulkTags) error {
 	add, err := validTags(change.Add)
 	if err != nil {
 		return err
@@ -82,32 +83,78 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 	if err != nil {
 		return err
 	}
-	// A scoped token's own tags cannot be removed, here as everywhere: a write may not take a
-	// task out of the writer's reach. Refused rather than skipped — the API says so first, and
-	// this is what stops a caller that forgot to.
-	for _, slug := range filter.Slugs(scope) {
-		if slices.Contains(remove, slug) {
-			return Invalid("A token cannot remove %s: its scope requires it.", slug)
-		}
-	}
 
-	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
-		// Once for the whole set rather than once per task: the arrangement is the account's.
-		if err := noteTags(ctx, tx, principalID, add); err != nil {
-			return err
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
+		// Asked of each task's result rather than of the slugs being removed: taking one of two
+		// tags off is fine under a scope that needs either, and not under one that needs both.
+		// Refused, never skipped — the whole call is one change, and it was not made.
+		for _, task := range tasks {
+			if err := reach.check(task.ProjectID, applyTags(task.Tags, add, remove)); err != nil {
+				return err
+			}
 		}
-		for _, seq := range seqs {
+		// Once per project rather than once per task: the arrangement is the project's.
+		noted := map[string]bool{}
+		for _, task := range tasks {
+			if noted[task.ProjectID] {
+				continue
+			}
+			noted[task.ProjectID] = true
+			if err := noteTags(ctx, tx, task.ProjectID, add); err != nil {
+				return err
+			}
+		}
+		for _, task := range tasks {
 			for _, slug := range add {
 				if _, err := tx.ExecContext(ctx,
-					`INSERT OR IGNORE INTO task_tags (task_seq, slug) VALUES (?, ?)`, seq, slug); err != nil {
+					`INSERT OR IGNORE INTO task_tags (task_seq, slug) VALUES (?, ?)`, task.Seq, slug); err != nil {
 					return err
 				}
 			}
 			for _, slug := range remove {
 				if _, err := tx.ExecContext(ctx,
-					`DELETE FROM task_tags WHERE task_seq = ? AND slug = ?`, seq, slug); err != nil {
+					`DELETE FROM task_tags WHERE task_seq = ? AND slug = ?`, task.Seq, slug); err != nil {
 					return err
 				}
+			}
+		}
+		return nil
+	})
+}
+
+// applyTags is what a task carries after a bulk change: add first, then remove, so a slug in
+// both is removed.
+func applyTags(tags, add, remove []string) []string {
+	out := []string{}
+	for _, slug := range append(append([]string(nil), tags...), add...) {
+		if !slices.Contains(remove, slug) && !slices.Contains(out, slug) {
+			out = append(out, slug)
+		}
+	}
+	return out
+}
+
+// BulkMove puts every task in the set into one project, each with its tags. The project's rule
+// applies to what each one carries, so a token moving tasks into a project it is confined in
+// has to move tasks that already belong there by their tags.
+func (s *Store) BulkMove(ctx context.Context, principalID string, reach Reach, refs []string, projectID string) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
+		for _, task := range tasks {
+			if err := reach.check(projectID, task.Tags); err != nil {
+				return err
+			}
+		}
+		now := unix(s.Now())
+		for _, task := range tasks {
+			if task.ProjectID == projectID {
+				continue
+			}
+			if err := noteTags(ctx, tx, projectID, task.Tags); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE tasks SET project_id = ?, updated_at = ? WHERE seq = ?`, projectID, now, task.Seq); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -118,10 +165,11 @@ func (s *Store) BulkTagChange(ctx context.Context, principalID string, scope *fi
 //
 // The statement carries its own comparison, so a task already in the bin is not re-stamped —
 // which would reset the ninety-day sweep on something that has been sitting there for weeks.
-func (s *Store) BulkDelete(ctx context.Context, principalID string, scope *filter.Node, refs []string) error {
-	return s.bulk(ctx, principalID, scope, refs, func(tx *sql.Tx, seqs []int64) error {
+func (s *Store) BulkDelete(ctx context.Context, principalID string, reach Reach, refs []string) error {
+	return s.bulk(ctx, principalID, reach, refs, func(tx *sql.Tx, tasks []*Task) error {
 		now := unix(s.Now())
-		for _, seq := range seqs {
+		for _, task := range tasks {
+			seq := task.Seq
 			if _, err := tx.ExecContext(ctx,
 				`UPDATE tasks
 				    SET deleted_at = ?, done_at = COALESCE(done_at, ?), updated_at = ?
@@ -138,7 +186,7 @@ func (s *Store) BulkDelete(ctx context.Context, principalID string, scope *filte
 // All or nothing: an unknown or unreachable id refuses the whole call naming the first one,
 // rather than applying eleven of twelve changes and reporting a partial success the interface
 // then has to reconcile.
-func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node, refs []string, apply func(*sql.Tx, []int64) error) error {
+func (s *Store) bulk(ctx context.Context, principalID string, reach Reach, refs []string, apply func(*sql.Tx, []*Task) error) error {
 	if len(refs) == 0 {
 		return Invalid("That asked for nothing: give at least one task.")
 	}
@@ -146,7 +194,7 @@ func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node
 		return Invalid("That is more than %d tasks in one call.", BulkMax)
 	}
 
-	seqs := make([]int64, 0, len(refs))
+	tasks := make([]*Task, 0, len(refs))
 	seen := map[int64]bool{}
 	for _, ref := range refs {
 		id, err := s.ResolveTask(ctx, principalID, ref)
@@ -157,12 +205,12 @@ func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node
 		if err != nil {
 			return err
 		}
-		if !inScope(task, scope) {
+		if !reach.Allows(task) {
 			return NotFound("There is no task %s.", ref)
 		}
 		if !seen[task.Seq] {
 			seen[task.Seq] = true
-			seqs = append(seqs, task.Seq)
+			tasks = append(tasks, task)
 		}
 	}
 
@@ -171,7 +219,11 @@ func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node
 		return err
 	}
 	defer tx.Rollback()
-	if err := apply(tx, seqs); err != nil {
+	if err := apply(tx, tasks); err != nil {
+		// A refusal from inside is already a sentence for the caller.
+		if errors.Is(err, ErrTagsRequired) {
+			return err
+		}
 		return fmt.Errorf("bulk: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -180,22 +232,3 @@ func (s *Store) bulk(ctx context.Context, principalID string, scope *filter.Node
 	s.changed(principalID)
 	return nil
 }
-
-// inScope reports whether a task carries every slug a scope names.
-func inScope(task *Task, scope *filter.Node) bool {
-	if scope == nil {
-		return true
-	}
-	have := map[string]bool{}
-	for _, slug := range task.Tags {
-		have[slug] = true
-	}
-	for _, slug := range filter.Slugs(scope) {
-		if !have[slug] {
-			return false
-		}
-	}
-	return true
-}
-
-var _ = strings.TrimSpace

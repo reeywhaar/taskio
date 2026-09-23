@@ -76,7 +76,14 @@ func (s *Store) CreatePrincipal(ctx context.Context, username, password, role st
 		Role:      role,
 		CreatedAt: now,
 	}
-	_, err = s.writer.ExecContext(ctx,
+	// With its default project, in the same transaction: an account without one has nowhere for
+	// its first task to go.
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx,
 		`INSERT INTO principals (id, username, password_hash, role, created_at)
 		 VALUES (?, ?, ?, ?, ?)`,
 		p.ID, p.Username, string(hash), p.Role, unix(now))
@@ -84,6 +91,12 @@ func (s *Store) CreatePrincipal(ctx context.Context, username, password, role st
 		if isUnique(err) {
 			return nil, Conflict("That username is taken.")
 		}
+		return nil, fmt.Errorf("create principal: %w", err)
+	}
+	if err := createDefaultProject(ctx, tx, p.ID, now); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("create principal: %w", err)
 	}
 	s.changedAll()

@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // The three sentinels every handler maps onto a status code, in one place.
@@ -21,6 +22,14 @@ var (
 	// conflict as a name already taken: the caller's next move is to send more characters
 	// rather than to pick a different value, and the code has to say which.
 	ErrAmbiguous = errors.New("ambiguous")
+
+	// ErrTagsRequired is a scoped credential writing a task without tags its scope requires.
+	// Invalid, but its own: the caller's next move is to send the tags the sentence names.
+	ErrTagsRequired = errors.New("tags required")
+
+	// ErrGone is something that existed and was deleted — a project a token still names.
+	// Not found would tell it the project never was, and it has to be told what happened.
+	ErrGone = errors.New("gone")
 )
 
 // These wrap a sentinel with a written sentence.
@@ -31,6 +40,25 @@ func NotFound(format string, a ...any) error  { return classify(ErrNotFound, for
 func Conflict(format string, a ...any) error  { return classify(ErrConflict, format, a...) }
 func Invalid(format string, a ...any) error   { return classify(ErrInvalid, format, a...) }
 func Ambiguous(format string, a ...any) error { return classify(ErrAmbiguous, format, a...) }
+func Gone(format string, a ...any) error      { return classify(ErrGone, format, a...) }
+
+// TagsRequired names what a scoped write left out, and where to ask for the whole list.
+func TagsRequired(missing []string) error {
+	them := "them"
+	if len(missing) == 1 {
+		them = "it"
+	}
+	return classify(ErrTagsRequired,
+		"This token writes only tasks tagged %s here. Put %s in tags; GET /api/scope lists what it requires.",
+		strings.Join(missing, " and "), them)
+}
+
+// TagsRequiredAny is the same refusal for a scope any one of whose tags will do.
+func TagsRequiredAny(options []string) error {
+	return classify(ErrTagsRequired,
+		"This token writes only tasks tagged %s here. Put one of them in tags; GET /api/scope lists what it requires.",
+		strings.Join(options, " or "))
+}
 
 func classify(kind error, format string, a ...any) error {
 	return &classified{kind: kind, msg: fmt.Sprintf(format, a...)}
