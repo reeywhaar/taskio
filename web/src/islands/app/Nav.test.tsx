@@ -54,6 +54,12 @@ const at = (tags: string[], project = ""): Location => ({
 
 const rail = () => screen.getAllByRole("navigation")[0]!;
 
+/** The phone's bar, found by everything it says at once. */
+const header = (text: string) =>
+  screen.findByText(
+    (_, el) => el?.tagName === "SPAN" && el.textContent === text,
+  );
+
 const lit = () =>
   [...rail().querySelectorAll("button")]
     .filter((b) => b.getAttribute("aria-current") === "page")
@@ -161,6 +167,16 @@ describe("Nav", () => {
       filters: { project: "garden", tags: ["errands"], view: "todo", q: "" },
     });
     expect(await move([])).not.toHaveBeenCalled();
+  });
+
+  /** On a phone the rail is folded away, so the bar above the list says where it is. */
+  it("names the project, and the group when one is lit, in the phone's bar", async () => {
+    const first = mount(<Nav location={at(["errands"])} onGo={vi.fn()} />);
+    expect(await header("Main / Errands")).toBeDefined();
+    first.unmount();
+
+    mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
+    expect(await header("Garden")).toBeDefined();
   });
 
   it("gives projects a pencil, and has no All", async () => {

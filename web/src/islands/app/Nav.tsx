@@ -322,7 +322,14 @@ export function Nav({
           <BurgerIcon />
         </button>
         <Mark color={color} />
-        <span className="font-semibold">taskio</span>
+        {/* Where the list is, since the rail that says so is folded away on a phone: the
+            project, and the group when one is lit. */}
+        <span className="min-w-0 truncate font-semibold">
+          {opened?.name ?? "taskio"}
+          {current ? (
+            <span className="font-normal text-muted"> / {current.name}</span>
+          ) : null}
+        </span>
       </div>
 
       <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex lg:w-60 xl:w-72">
