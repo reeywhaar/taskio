@@ -52,15 +52,31 @@ describe("TaskRow", () => {
     expect(zero.className).toContain("group-hover:opacity-100");
   });
 
+  /** The pin leads, since it is what the list sorts by first, and the number follows it. */
+  it("puts the pin before the number", () => {
+    row({ pinned: true, priority: 2 }, { onTogglePinned: vi.fn() });
+    const pin = screen.getByRole("button", { name: "Unpin" });
+    const number = screen.getByTitle("Priority 2");
+    expect(
+      pin.compareDocumentPosition(number) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   /**
-   * The bug: a pinned row with no priority drew the pin behind an invisible nought, so the pin
-   * hung in the middle of the column with nothing under the id.
+   * An unpinned row with a number keeps its pin half there, so the number starts where it does
+   * on the rows around it. At nought there is nothing beside it, so both wait for a pointer.
    */
-  it("shows the nought on a pinned row, so the pin has something to stand beside", () => {
-    row({ pinned: true });
-    expect(screen.getByTitle("Priority 0").className).not.toContain(
-      "opacity-0",
+  it("keeps a faint pin on an unpinned row with a number, and none at nought", () => {
+    const set = row({ priority: 1 }, { onTogglePinned: vi.fn() });
+    expect(screen.getByRole("button", { name: "Pin" }).className).toContain(
+      "opacity-40",
     );
+    set.unmount();
+
+    row({}, { onTogglePinned: vi.fn() });
+    const pin = screen.getByRole("button", { name: "Pin" });
+    expect(pin.className).toContain("opacity-0");
+    expect(screen.getByTitle("Priority 0").className).toContain("opacity-0");
   });
 
   it("does not hide one that is set", () => {

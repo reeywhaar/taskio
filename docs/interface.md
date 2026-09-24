@@ -301,8 +301,7 @@ The pin decides the band and the number decides the order inside it, so a pinned
 sorted rather than a heap that happens to float.
 
 The number is drawn plainly only when it is not zero. A nought on every row is a column of
-noughts that says nothing, so it waits until the row is pointed at — where it stands beside the
-pin rather than leaving it there on its own.
+noughts that says nothing, so it waits until the row is pointed at.
 
 **A set pin is a capsule, like a set number.** It was a bare pin in the brand color, and beside
 a filled capsule saying 1 it read as the lesser mark — so a task pinned at nought looked
@@ -315,10 +314,13 @@ sorts under rather than working it out again, because two spellings of that woul
 the wrong place.
 
 Both sit in the left column, under the id and under the date, where the row is already as wide
-as an age and nothing else is using the room. The number comes first: an unpinned row still
-spends the pin's width, so behind it the number would sit off the left edge the id sets. The pin appears on hover when it is not set — it
-is a thing you do to a task in passing, and burying it in the editor would mean opening a task
-to say it matters.
+as an age and nothing else is using the room. The pin comes first, because it is the heavier of
+the two: the list sorts by it before it sorts by the number.
+
+Unpinned, the pin is faint, and how faint depends on what is beside it. On a row with a number
+it stays half there, so the number starts where it does on the rows around it; at nought there
+is nothing beside it, so it waits for a pointer like the nought. It is a thing you do to a task
+in passing, and burying it in the editor would mean opening a task to say it matters.
 
 ## A task says how long it has been sitting there
 

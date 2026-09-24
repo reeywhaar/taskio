@@ -35,6 +35,10 @@ export function rank(task: Task): string {
   return `${task.pinned ? 1 : 0}:${task.priority}`;
 }
 
+/** A set pin, and one that is not: the capsule a set number wears, and a faint outline. */
+const PINNED = "wash inline-flex h-5 items-center rounded-full px-1.5 text-xs";
+const UNPINNED = "flex items-center rounded-md p-0.5 text-base text-faint";
+
 export function TaskRow({
   task,
   apart = false,
@@ -166,36 +170,16 @@ export function TaskRow({
         </time>
 
         {/* Under the id, where the column is already as wide as eight characters and nothing
-            else is using the room. The number leads: an unpinned row still spends the pin's
-            width, and behind it the number would sit off the left edge the id sets. */}
+            else is using the room. The pin leads, because it is what the list sorts by first
+            and it carries the weight to match: set, it is a filled capsule like a set number. */}
         <span className="flex items-center gap-1">
-          {/* A nought on every row is a column of noughts that says nothing, so it keeps out
-              of the way until somebody points at the row — where it stands beside the pin
-              rather than leaving it there on its own.
-
-              Unless the row is pinned. The pin is drawn whether or not anybody is pointing,
-              and with an invisible nought holding the place in front of it, it hangs in the
-              middle of a column with nothing under the id. A nought beside it costs the row
-              nothing and gives the pin something to stand next to. */}
-          <span
-            className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
-              task.priority === 0 ? "bg-line text-muted" : "wash"
-            } ${
-              task.priority === 0 && !task.pinned
-                ? "opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
-                : ""
-            }`}
-            title={`Priority ${task.priority}`}
-          >
-            {task.priority}
-          </span>
-
           {still ? (
             task.pinned ? (
-              <span
-                aria-label="Pinned"
-                className="wash inline-flex h-5 items-center rounded-full px-1.5 text-xs"
-              >
+              <span aria-label="Pinned" className={PINNED}>
+                <PinIcon />
+              </span>
+            ) : task.priority !== 0 ? (
+              <span aria-hidden="true" className={`${UNPINNED} opacity-40`}>
                 <PinIcon />
               </span>
             ) : null
@@ -207,18 +191,34 @@ export function TaskRow({
               title={task.pinned ? "Unpin" : "Pin"}
               aria-pressed={task.pinned}
               onClick={() => onTogglePinned?.(task)}
-              // Pinned, it is a capsule like a priority that is set, so it weighs as much as one:
-              // a bare brand-colored pin beside a filled number read as the lesser of the two,
-              // when the pin is what the list sorts by first.
+              // Unpinned, it is faint, and on a row with a number it stays half there rather
+              // than gone: the number beside it would otherwise start where a pin is on the
+              // rows around it, and the column would not line up. At nought there is nothing
+              // beside it, so it waits for a pointer like the nought does.
               className={
                 task.pinned
-                  ? "wash inline-flex h-5 items-center rounded-full px-1.5 text-xs"
-                  : "flex items-center rounded-md p-0.5 text-base text-faint opacity-0 group-hover:opacity-100 hover:bg-line focus-visible:opacity-100 pointer-coarse:opacity-100"
+                  ? PINNED
+                  : `${UNPINNED} hover:bg-line group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 ${
+                      task.priority !== 0 ? "opacity-40" : "opacity-0"
+                    }`
               }
             >
               <PinIcon />
             </button>
           )}
+
+          {/* A nought on every row is a column of noughts that says nothing, so it keeps out of
+              the way until somebody points at the row. */}
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
+              task.priority === 0
+                ? "bg-line text-muted opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
+                : "wash"
+            }`}
+            title={`Priority ${task.priority}`}
+          >
+            {task.priority}
+          </span>
         </span>
       </span>
 
