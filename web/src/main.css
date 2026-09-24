@@ -719,3 +719,20 @@ input[type="checkbox"]:focus-visible {
   border-radius: 0.375rem;
   padding: 0.5em 0.75em;
 }
+
+/* Squircle corners, where the browser draws them: a corner that eases into the side rather than a
+   quarter circle stuck onto it, which is the shape the rest of this surface is trying to be. A
+   browser without corner-shape keeps the round corner, which is what it had before.
+
+   Not on a pill. Its radius is half its height, and squircled it is a rectangle with soft
+   corners rather than a capsule — the tags and the tag field would stop reading as pills. */
+@supports (corner-shape: squircle) {
+  *,
+  ::before,
+  ::after {
+    corner-shape: squircle;
+  }
+  .rounded-full {
+    corner-shape: round;
+  }
+}
