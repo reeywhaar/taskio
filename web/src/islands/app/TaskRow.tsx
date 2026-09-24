@@ -35,8 +35,10 @@ export function rank(task: Task): string {
   return `${task.pinned ? 1 : 0}:${task.priority}`;
 }
 
-/** A set pin, and one that is not: the capsule a set number wears, and a faint outline. */
-const PINNED = "wash inline-flex h-5 items-center rounded-full px-1.5 text-xs";
+/** A set pin, and one that is not: a filled circle the size of a one-digit number, and a faint
+ *  outline. */
+const PINNED =
+  "wash inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs";
 const UNPINNED = "flex items-center rounded-md p-0.5 text-base text-faint";
 
 export function TaskRow({
