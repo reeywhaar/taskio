@@ -194,7 +194,7 @@ export function TaskRow({
             task.pinned ? (
               <span
                 aria-label="Pinned"
-                className="flex items-center p-0.5 text-base text-brand"
+                className="wash inline-flex h-5 items-center rounded-full px-1.5 text-xs"
               >
                 <PinIcon />
               </span>
@@ -207,11 +207,14 @@ export function TaskRow({
               title={task.pinned ? "Unpin" : "Pin"}
               aria-pressed={task.pinned}
               onClick={() => onTogglePinned?.(task)}
-              className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
+              // Pinned, it is a capsule like a priority that is set, so it weighs as much as one:
+              // a bare brand-colored pin beside a filled number read as the lesser of the two,
+              // when the pin is what the list sorts by first.
+              className={
                 task.pinned
-                  ? "text-brand"
-                  : "text-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
-              }`}
+                  ? "wash inline-flex h-5 items-center rounded-full px-1.5 text-xs"
+                  : "flex items-center rounded-md p-0.5 text-base text-faint opacity-0 group-hover:opacity-100 hover:bg-line focus-visible:opacity-100 pointer-coarse:opacity-100"
+              }
             >
               <PinIcon />
             </button>

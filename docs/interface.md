@@ -304,6 +304,11 @@ The number is drawn plainly only when it is not zero. A nought on every row is a
 noughts that says nothing, so it waits until the row is pointed at — where it stands beside the
 pin rather than leaving it there on its own.
 
+**A set pin is a capsule, like a set number.** It was a bare pin in the brand color, and beside
+a filled capsule saying 1 it read as the lesser mark — so a task pinned at nought looked
+outranked by one below it that was not pinned at all. The pin is what the list sorts by first,
+so it wears at least the weight of the number.
+
 **A wider gap falls where the run changes**, so the bands are something to see rather than
 something to work out by reading the capsules down the column. The list asks the row what it
 sorts under rather than working it out again, because two spellings of that would put a line in

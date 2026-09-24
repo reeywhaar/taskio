@@ -227,9 +227,12 @@ export function TaskDialog({
               aria-pressed={task.data.pinned}
               disabled={togglePinned.isPending}
               onClick={() => togglePinned.mutate()}
-              className={`flex items-center rounded-md p-0.5 text-base hover:bg-line ${
-                task.data.pinned ? "text-brand" : "text-faint hover:text-fg"
-              }`}
+              // Pinned, the same capsule as on the row.
+              className={
+                task.data.pinned
+                  ? "wash inline-flex h-5 items-center rounded-full px-1.5 text-xs"
+                  : "flex items-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
+              }
             >
               <PinIcon />
             </button>
