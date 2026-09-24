@@ -230,7 +230,7 @@ export function TaskDialog({
               // Pinned, the same capsule as on the row.
               className={
                 task.data.pinned
-                  ? "wash inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs"
+                  ? "wash inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs"
                   : "flex items-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
               }
             >

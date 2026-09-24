@@ -303,7 +303,7 @@ sorted rather than a heap that happens to float.
 The number is drawn plainly only when it is not zero. A nought on every row is a column of
 noughts that says nothing, so it waits until the row is pointed at.
 
-**A set pin is a filled circle, like a set number.** It was a bare pin in the brand color, and
+**A set pin is filled, like a set number.** It was a bare pin in the brand color, and
 beside a filled capsule saying 1 it read as the lesser mark — so a task pinned at nought looked
 outranked by one below it that was not pinned at all. The pin is what the list sorts by first,
 so it wears at least the weight of the number.
@@ -315,8 +315,9 @@ the wrong place.
 
 Both sit in the left column, under the id and under the date, where the row is already as wide
 as an age and nothing else is using the room. The pin comes first, because it is the heavier of
-the two: the list sorts by it before it sorts by the number. The circle is the size of a
-one-digit number, so the numbers after it line up with those after a faint one.
+the two: the list sorts by it before it sorts by the number. It is the size of a one-digit
+number, so the numbers after it line up with those after a faint one, and both are the rounded
+square the pin button lights up as under a pointer, so the three marks are one shape.
 
 Unpinned, the pin is faint, and how faint depends on what is beside it. On a row with a number
 it stays half there, so the number starts where it does on the rows around it; at nought there

@@ -35,10 +35,10 @@ export function rank(task: Task): string {
   return `${task.pinned ? 1 : 0}:${task.priority}`;
 }
 
-/** A set pin, and one that is not: a filled circle the size of a one-digit number, and a faint
- *  outline. */
+/** A set pin, and one that is not: a filled square the size of a one-digit number, and a faint
+ *  outline. Rounded like the pin button's own hover, so the three marks are one shape. */
 const PINNED =
-  "wash inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs";
+  "wash inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs";
 const UNPINNED = "flex items-center rounded-md p-0.5 text-base text-faint";
 
 export function TaskRow({
@@ -212,7 +212,7 @@ export function TaskRow({
           {/* A nought on every row is a column of noughts that says nothing, so it keeps out of
               the way until somebody points at the row. */}
           <span
-            className={`rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums ${
+            className={`inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-xs font-medium tabular-nums ${
               task.priority === 0
                 ? "bg-line text-muted opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
                 : "wash"
