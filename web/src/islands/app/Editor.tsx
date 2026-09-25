@@ -149,7 +149,10 @@ export function Editor({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    // Grows into the slack, and never gives up its own height for it: with min-h-0 it was the
+    // part of a tall dialog that shrank, and the textarea kept its height and spilled over the
+    // fields below it. The dialog's body scrolls; nothing in it has to shrink.
+    <div className="flex flex-1 flex-col gap-2">
       <div className="flex items-center gap-1 text-sm">
         {/* Only where there is something to look at: a preview of nothing is a control that
             does nothing, and on a new task that is what it would be until the first keystroke. */}
