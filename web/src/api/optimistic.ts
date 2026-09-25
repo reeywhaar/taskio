@@ -7,7 +7,7 @@ import type { Task, TaskPage } from "@app/api/types";
 type Snapshot = [readonly unknown[], TaskPage | undefined][];
 
 /**
- * The live list's order, as the server writes it: pinned, then priority, then the clock.
+ * The live list's order, as the server writes it: pinned, then priority, then the last poke.
  *
  * The server breaks a tie on all three with an internal sequence this side never sees — and
  * does not need to, because a page arrives in that order already and a stable sort leaves
@@ -20,7 +20,7 @@ function inOrder(tasks: Task[]): Task[] {
     (a, b) =>
       Number(b.pinned) - Number(a.pinned) ||
       b.priority - a.priority ||
-      b.created_at - a.created_at,
+      b.poked_at - a.poked_at,
   );
 }
 

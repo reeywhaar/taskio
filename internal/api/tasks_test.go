@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"taskio/internal/store"
 )
 
 func (c *client) task(body string) map[string]any {
@@ -583,5 +585,31 @@ func TestOnlyAPokeMovesPokedAt(t *testing.T) {
 	}
 	if got := c.json(c.do("GET", "/api/tasks/"+id, ""))["poked_at"]; got != float64(evenLater.Unix()) {
 		t.Errorf("after a bulk poke poked_at = %v, want %d", got, evenLater.Unix())
+	}
+}
+
+// Inside a pin and a priority the live list runs by the last poke, so a task somebody has just
+// said still stands comes above one nobody has looked at, whenever each was written.
+func TestTheLiveListRunsByTheLastPoke(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	old := c.task(`{"title":"Written first"}`)["id"].(string)
+	later := st.Now().Add(time.Hour)
+	st.SetClock(func() time.Time { return later })
+	c.task(`{"title":"Written second"}`)
+
+	if got := titles(c.list("")); got[0] != "Written second" {
+		t.Fatalf("before a poke = %v, want the newer first", got)
+	}
+	st.SetClock(func() time.Time { return later.Add(time.Hour) })
+	c.do("POST", "/api/tasks/"+old+"/poke", "")
+	if got := titles(c.list("")); got[0] != "Written first" {
+		t.Errorf("after poking the older = %v, want it first", got)
+	}
+
+	// A cursor from the order this replaced is refused rather than read against this one.
+	stale := (&store.Cursor{Order: "live", Keys: []int64{0, 0, 1}, Seq: 1}).String()
+	if resp := c.do("GET", "/api/tasks?cursor="+stale, ""); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("an old cursor = %s, want 400", resp.Status)
 	}
 }

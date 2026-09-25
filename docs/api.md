@@ -270,8 +270,9 @@ Nothing here sorts, filters or groups by it, and no color is the default — so 
 unless you were asked for one.
 
 The done list is ordered by when things were finished. Every other list is ordered **pinned
-first, then by `priority` descending, then by when they were written** — so a list read top to
-bottom is a list in the order somebody meant to work through it.
+first, then by `priority` descending, then by when they were last poked** — so a list read top
+to bottom is a list in the order somebody meant to work through it, and a task nobody has poked
+in a while sinks within its band.
 
 ### Priority and pinning
 

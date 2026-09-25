@@ -298,7 +298,8 @@ they answer different questions: a pin is where somebody put a task and a priori
 it matters. Collapsed into one number, unpinning would mean lowering a score.
 
 The pin decides the band and the number decides the order inside it, so a pinned run is itself
-sorted rather than a heap that happens to float.
+sorted rather than a heap that happens to float. Past both, the last poke: a task somebody has just said
+still stands comes above one nobody has looked at, whenever each was written.
 
 The number is drawn plainly only when it is not zero. A nought on every row is a column of
 noughts that says nothing, so it waits until the row is pointed at.

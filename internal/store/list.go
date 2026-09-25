@@ -86,7 +86,10 @@ func orderOf(status string) (columns []string, name string) {
 	if status == StatusDone {
 		return []string{"done_at"}, "done"
 	}
-	return []string{"pinned", "priority", "created_at"}, "live"
+	// The last poke rather than the writing, inside the pin and the priority: a task somebody
+	// has just said still stands belongs above one nobody has looked at for a month. Named
+	// apart from the order it replaced, so a cursor from that one is refused, not misread.
+	return []string{"pinned", "priority", "poked_at"}, "poked"
 }
 
 // ListTasks answers a query.
@@ -289,8 +292,8 @@ func cursorKeys(columns []string, t *Task) []int64 {
 			keys = append(keys, boolInt(t.Pinned))
 		case "priority":
 			keys = append(keys, int64(t.Priority))
-		case "created_at":
-			keys = append(keys, unix(t.CreatedAt))
+		case "poked_at":
+			keys = append(keys, unix(t.PokedAt))
 		case "done_at":
 			if t.DoneAt != nil {
 				keys = append(keys, unix(*t.DoneAt))
