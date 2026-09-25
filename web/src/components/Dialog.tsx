@@ -37,6 +37,7 @@ export function Dialog({
   onClose,
   title,
   aside,
+  actions,
   children,
   footer,
   wide = false,
@@ -47,6 +48,9 @@ export function Dialog({
   /** What the title is about — an id, a state — on the title's own line rather than on a row of
    *  its own underneath it. */
   aside?: ReactNode;
+  /** Buttons at the right of the title bar, beside the close: a switch between two faces of
+   *  the same dialog, rather than one more thing to do to what is in it. */
+  actions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   /** A description is markdown with images in it, and needs room to be worth writing in. */
@@ -170,15 +174,18 @@ export function Dialog({
               <h2 className="truncate text-base font-semibold">{title}</h2>
               {aside}
             </div>
-            <button
-              type="button"
-              aria-label="Close"
-              title="Close"
-              onClick={onClose}
-              className="-mr-1 shrink-0 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
-            >
-              <CrossIcon />
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {actions}
+              <button
+                type="button"
+                aria-label="Close"
+                title="Close"
+                onClick={onClose}
+                className="-mr-1 shrink-0 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
+              >
+                <CrossIcon />
+              </button>
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pt-4 sm:px-5">

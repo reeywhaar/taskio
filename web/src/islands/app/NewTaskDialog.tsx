@@ -6,6 +6,8 @@ import { ApiError } from "@app/api/transport";
 import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
+import { Preview } from "@app/islands/app/Preview";
+import { TaskDialog, type Mode } from "@app/islands/app/TaskDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 
 /**
@@ -42,6 +44,10 @@ export function NewTaskDialog({
   const client = useQueryClient();
   const [draft, setDraft] = useState<Draft>(emptyDraft(tags, title, project));
   const [error, setError] = useState("");
+  // The same two faces as a task's dialog. Nothing arrives from elsewhere to swap the words
+  // under a reader, so the draft is what it shows.
+  const [mode, setMode] = useState<Mode>("edit");
+  const [peek, setPeek] = useState<string | null>(null);
 
   // Emptied when it opens, not when it closes: a dialog cleared on the way out shows what was
   // typed for as long as it takes to close.
@@ -49,6 +55,7 @@ export function NewTaskDialog({
     if (!open) return;
     setDraft(emptyDraft(tags, title, project));
     setError("");
+    setMode("edit");
   }, [open, tags, title, project]);
 
   const create = useMutation({
@@ -79,7 +86,20 @@ export function NewTaskDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="New task"
+      title={mode === "preview" ? draft.title.trim() || "New task" : "New task"}
+      actions={
+        mode === "edit" ? (
+          draft.description.trim() ? (
+            <Button size="compact" onClick={() => setMode("preview")}>
+              Preview
+            </Button>
+          ) : null
+        ) : (
+          <Button size="compact" onClick={() => setMode("edit")}>
+            Edit
+          </Button>
+        )
+      }
       wide
       footer={
         <>
@@ -94,13 +114,31 @@ export function NewTaskDialog({
       }
     >
       <div className="flex flex-1 flex-col gap-4">
-        <TaskForm
-          draft={draft}
-          onChange={setDraft}
-          titlePlaceholder="What needs doing?"
-        />
+        {mode === "edit" ? (
+          <TaskForm
+            draft={draft}
+            onChange={setDraft}
+            titlePlaceholder="What needs doing?"
+          />
+        ) : (
+          <Preview
+            source={draft.description}
+            onChange={(description) => setDraft({ ...draft, description })}
+            onMention={setPeek}
+          />
+        )}
         {error ? <p className="text-sm text-accent">{error}</p> : null}
       </div>
+
+      {peek ? (
+        <TaskDialog
+          key={peek}
+          id={peek}
+          project={project}
+          initialMode="preview"
+          onClose={() => setPeek(null)}
+        />
+      ) : null}
     </Dialog>
   );
 }

@@ -19,6 +19,7 @@ import { Dialog } from "@app/components/Dialog";
 import { PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
+import { Preview } from "@app/islands/app/Preview";
 import { projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
 
@@ -48,25 +49,35 @@ function differs(draft: Draft, task: TaskDetail): boolean {
   );
 }
 
+/** Which face the dialog shows: the fields to write in, or the task as it reads. */
+export type Mode = "edit" | "preview";
+
 /**
  * A modal at every size. The editor is a route, so the system back gesture closes it rather
  * than the whole application — which on a phone is the difference between a working app and
  * one that feels broken.
+ *
+ * Two faces, switched from the title bar: the fields, and the task as it reads. One dialog
+ * rather than a preview opened over the editor, because they are the same task in the same
+ * place, and a second modal is a second thing to close.
+ *
+ * A mention opens the task it names over this one, read rather than written: following a
+ * reference is reading, and the task underneath is where somebody was.
  */
 export function TaskDialog({
   id,
   project,
   onClose,
-  onOpen,
   onElsewhere,
+  initialMode = "edit",
 }: {
   id: string;
   /** The project the list behind it is showing, by slug; empty is the default. */
   project: string;
   onClose: () => void;
-  onOpen: (id: string) => void;
   /** The task turned out to be in another project, which the list should be showing. */
   onElsewhere?: (project: Project) => void;
+  initialMode?: Mode;
 }) {
   const client = useQueryClient();
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
@@ -76,6 +87,33 @@ export function TaskDialog({
   });
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<Mode>(initialMode);
+  /** The task a mention opened over this one, read first. */
+  const [peek, setPeek] = useState<string | null>(null);
+
+  /**
+   * What the preview is showing, which is not always what the task now says.
+   *
+   * An edit from somewhere else arrives as an event and replaces the draft under the reader —
+   * a page of prose swapping mid-sentence. This holds the text the preview opened with and
+   * offers the newer one as a button. Null until there is something to hold.
+   */
+  const [shown, setShown] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode === "preview" && shown === null && task.data)
+      setShown(task.data.description);
+  }, [mode, shown, task.data]);
+  const newer =
+    mode === "preview" && shown !== null && shown !== draft.description;
+  const read = () => {
+    setShown(draft.description);
+    setMode("preview");
+  };
+  /** A tick in the preview is an edit to the text it was rendered from, and the draft's too. */
+  const ticked = (next: string) => {
+    setShown(next);
+    setDraft((current) => ({ ...current, description: next }));
+  };
 
   /**
    * Seeded from the server copy — but over a draft nobody has touched, and only that.
@@ -214,7 +252,41 @@ export function TaskDialog({
       open
       wide
       onClose={onClose}
-      title={task.data ? "Task" : "Loading"}
+      // Read, it is named after the task, like a page is; written, the title is a field below.
+      title={
+        !task.data
+          ? "Loading"
+          : mode === "preview"
+            ? draft.title.trim() || "Task"
+            : "Task"
+      }
+      actions={
+        task.data ? (
+          mode === "edit" ? (
+            // Only where there is something to read: a preview of nothing is a control that
+            // does nothing.
+            draft.description.trim() ? (
+              <Button size="compact" onClick={read}>
+                Preview
+              </Button>
+            ) : null
+          ) : (
+            <>
+              {newer ? (
+                <Button
+                  size="compact"
+                  onClick={() => setShown(draft.description)}
+                >
+                  Update
+                </Button>
+              ) : null}
+              <Button size="compact" onClick={() => setMode("edit")}>
+                Edit
+              </Button>
+            </>
+          )
+        ) : null
+      }
       aside={
         task.data ? (
           <>
@@ -302,21 +374,41 @@ export function TaskDialog({
 
       {task.data ? (
         <div className="flex flex-1 flex-col gap-4">
-          <TaskForm draft={draft} onChange={setDraft} />
+          {mode === "edit" ? (
+            <TaskForm draft={draft} onChange={setDraft} />
+          ) : (
+            <Preview
+              source={shown ?? draft.description}
+              onChange={ticked}
+              onMention={setPeek}
+            />
+          )}
 
           <Mentions
             heading="Mentions"
             list={task.data.mentions}
-            onOpen={onOpen}
+            onOpen={setPeek}
           />
           <Mentions
             heading="Mentioned by"
             list={task.data.mentioned_by}
-            onOpen={onOpen}
+            onOpen={setPeek}
           />
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </div>
+      ) : null}
+
+      {/* Over this one, and inside it, so it is this dialog's child: its close comes back
+          here, and the page behind both stays where it was. */}
+      {peek ? (
+        <TaskDialog
+          key={peek}
+          id={peek}
+          project={project}
+          initialMode="preview"
+          onClose={() => setPeek(null)}
+        />
       ) : null}
     </Dialog>
   );

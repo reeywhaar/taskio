@@ -576,7 +576,6 @@ function List({
           id={route.id}
           project={filters.project}
           onClose={() => onClose({ ...location, route: { name: "list" } })}
-          onOpen={(id) => onGo({ ...location, route: { name: "task", id } })}
           // Replaced rather than pushed: it is the same place, drawn over the right list.
           onElsewhere={(there) =>
             onReplace({

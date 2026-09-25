@@ -23,6 +23,8 @@ export function mount(ui: ReactElement) {
   const view = render(wrap(ui));
   return {
     ...view,
+    /** The query client under it, for a test that needs the server to have changed its mind. */
+    client,
     // Re-wrapped, because the bare rerender replaces the whole tree and takes the provider
     // with it — which reads as the component having lost its client.
     rerender: (next: ReactElement) => view.rerender(wrap(next)),

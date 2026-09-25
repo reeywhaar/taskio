@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Task } from "@app/api/types";
-import { Editor } from "@app/islands/app/Editor";
+import { Preview } from "@app/islands/app/Preview";
 import { TaskRow } from "@app/islands/app/TaskRow";
 
 // A parser that throws on everything: what a description marked cannot handle looks like.
@@ -20,20 +20,14 @@ const quiet = () => vi.spyOn(console, "error").mockImplementation(() => {});
 
 /** A description the parser throws on is that description's trouble, not the screen's. */
 describe("a description that cannot be rendered", () => {
-  it("leaves the editor standing, with the text still there to fix", () => {
+  it("says so in the preview, which leaves the dialog around it standing", () => {
     quiet();
     render(
-      <Editor
-        value="1. a list"
-        onChange={vi.fn()}
-        limits={{ assetMax: 1 << 20 }}
-      />,
+      <Preview source="1. a list" onChange={vi.fn()} onMention={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(
       screen.getByText(/The description could not be shown/),
     ).toBeDefined();
-    expect(screen.getByDisplayValue("1. a list")).toBeDefined();
   });
 
   it("leaves the row its title, and says the description could not be shown", () => {

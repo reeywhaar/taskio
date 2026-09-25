@@ -9,16 +9,21 @@ Markdown is the storage format. A rich-text surface would have to round-trip it 
 way in, serialise on the way out — and every round trip is a chance to lose a construct nobody
 tested. So it is a textarea, and what you type is what is stored.
 
-**The preview opens; it does not swap.** It was a second tab, which is the shape anybody who has
-left a code-review comment already knows — and it made the preview the same size and shape as
-the box it replaced, which is the one thing a preview should not be. A description is read at
-the width of a page, not in a ten-row well with an Attach button over it. So Preview is a
-button, what it opens is a dialog with nothing in it but the words, and it is named after the
-task rather than the field, because on a phone it is the whole screen and the editor behind it
-is not there to say which task this is. It appears only once there is something to look at.
+**Reading is the dialog's other face.** Preview and Edit sit at the right of the title bar,
+beside the close, and switch the dialog between the fields and the task as it reads — named
+after the task, with its words and its mentions, and the same footer. The preview was a second
+tab once, which made it the same size and shape as the box it replaced, and then a second dialog
+over the first, which was a second thing to close for what is the same task in the same place.
+Preview appears only once there is something to read.
 
-The editor then has one state instead of two: nothing to leave the wrong way round, and no way
-to be typing into a box that is not there.
+The words it shows are held while it is open. An edit arriving from elsewhere replaces the draft
+under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an
+Update beside Edit. A tick in it is an edit like any other, sent by Save.
+
+**A mention opens the task it names over this one, read first.** From the lists under the
+description or from a chip inside it: following a reference is reading, and the task underneath
+is where somebody was, so closing the one on top comes back to it as it was left. Edit works
+there too. A chip pressed for a new tab is left to be the link it is.
 
 **It is set in the proportional face, not a monospace one.** A description is prose with some
 marks in it rather than code. Monospace sets prose wide and heavy: the same words take more
