@@ -165,6 +165,21 @@ describe("render", () => {
     expect(html).not.toContain("<input");
   });
 
+  /** The item is a row of the box and one body; inline code and a nested list stay inside it. */
+  it("keeps a ticked item's content in one body beside its box", () => {
+    document.body.innerHTML = page(
+      "- [ ] Data: the `store` and\n  - a nested line\n",
+    );
+    const item = document.querySelector("li.check")!;
+    expect([...item.children].map((c) => c.className)).toEqual([
+      "box",
+      "check-body",
+    ]);
+    const body = item.querySelector(".check-body")!;
+    expect(body.querySelector("code")?.textContent).toBe("store");
+    expect(body.querySelector("ul li")?.textContent).toBe("a nested line");
+  });
+
   it("draws a loose task list's box without marked's input", () => {
     const html = page("- [x] one\n\n- [ ] two\n");
     expect(html).toContain('aria-checked="true"');

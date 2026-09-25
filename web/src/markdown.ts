@@ -30,7 +30,9 @@ marked.use({
         `<li class="check" role="checkbox" tabindex="0"` +
         ` aria-checked="${token.checked ? "true" : "false"}"` +
         ` data-check="${token.checked ? 1 : 0}">` +
-        `<span class="box" aria-hidden="true"></span>${inner}</li>`
+        // One body beside the box: the item is a row of two, and without the wrapper every
+        // run of text, every code span and a nested list were columns of that row.
+        `<span class="box" aria-hidden="true"></span><div class="check-body">${inner}</div></li>`
       );
     },
   },

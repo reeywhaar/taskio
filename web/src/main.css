@@ -433,6 +433,16 @@ textarea {
   cursor: pointer;
 }
 
+.prose li.check > .check-body {
+  flex: 1;
+  min-width: 0;
+}
+/* What the item holds after its first line — a nested list, a second paragraph — stands a step
+   below it, as it would under a bullet. */
+.prose li.check > .check-body > * + * {
+  margin-top: 0.25em;
+}
+
 .prose li.check .box {
   flex: none;
   margin-top: 0.15em;
