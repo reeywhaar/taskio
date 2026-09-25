@@ -172,7 +172,7 @@ describe("Nav", () => {
   /** On a phone the rail is folded away, so the bar above the list says where it is. */
   it("names the project, and the group when one is lit, in the phone's bar", async () => {
     const first = mount(<Nav location={at(["errands"])} onGo={vi.fn()} />);
-    expect(await header("Main / Errands")).toBeDefined();
+    expect(await header("Main • Errands")).toBeDefined();
     first.unmount();
 
     mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);

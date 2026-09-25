@@ -327,7 +327,7 @@ export function Nav({
         <span className="min-w-0 truncate font-semibold">
           {opened?.name ?? "taskio"}
           {current ? (
-            <span className="font-normal text-muted"> / {current.name}</span>
+            <span className="font-normal text-muted"> • {current.name}</span>
           ) : null}
         </span>
       </div>
