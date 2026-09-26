@@ -281,3 +281,28 @@ func TestABodyOverTheLimitSaysSo(t *testing.T) {
 		t.Errorf("an oversized body got %+v", body)
 	}
 }
+
+// A write waits for the writer no longer than its deadline, then says so: it used to wait for
+// as long as its connection stayed open, which behind a proxy was until a restart.
+func TestAWriteStopsAtItsDeadline(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	s.writeDeadline = 200 * time.Millisecond
+
+	release, err := st.HoldWriter(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	answered := make(chan *http.Response, 1)
+	go func() { answered <- c.do("POST", "/api/tasks", `{"title":"Fix the tap"}`) }()
+	select {
+	case resp := <-answered:
+		if body := refusal(t, resp, http.StatusServiceUnavailable); body.Code != CodeBusy {
+			t.Errorf("a write past its deadline got %+v", body)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("a write waited past its deadline")
+	}
+}

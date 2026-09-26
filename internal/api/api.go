@@ -48,7 +48,19 @@ type Server struct {
 
 	routes      []string
 	agentRoutes []string
+
+	// writeDeadline is how long a request that changes something may run. A field so a test
+	// can make it short.
+	writeDeadline time.Duration
 }
+
+// WriteDeadline is how long a request that changes something may run before it is stopped.
+//
+// There is one writer connection, and a request holding it holds every other write with it. A
+// write used to run for as long as its connection stayed open, and a stuck one held the writer
+// for four minutes behind a proxy, until a restart, with no timeout anywhere to fire. Far longer
+// than any write here takes, so it only ever stops one that is not going to finish.
+const WriteDeadline = 2 * time.Minute
 
 // handle registers a pattern a browser reaches.
 func (s *Server) handle(pattern string, h http.Handler) {
@@ -82,6 +94,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 		tokenAuth: newLimiter(60, time.Second),
 		mailAll:   newLimiter(10, time.Minute),
 		mailUser:  newLimiter(3, 10*time.Minute),
+
+		writeDeadline: WriteDeadline,
 	}
 
 	s.mux.HandleFunc("GET /healthz", s.healthz)
@@ -249,7 +263,25 @@ func (s *Server) Routes() []string { return append([]string(nil), s.routes...) }
 func (s *Server) AgentRoutes() []string { return append([]string(nil), s.agentRoutes...) }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// When it began, so a failure can say how long it had been waiting.
+	r = r.WithContext(contextWith(r.Context(), ctxStart, time.Now()))
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		// Reads take no writer, and the event stream and a large asset may rightly run long.
+	default:
+		ctx, cancel := context.WithTimeout(r.Context(), s.writeDeadline)
+		defer cancel()
+		r = r.WithContext(ctx)
+	}
 	s.guard(s.mux).ServeHTTP(w, r)
+}
+
+// elapsed is how long the request has been running.
+func elapsed(r *http.Request) time.Duration {
+	if at, ok := r.Context().Value(ctxStart).(time.Time); ok {
+		return time.Since(at).Round(time.Millisecond)
+	}
+	return 0
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
@@ -337,10 +369,19 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 		refuse(w, http.StatusRequestEntityTooLarge, codeForTooLarge(err), sentence(err, "That is too large."))
 	case errors.Is(err, store.ErrInvalid):
 		refuse(w, http.StatusBadRequest, CodeInvalid, sentence(err, "That request is not valid."))
+	case errors.Is(err, context.DeadlineExceeded):
+		// The deadline on a write: it was waiting for something that was not coming, and the
+		// time it waited is what a hang looks like in the log.
+		s.log.Warn("request stopped at its deadline", "method", r.Method, "path", r.URL.Path, "after", elapsed(r))
+		refuse(w, http.StatusServiceUnavailable, CodeBusy, "That took too long and was stopped. Try again.")
+	case errors.Is(err, context.Canceled):
+		// The caller left, or the process is stopping: nobody reads an answer. Not a bug, so not
+		// an error — but how long it had waited is worth a line.
+		s.log.Warn("request cancelled", "method", r.Method, "path", r.URL.Path, "after", elapsed(r))
 	default:
 		// An unclassified error is a bug, and the message that reaches the caller deliberately
 		// does not say what it was.
-		s.log.Error("request failed", "path", r.URL.Path, "err", err)
+		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "after", elapsed(r), "err", err)
 		refuse(w, http.StatusInternalServerError, CodeInternal, "Something went wrong here.")
 	}
 }

@@ -408,6 +408,7 @@ the value that was wrong.
 | `asset_count_exceeded` | 413 | Too many images in one write |
 | `quota_exceeded` | 413 | The account is out of storage |
 | `rate_limited` | 429 | Wait, then retry |
+| `busy` | 503 | A write ran out of time — two minutes — and changed nothing; retry |
 
 ## A worked session
 

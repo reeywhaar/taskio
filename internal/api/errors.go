@@ -26,6 +26,7 @@ const (
 	CodeQuotaExceeded        = "quota_exceeded"
 	CodeRelayFailed          = "relay_failed"
 	CodeRateLimited          = "rate_limited"
+	CodeBusy                 = "busy"
 	CodeInternal             = "internal"
 )
 

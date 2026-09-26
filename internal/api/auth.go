@@ -233,6 +233,7 @@ const (
 	ctxPrincipal ctxKey = iota
 	ctxSession
 	ctxReach
+	ctxStart
 )
 
 func withPrincipal(r *http.Request, p *store.Principal, sess *store.Session) *http.Request {
