@@ -346,6 +346,7 @@ period.
 | --- | --- |
 | Inline images per write | 20 |
 | Inline bytes per write, decoded | this instance's per-image limit |
+| Request body | 1 MB — base64 is a third larger than the image, so about 750 KB of image inline |
 
 `POST /api/assets` is the other way: the raw bytes as the body, with a `Content-Type`. It
 answers `{id, url, content_type, size}` and the `url` goes in the description. Use it when the
@@ -403,6 +404,7 @@ the value that was wrong.
 | `not_found` | 404 | No such task |
 | `prefix_ambiguous` | 409 | Give another character or two |
 | `asset_too_large` | 413 | One image is over the limit; the message names it |
+| `body_too_large` | 413 | The request body is over 1 MB; send big images with `POST /api/assets` |
 | `asset_count_exceeded` | 413 | Too many images in one write |
 | `quota_exceeded` | 413 | The account is out of storage |
 | `rate_limited` | 429 | Wait, then retry |

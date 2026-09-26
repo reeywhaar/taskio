@@ -21,6 +21,7 @@ const (
 	CodeForbidden            = "token_forbidden"
 	CodeUnsupportedMediaType = "unsupported_media_type"
 	CodeAssetTooLarge        = "asset_too_large"
+	CodeBodyTooLarge         = "body_too_large"
 	CodeAssetCountExceeded   = "asset_count_exceeded"
 	CodeQuotaExceeded        = "quota_exceeded"
 	CodeRelayFailed          = "relay_failed"

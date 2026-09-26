@@ -267,3 +267,17 @@ func TestReadsAnswerWhileTheWriterIsHeld(t *testing.T) {
 	read("a signed-in read", func() *http.Response { return c.do("GET", "/api/tasks/"+id, "") })
 	read("a token read", func() *http.Response { return a.do("GET", "/api/tasks/"+id, "") })
 }
+
+// A body over the limit was cut short and refused as JSON that ends early, which sent whoever
+// read it looking for a syntax error. It says what the limit is and where a big image goes.
+func TestABodyOverTheLimitSaysSo(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+
+	big := `{"description":"` + strings.Repeat("a", 1<<20) + `"}`
+	body := refusal(t, c.do("PATCH", "/api/tasks/"+id, big), http.StatusRequestEntityTooLarge)
+	if body.Code != CodeBodyTooLarge || !strings.Contains(body.Message, "POST /api/assets") {
+		t.Errorf("an oversized body got %+v", body)
+	}
+}

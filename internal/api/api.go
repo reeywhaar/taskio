@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -292,9 +291,18 @@ func (s *Server) guard(next http.Handler) http.Handler {
 // forgotten check at a time. DisallowUnknownFields also means a caller's typo'd field is a
 // refusal saying so rather than a silently ignored intention.
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	dec := json.NewDecoder(io.LimitReader(r.Body, bodyMax))
+	// MaxBytesReader rather than LimitReader: a limit that cuts the body short silently reads as
+	// JSON that ends early, and an image inlined under the per-image limit was refused as
+	// "unexpected EOF". Hitting this limit says so.
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, bodyMax))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
+		var over *http.MaxBytesError
+		if errors.As(err, &over) {
+			refuse(w, http.StatusRequestEntityTooLarge, CodeBodyTooLarge,
+				"That request body is over 1 MB. An image that large goes up on its own with POST /api/assets, and its url goes in the description.")
+			return false
+		}
 		refuse(w, http.StatusBadRequest, CodeInvalid, "That request body is not the JSON this expects: "+err.Error())
 		return false
 	}
