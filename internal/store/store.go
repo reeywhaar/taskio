@@ -143,6 +143,17 @@ func verify(db *sql.DB) error {
 	return nil
 }
 
+// HoldWriter takes the one writer connection and keeps it until release, which is what a write
+// stuck on it looks like from everywhere else. Tests prove with it that a read does not queue
+// behind a write.
+func (s *Store) HoldWriter(ctx context.Context) (release func(), err error) {
+	conn, err := s.writer.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return func() { conn.Close() }, nil
+}
+
 // SetClock replaces the clock. Tests drive expiry with it.
 func (s *Store) SetClock(now func() time.Time) { s.now = now }
 

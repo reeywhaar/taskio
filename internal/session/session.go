@@ -59,9 +59,17 @@ func (m *Manager) Resolve(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return nil, err
 	}
 
+	// Only when the window is due to move. Asked on every request, the UPDATE's own WHERE made it
+	// nothing nearly every time — but it still took the one writer connection, so a write stuck
+	// on that connection took every signed-in read down with it.
+	if m.store.Now().Sub(sess.LastSeenAt) < store.SessionRefresh {
+		return sess, nil
+	}
 	expires, moved, err := m.store.TouchSession(ctx, token, r.UserAgent())
 	if err != nil {
-		return nil, err
+		// Best effort: a window that did not slide now slides on the next request, and a read is
+		// not refused for want of a bookkeeping write.
+		return sess, nil
 	}
 	if moved {
 		m.set(w, token, expires)

@@ -235,3 +235,35 @@ func TestOrphanedAssetsAreSweptAndReferencedOnesAreNot(t *testing.T) {
 		t.Error("the referenced image was swept")
 	}
 }
+
+// A write stuck on the one writer connection held up every signed-in read too, because each
+// asked the writer to touch its session or stamp its token first. Reads now answer while it is
+// held; only writes wait for it.
+func TestReadsAnswerWhileTheWriterIsHeld(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	a := mintToken(t, s, c, "agent", "")
+
+	release, err := st.HoldWriter(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	read := func(name string, send func() *http.Response) {
+		t.Helper()
+		answered := make(chan int, 1)
+		go func() { answered <- send().StatusCode }()
+		select {
+		case code := <-answered:
+			if code != http.StatusOK {
+				t.Errorf("%s while the writer is held = %d", name, code)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("%s did not answer while the writer was held", name)
+		}
+	}
+	read("a signed-in read", func() *http.Response { return c.do("GET", "/api/tasks/"+id, "") })
+	read("a token read", func() *http.Response { return a.do("GET", "/api/tasks/"+id, "") })
+}

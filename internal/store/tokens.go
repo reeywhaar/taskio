@@ -587,8 +587,14 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 	}
 	// Stamping what was seen is the process noticing itself, so it does not mark the database
 	// changed and does not schedule a backup.
+	//
+	// A second at most, and nothing refused if it does not get one: it waits for the one writer
+	// connection, and a write stuck on that connection made every token request wait as long as
+	// its caller would.
 	seen := seenFrom(ctx)
-	s.writer.ExecContext(ctx,
+	stamp, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	s.writer.ExecContext(stamp,
 		`UPDATE tokens SET last_used_at = ?, last_ip = ?, last_agent = ? WHERE id = ?`,
 		unix(now), seen.IP, seen.Agent, tok.ID)
 	tok.LastUsedAt = &now
