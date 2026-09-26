@@ -14,7 +14,7 @@ describe("Editor", () => {
       />,
     );
     expect(screen.getByDisplayValue("# Hello")).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "View" })).toBeNull();
     expect(document.querySelector(".prose")).toBeNull();
   });
 });

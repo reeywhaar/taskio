@@ -9,12 +9,12 @@ Markdown is the storage format. A rich-text surface would have to round-trip it 
 way in, serialise on the way out — and every round trip is a chance to lose a construct nobody
 tested. So it is a textarea, and what you type is what is stored.
 
-**Reading is the dialog's other face.** Preview and Edit sit at the right of the title bar,
+**Reading is the dialog's other face.** View and Edit sit at the right of the title bar,
 beside the close, and switch the dialog between the fields and the task as it reads — named
 after the task, with its words and its mentions, and the same footer. The preview was a second
 tab once, which made it the same size and shape as the box it replaced, and then a second dialog
 over the first, which was a second thing to close for what is the same task in the same place.
-Preview appears only once there is something to read.
+View appears only once there is something to read.
 
 The words it shows are held while it is open. An edit arriving from elsewhere replaces the draft
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an
@@ -719,7 +719,7 @@ goes ahead — Revoke…, and Delete… where it confirms. A form it cannot run 
 password…. Sign out… has one only on the browser in use, because only that one asks.
 
 A button that does its thing on the press has none, even when something opens. Delete in the task
-dialog deletes. Preview shows the description and asks nothing, and a recovery link is made the
+dialog deletes. View shows the description and asks nothing, and a recovery link is made the
 moment it is pressed.
 
 Nor does one that opens a thing to be written, new or not — New task, Mint a token, Edit, Change

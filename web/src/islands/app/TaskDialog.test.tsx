@@ -350,7 +350,7 @@ const prose = () => document.querySelector(".prose")?.textContent?.trim();
 describe("reading the task", () => {
   it("switches to reading and back, keeping what was typed", async () => {
     await withVerdict();
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
 
     // Read, it is named after the task, and the fields are gone.
     expect(screen.getByRole("heading", { name: "Fix the tap" })).toBeDefined();
@@ -364,14 +364,14 @@ describe("reading the task", () => {
   it("offers no preview of nothing", async () => {
     open();
     await screen.findByPlaceholderText(/Markdown\. Paste a file/);
-    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "View" })).toBeNull();
   });
 
   /** An edit from elsewhere should not swap a page of prose mid-sentence. */
   it("holds the words steady, and offers the newer text as a button", async () => {
     task = { ...detail("todo"), description: "first words" };
     const { client } = open();
-    fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View" }));
     expect(prose()).toBe("first words");
 
     task = { ...task, description: "second words" };
@@ -386,7 +386,7 @@ describe("reading the task", () => {
   it("writes a tick into what Save sends", async () => {
     task = { ...detail("todo"), description: "- [ ] one" };
     open();
-    fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View" }));
     fireEvent.click(document.querySelector("li[data-check]")!);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
@@ -438,7 +438,7 @@ describe("a mention", () => {
   it("opens the same way from a chip in the description", async () => {
     task = { ...detail("todo"), description: "See @kr20fj8m first." };
     mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Preview" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View" }));
     fireEvent.click(document.querySelector("a.mention")!);
     expect(
       await screen.findByRole("heading", { name: "Buy washers" }),

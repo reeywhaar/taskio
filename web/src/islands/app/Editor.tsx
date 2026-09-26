@@ -16,7 +16,7 @@ function markdownFor(name: string, url: string, image: boolean): string {
 /**
  * A textarea over the markdown itself.
  *
- * Only the writing. Reading it is the dialog's other face — Preview in its title bar — rather
+ * Only the writing. Reading it is the dialog's other face — View in its title bar — rather
  * than a tab here, which made a preview the same size and shape as the box it replaced, or a
  * second dialog over the first. See docs/interface.md.
  */

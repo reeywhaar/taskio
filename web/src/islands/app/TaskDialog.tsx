@@ -267,7 +267,7 @@ export function TaskDialog({
             // does nothing.
             draft.description.trim() ? (
               <Button size="compact" onClick={read}>
-                Preview
+                View
               </Button>
             ) : null
           ) : (

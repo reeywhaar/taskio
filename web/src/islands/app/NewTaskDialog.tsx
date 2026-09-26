@@ -91,7 +91,7 @@ export function NewTaskDialog({
         mode === "edit" ? (
           draft.description.trim() ? (
             <Button size="compact" onClick={() => setMode("preview")}>
-              Preview
+              View
             </Button>
           ) : null
         ) : (
