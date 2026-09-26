@@ -203,6 +203,18 @@ type TaskPatch struct {
 // UPDATE writing identical values, so asking in the WHERE is what makes the answer mean
 // anything.
 func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach, id string, patch TaskPatch) (*Task, error) {
+	// Before the transaction, as CreateTask does. An inline image is stored by PutAsset, which
+	// takes the one writer connection for a transaction of its own: asked for from inside this
+	// one, it waited on the connection this was holding, forever, and every write in the process
+	// — a session being touched included, so every signed-in read — queued behind it.
+	var inlined string
+	if patch.Description != nil {
+		var err error
+		if inlined, err = s.inlineAssets(ctx, principalID, *patch.Description); err != nil {
+			return nil, err
+		}
+	}
+
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -221,9 +233,7 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach,
 		}
 	}
 	if patch.Description != nil {
-		if description, err = s.inlineAssets(ctx, principalID, *patch.Description); err != nil {
-			return nil, err
-		}
+		description = inlined
 		if err := validDescription(description); err != nil {
 			return nil, err
 		}

@@ -133,6 +133,44 @@ func TestAnInlineImageBecomesAnAsset(t *testing.T) {
 	}
 }
 
+// The edit, which is where it hung: the image was stored from inside the task's own transaction,
+// on a writer pool of one connection, so it waited on itself and every write queued behind it.
+// Bounded, so a regression fails here rather than hanging the suite.
+func TestAnInlineImageInAnEditDoesNotHang(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+
+	encoded := base64.StdEncoding.EncodeToString(onePixel(t, 90))
+	body, _ := json.Marshal(map[string]string{
+		"description": "It drips.\n\n![](data:image/png;base64," + encoded + ")",
+	})
+	// A deadline on the request, as a client that gives up is: the server's wait is cancelled
+	// with it, so a regression answers here as a failure instead of hanging the suite behind a
+	// writer that never comes back.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r := httptest.NewRequest("PATCH", "/api/tasks/"+id, strings.NewReader(string(body))).WithContext(ctx)
+	r.Header.Set("Content-Type", "application/json")
+	r.AddCookie(c.cookie)
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, r)
+	if ctx.Err() != nil {
+		t.Fatal("a PATCH with an inline image did not answer in five seconds")
+	}
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("patch = %s", resp.Status)
+	}
+	description := c.json(resp)["description"].(string)
+	if strings.Contains(description, "data:image") || !strings.Contains(description, "/api/assets/a_") {
+		t.Errorf("description = %q, want the asset URL in place of the data: URI", description)
+	}
+
+	// And the writer is free: the next write goes through.
+	c.task(`{"title":"Another"}`)
+}
+
 // If one image is refused, none of them is stored and the task is left as it was.
 func TestTooManyInlineImagesStoresNone(t *testing.T) {
 	s, st := newServerStore(t, nil)

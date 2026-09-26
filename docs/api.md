@@ -338,8 +338,9 @@ rewritten before the task is saved:
   "description": "It drips.\n\n![](/api/assets/a_01j9z...)" }
 ```
 
-Works on `POST` and on `PATCH` alike, and the whole write is one transaction: if one image is
-refused, none of them is stored and the task is left as it was.
+Works on `POST` and on `PATCH` alike. If one image is refused the task is left as it was; an image
+stored before the refused one is referenced by nothing, and the sweep takes it after a grace
+period.
 
 | limit | value |
 | --- | --- |
