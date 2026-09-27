@@ -34,6 +34,12 @@ export type TokenPatch = {
 export const patchTokensById = (id: string, body: TokenPatch) =>
   request<Token>(`/api/tokens/${id}`, { method: "PATCH", body });
 
+/** A new secret, everything else kept; the old one stops at once, and the id changes with it. */
+export const postTokensByIdRotate = (id: string) =>
+  request<{ token: Token; secret: string }>(`/api/tokens/${id}/rotate`, {
+    method: "POST",
+  });
+
 export const deleteTokensById = (id: string) =>
   request<void>(`/api/tokens/${id}`, { method: "DELETE" });
 

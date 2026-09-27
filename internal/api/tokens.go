@@ -225,6 +225,23 @@ func (s *Server) patchToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, renderToken(tok, projects))
 }
 
+// rotateToken gives a token a new secret, everything else about it kept, and answers like a mint:
+// the token and its secret, shown once.
+func (s *Server) rotateToken(w http.ResponseWriter, r *http.Request) {
+	tok, secret, err := s.store.RotateToken(r.Context(), principalOf(r).ID, r.PathValue("id"))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	projects, err := s.projectsByID(r, []*store.Token{tok})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	s.log.Info("token rotated", "principal", principalOf(r).ID, "from", r.PathValue("id"), "to", tok.ID)
+	writeJSON(w, http.StatusCreated, map[string]any{"token": renderToken(tok, projects), "secret": secret})
+}
+
 func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.RevokeToken(r.Context(), principalOf(r).ID, r.PathValue("id")); err != nil {
 		s.fail(w, r, err)

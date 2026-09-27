@@ -454,6 +454,88 @@ func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
 	return nil
 }
 
+// RotateToken gives a token a new secret and keeps everything else about it: its label, what it
+// reaches, when it ends and how long it may sit unused.
+//
+// The id is derived from the secret, so the new secret is a new row with a new id, and the old
+// row is revoked in the same transaction: there is no moment with both secrets working, and none
+// with neither. The old row stays, revoked, like any other, so a log line naming it can still be
+// traced. The new one starts its life now, which is what its idle limit counts from.
+func (s *Store) RotateToken(ctx context.Context, principalID, id string) (*Token, string, error) {
+	raw, err := secret()
+	if err != nil {
+		return nil, "", err
+	}
+	value := TokenPrefix + raw
+	now := s.Now()
+
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	defer tx.Rollback()
+
+	var (
+		label            string
+		expires, revoked sql.NullInt64
+		idle             int64
+	)
+	err = tx.QueryRowContext(ctx,
+		`SELECT label, expires_at, idle_ttl, revoked_at FROM tokens WHERE principal_id = ? AND id = ?`,
+		principalID, id).Scan(&label, &expires, &idle, &revoked)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, "", NotFound("There is no such token.")
+	}
+	if err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+	if revoked.Valid {
+		return nil, "", Invalid("That token is revoked. Mint a new one instead.")
+	}
+	// A new secret for a token past its end would be a new secret that does not work either.
+	if expires.Valid && expires.Int64 <= unix(now) {
+		return nil, "", Invalid("That token has expired. Mint a new one instead.")
+	}
+	rows, err := loadRows(ctx, tx, id)
+	if err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+
+	tok := &Token{
+		ID:          tokenID(value),
+		PrincipalID: principalID,
+		Label:       label,
+		Hint:        raw[:hintLen],
+		Projects:    rows,
+		CreatedAt:   now,
+		IdleTTL:     time.Duration(idle) * time.Second,
+	}
+	var exp any
+	if expires.Valid {
+		at := time.Unix(expires.Int64, 0).UTC()
+		tok.ExpiresAt = &at
+		exp = expires.Int64
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, created_at, expires_at, idle_ttl)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tok.ID, principalID, label, tokenKey(value), tok.Hint, unix(now), exp, idle); err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+	if err := writeRows(ctx, tx, tok.ID, rows); err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE tokens SET revoked_at = ? WHERE id = ?`, unix(now), id); err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
+	}
+	s.changed(principalID)
+	return tok, value, nil
+}
+
 // ForgetRevokedTokens deletes the revoked ones and reports how many went.
 //
 // Revoking keeps the row so a token that turns up in a log afterwards can still be named, which

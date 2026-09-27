@@ -6,6 +6,7 @@ import { Tokens } from "@app/islands/app/Settings";
 import { mount } from "@app/test/harness";
 
 const revoke = vi.fn();
+const rotate = vi.fn();
 let tokens: Token[] = [];
 vi.mock("@app/api/actions/tokens", () => ({
   getTokens: () => Promise.resolve({ tokens }),
@@ -13,6 +14,7 @@ vi.mock("@app/api/actions/tokens", () => ({
   deleteTokensRevoked: vi.fn(),
   patchTokensById: vi.fn(),
   postTokens: vi.fn(),
+  postTokensByIdRotate: (id: string) => rotate(id),
 }));
 vi.mock("@app/api/actions/projects", () => ({
   getProjects: () =>
@@ -95,5 +97,46 @@ describe("a token's row", () => {
     expect(
       screen.getByText(`stops on ${new Date(at * 1000).toLocaleDateString()}`),
     ).toBeDefined();
+  });
+});
+
+/** A new secret and the rest kept: asked first, since the old secret stops at once. */
+describe("rotating a token", () => {
+  beforeEach(() => {
+    tokens = [token()];
+    rotate.mockReset().mockResolvedValue({
+      token: token({ id: "9d0c1a2b3e4f" }),
+      secret: "tk_newsecretvalue",
+    });
+  });
+
+  it("asks, and a no does nothing", async () => {
+    mount(<Tokens />);
+    fireEvent.click(await screen.findByRole("button", { name: "Rotate…" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(rotate).not.toHaveBeenCalled();
+  });
+
+  it("shows the new secret once on a yes", async () => {
+    mount(<Tokens />);
+    fireEvent.click(await screen.findByRole("button", { name: "Rotate…" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Rotate",
+      }),
+    );
+    expect(await screen.findByText("tk_newsecretvalue")).toBeDefined();
+    expect(rotate).toHaveBeenCalledWith("4b9933cf3430");
+    expect(screen.getByRole("button", { name: "Copy" })).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "I have copied it" }));
+    await waitFor(() =>
+      expect(screen.queryByText("tk_newsecretvalue")).toBeNull(),
+    );
   });
 });

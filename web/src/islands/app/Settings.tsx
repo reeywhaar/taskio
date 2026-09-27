@@ -13,11 +13,14 @@ import {
   deleteTokensById,
   deleteTokensRevoked,
   getTokens,
+  postTokensByIdRotate,
 } from "@app/api/actions/tokens";
 import type { Token } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Boundary } from "@app/components/Boundary";
 import { Button } from "@app/components/Button";
+import { Copyable } from "@app/components/Copyable";
+import { Dialog } from "@app/components/Dialog";
 import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
 import { PasswordDialog } from "@app/islands/app/PasswordDialog";
 import { RecoveryDialog } from "@app/islands/app/RecoveryDialog";
@@ -279,6 +282,19 @@ export function Tokens() {
   const tokens = useQuery({ queryKey: qk.tokens, queryFn: getTokens });
   const [minting, setMinting] = useState(false);
   const [editing, setEditing] = useState<Token | null>(null);
+  /** The secret a rotation handed back, shown once, and whose it is. */
+  const [rotated, setRotated] = useState<{
+    label: string;
+    secret: string;
+  } | null>(null);
+
+  const rotate = useMutation({
+    mutationFn: (id: string) => postTokensByIdRotate(id),
+    onSuccess: (result) => {
+      setRotated({ label: result.token.label, secret: result.secret });
+      client.invalidateQueries({ queryKey: qk.tokens });
+    },
+  });
 
   const revoke = useMutation({
     mutationFn: (id: string) => deleteTokensById(id),
@@ -388,6 +404,28 @@ export function Tokens() {
                 <Button variant="link" onClick={() => setEditing(token)}>
                   Edit
                 </Button>
+                {/* Asked, because the secret in use stops at once: whatever holds it is broken
+                    until it is given the new one. Everything else about the token stays. */}
+                <Button
+                  variant="link"
+                  disabled={rotate.isPending}
+                  onClick={async () => {
+                    const yes = await confirm({
+                      title: "Rotate this token?",
+                      message: (
+                        <>
+                          It gets a new secret and keeps everything else.
+                          Whatever uses <b>{token.label}</b> stops working until
+                          it is given the new one.
+                        </>
+                      ),
+                      confirm: "Rotate",
+                    });
+                    if (yes) rotate.mutate(token.id);
+                  }}
+                >
+                  Rotate…
+                </Button>
                 {/* Asked, because it is the one thing on this row that cannot be taken back:
                     whatever holds the token stops working on its next request, and the only
                     way on is a new token pasted into every place the old one was. */}
@@ -418,6 +456,25 @@ export function Tokens() {
 
       <TokenDialog open={minting} onClose={() => setMinting(false)} />
       <TokenEditDialog token={editing} onClose={() => setEditing(null)} />
+      {/* The same once-only showing a new token gets. */}
+      <Dialog
+        open={rotated !== null}
+        onClose={() => setRotated(null)}
+        title="New secret"
+        footer={
+          <Button variant="solid" onClick={() => setRotated(null)}>
+            I have copied it
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-warn">
+            The new secret for <b>{rotated?.label}</b>, shown once. The old one
+            has stopped working.
+          </p>
+          <Copyable value={rotated?.secret ?? ""} />
+        </div>
+      </Dialog>
     </Panel>
   );
 }

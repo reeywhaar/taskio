@@ -61,7 +61,7 @@ The image's entrypoint is the binary, so every subcommand is one `docker exec` a
 | --- | --- |
 | `serve` | Run the server |
 | `invite` | Print a new invitation link |
-| `token create\|list\|revoke` | Mint, list and revoke API tokens |
+| `token create\|list\|rotate\|revoke` | Mint, list, rotate and revoke API tokens |
 | `sweep` | Delete what is due now — see below. `--dry-run` shows what would go |
 | `healthcheck` | Ask the running server whether it is well |
 | `version` | Print the version this binary was built from |

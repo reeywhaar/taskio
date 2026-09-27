@@ -16,8 +16,8 @@ import (
 // The route through the app — sign in, find settings, find tokens, mint, copy — is the one
 // people skip in favour of something worse, like handing a script their session cookie.
 func tokenCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "token", Short: "Mint, list and revoke API tokens"}
-	cmd.AddCommand(tokenCreateCmd(), tokenListCmd(), tokenRevokeCmd())
+	cmd := &cobra.Command{Use: "token", Short: "Mint, list, rotate and revoke API tokens"}
+	cmd.AddCommand(tokenCreateCmd(), tokenListCmd(), tokenRotateCmd(), tokenRevokeCmd())
 	return cmd
 }
 
@@ -152,6 +152,40 @@ func tokenListCmd() *cobra.Command {
 				}
 				cmd.Printf("%s  %-20s %-8s %s\n", tok.ID, tok.Label, state, strings.Join(reach, " "))
 			}
+			return nil
+		},
+	}
+	cmd.Flags().String("user", "", "the account")
+	cmd.MarkFlagRequired("user")
+	return cmd
+}
+
+// tokenRotateCmd gives a token a new secret and keeps the rest of it. The old secret stops at
+// once, and the token's id changes with its secret.
+func tokenRotateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "rotate <id>",
+		Short: "Give a token a new secret, keeping what it reaches",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, st, _, err := setup()
+			if err != nil {
+				return err
+			}
+			defer st.Close()
+
+			user, _ := cmd.Flags().GetString("user")
+			p, err := principalNamed(cmd.Context(), st, user)
+			if err != nil {
+				return err
+			}
+			tok, secret, err := st.RotateToken(cmd.Context(), p.ID, args[0])
+			if err != nil {
+				return err
+			}
+			cmd.PrintErrln("This is the only time this token is shown. The old secret has stopped working.")
+			cmd.Println(secret)
+			cmd.PrintErrf("id %s (was %s)\n", tok.ID, args[0])
 			return nil
 		},
 	}

@@ -745,3 +745,61 @@ func homeRow(t *testing.T, st *store.Store, principalID, scope string) []store.T
 	}
 	return []store.TokenProject{{ProjectID: p.ID, Scope: scope}}
 }
+
+// A new secret, and nothing else changed: the label, what it reaches, when it ends and how long
+// it may sit unused all carry over, and the old secret stops at the same moment the new one starts.
+func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	c.project(`{"name":"Garden"}`)
+	expires := st.Now().Add(30 * 24 * time.Hour).Unix()
+	resp := c.do("POST", "/api/tokens", fmt.Sprintf(
+		`{"label":"agent","projects":[{"project":"garden","scope":"or(seeds)"}],"expires_at":%d,"idle_seconds":604800}`, expires))
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("mint = %s", resp.Status)
+	}
+	minted := c.json(resp)
+	old := &agent{t: t, server: s, secret: minted["secret"].(string)}
+	oldID := minted["token"].(map[string]any)["id"].(string)
+
+	resp = c.do("POST", "/api/tokens/"+oldID+"/rotate", "")
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("rotate = %s", resp.Status)
+	}
+	rotated := c.json(resp)
+	fresh := &agent{t: t, server: s, secret: rotated["secret"].(string)}
+	tok := rotated["token"].(map[string]any)
+	if tok["id"] == oldID || rotated["secret"] == minted["secret"] {
+		t.Fatal("rotating did not change the secret")
+	}
+	if tok["label"] != "agent" || tok["expires_at"] != float64(expires) || tok["idle_seconds"] != float64(604800) {
+		t.Errorf("the rotated token = %v, want its label, end and idle limit kept", tok)
+	}
+	was, _ := json.Marshal(minted["token"].(map[string]any)["projects"])
+	now, _ := json.Marshal(tok["projects"])
+	if string(was) != string(now) || !strings.Contains(string(now), `"garden"`) {
+		t.Errorf("the rotated token reaches %s, want what it reached before, %s", now, was)
+	}
+
+	if resp := fresh.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("the new secret = %s", resp.Status)
+	}
+	if resp := old.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("the old secret = %s, want 401", resp.Status)
+	}
+
+	// The old row stays, revoked, so a log line naming it can still be traced.
+	listed := map[string]any{}
+	for _, row := range c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any) {
+		listed[row.(map[string]any)["id"].(string)] = row.(map[string]any)["revoked_at"]
+	}
+	if listed[oldID] == nil || listed[tok["id"].(string)] != nil {
+		t.Errorf("after the rotation the listing's revoked_at = %v, want the old one revoked and the new one live", listed)
+	}
+
+	// Nothing to rotate in a token already revoked, and a token cannot rotate one at all.
+	refusal(t, c.do("POST", "/api/tokens/"+oldID+"/rotate", ""), http.StatusBadRequest)
+	if resp := fresh.do("POST", "/api/tokens/"+tok["id"].(string)+"/rotate", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a token rotating one = %s, want 401", resp.Status)
+	}
+}

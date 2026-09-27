@@ -232,6 +232,11 @@ token on the quiet; only the switch does.
 A deleted project's row stays until the token's projects are next saved, saying the project was
 deleted and that asking for it is refused.
 
+**Rotate… gives a token a new secret and keeps the rest** — label, rows, end and idle limit — for
+a secret that has leaked, or one that has been in too many places. It asks first, because the old
+secret stops at once, and then shows the new one the way a new token's is shown: once, with Copy.
+The id is derived from the secret, so it changes, and the old row stays in the list as revoked.
+
 ## A task is moved with a field, not a gesture
 
 The task form leads its row with the project — `[project] [priority] … [color]` — because it is
