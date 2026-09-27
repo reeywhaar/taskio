@@ -20,6 +20,10 @@ The words it shows are held while it is open. An edit arriving from elsewhere re
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an
 Update beside Edit. A tick in it is an edit like any other, sent by Save.
 
+**Linked tasks are listed once.** Under the description: Both ways, for a task that mentions this
+one and is mentioned by it, then Mentions and Mentioned by for what goes only one way. A pair of
+tasks written together mention each other, and listing both directions drew the same rows twice.
+
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath
 is where somebody was, so closing the one on top comes back to it as it was left. Edit works

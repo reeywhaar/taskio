@@ -384,16 +384,7 @@ export function TaskDialog({
             />
           )}
 
-          <Mentions
-            heading="Mentions"
-            list={task.data.mentions}
-            onOpen={setPeek}
-          />
-          <Mentions
-            heading="Mentioned by"
-            list={task.data.mentioned_by}
-            onOpen={setPeek}
-          />
+          <Links detail={task.data} onOpen={setPeek} />
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </div>
@@ -411,6 +402,40 @@ export function TaskDialog({
         />
       ) : null}
     </Dialog>
+  );
+}
+
+/**
+ * The tasks this one is linked with, each listed once.
+ *
+ * A task that mentions this one and is mentioned by it was listed under both headings — the same
+ * rows twice, which on a pair of tasks written together was every row. Those are under Both ways,
+ * and the other two lists are what goes only one way.
+ */
+function Links({
+  detail,
+  onOpen,
+}: {
+  detail: TaskDetail;
+  onOpen: (id: string) => void;
+}) {
+  const back = new Set(detail.mentioned_by.map((stub) => stub.id));
+  const both = detail.mentions.filter((stub) => back.has(stub.id));
+  const mutual = new Set(both.map((stub) => stub.id));
+  return (
+    <>
+      <Mentions heading="Both ways" list={both} onOpen={onOpen} />
+      <Mentions
+        heading="Mentions"
+        list={detail.mentions.filter((stub) => !mutual.has(stub.id))}
+        onOpen={onOpen}
+      />
+      <Mentions
+        heading="Mentioned by"
+        list={detail.mentioned_by.filter((stub) => !mutual.has(stub.id))}
+        onOpen={onOpen}
+      />
+    </>
   );
 }
 

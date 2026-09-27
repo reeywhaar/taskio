@@ -445,3 +445,46 @@ describe("a mention", () => {
     ).toBeDefined();
   });
 });
+
+const stub = (id: string, title: string) =>
+  ({ id, title, project: "main", status: "todo" }) as const;
+/** The text of the section under one heading. */
+const section = (heading: string) =>
+  screen.getByRole("heading", { name: heading }).parentElement!.textContent;
+
+/** A task linked both ways was the same row under two headings. */
+describe("the linked tasks", () => {
+  it("lists a task linked both ways once, apart from the one-way ones", async () => {
+    task = {
+      ...detail("todo"),
+      mentions: [stub("kr20fj8m", "Buy washers"), stub("m3v9x2pq", "Out only")],
+      mentioned_by: [
+        stub("kr20fj8m", "Buy washers"),
+        stub("t8nv2xy7", "In only"),
+      ],
+    } as TaskDetail;
+    open();
+    await screen.findByRole("heading", { name: "Both ways" });
+
+    expect(section("Both ways")).toContain("Buy washers");
+    expect(section("Mentions")).toContain("Out only");
+    expect(section("Mentions")).not.toContain("Buy washers");
+    expect(section("Mentioned by")).toContain("In only");
+    expect(section("Mentioned by")).not.toContain("Buy washers");
+    expect(screen.getAllByRole("button", { name: /Buy washers/ })).toHaveLength(
+      1,
+    );
+  });
+
+  it("draws no heading for a list with nothing in it", async () => {
+    task = {
+      ...detail("todo"),
+      mentions: [stub("kr20fj8m", "Buy washers")],
+      mentioned_by: [stub("kr20fj8m", "Buy washers")],
+    } as TaskDetail;
+    open();
+    await screen.findByRole("heading", { name: "Both ways" });
+    expect(screen.queryByRole("heading", { name: "Mentions" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Mentioned by" })).toBeNull();
+  });
+});
