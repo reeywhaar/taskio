@@ -100,7 +100,7 @@ export function Editor({
     // Grows into the slack, and never gives up its own height for it: with min-h-0 it was the
     // part of a tall dialog that shrank, and the textarea kept its height and spilled over the
     // fields below it. The dialog's body scrolls; nothing in it has to shrink.
-    <div className="flex flex-1 flex-col gap-2">
+    <div className="flex flex-auto flex-col gap-2">
       <div className="flex items-center gap-1 text-sm">
         <label className="ml-auto cursor-pointer text-muted hover:text-fg">
           {/* A phone has no paste gesture for a photo, so the button is the only path there. */}
@@ -135,7 +135,7 @@ export function Editor({
           e.preventDefault();
           void upload(files);
         }}
-        className="sunken w-full min-h-40 flex-1 rounded-md border-0 bg-bg p-3 text-fg focus:outline-none"
+        className="sunken w-full min-h-40 flex-auto rounded-md border-0 bg-bg p-3 text-fg focus:outline-none"
         placeholder="Markdown. Paste a file, or @ a task."
       />
 

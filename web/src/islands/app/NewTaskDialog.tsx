@@ -113,7 +113,7 @@ export function NewTaskDialog({
         </>
       }
     >
-      <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-auto flex-col gap-4">
         {mode === "edit" ? (
           <TaskForm
             draft={draft}
