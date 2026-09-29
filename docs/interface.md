@@ -20,7 +20,7 @@ The words it shows are held while it is open. An edit arriving from elsewhere re
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an
 Update beside Edit. A tick in it is an edit like any other, sent by Save.
 
-**Linked tasks are listed once.** Under the description: Both ways, for a task that mentions this
+**Linked tasks are listed once.** Under the description: Mentioned both ways, for a task that mentions this
 one and is mentioned by it, then Mentions and Mentioned by for what goes only one way. A pair of
 tasks written together mention each other, and listing both directions drew the same rows twice.
 

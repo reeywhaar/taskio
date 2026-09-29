@@ -464,9 +464,9 @@ describe("the linked tasks", () => {
       ],
     } as TaskDetail;
     open();
-    await screen.findByRole("heading", { name: "Both ways" });
+    await screen.findByRole("heading", { name: "Mentioned both ways" });
 
-    expect(section("Both ways")).toContain("Buy washers");
+    expect(section("Mentioned both ways")).toContain("Buy washers");
     expect(section("Mentions")).toContain("Out only");
     expect(section("Mentions")).not.toContain("Buy washers");
     expect(section("Mentioned by")).toContain("In only");
@@ -483,7 +483,7 @@ describe("the linked tasks", () => {
       mentioned_by: [stub("kr20fj8m", "Buy washers")],
     } as TaskDetail;
     open();
-    await screen.findByRole("heading", { name: "Both ways" });
+    await screen.findByRole("heading", { name: "Mentioned both ways" });
     expect(screen.queryByRole("heading", { name: "Mentions" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Mentioned by" })).toBeNull();
   });

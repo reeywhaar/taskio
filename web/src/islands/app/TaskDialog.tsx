@@ -409,7 +409,8 @@ export function TaskDialog({
  * The tasks this one is linked with, each listed once.
  *
  * A task that mentions this one and is mentioned by it was listed under both headings — the same
- * rows twice, which on a pair of tasks written together was every row. Those are under Both ways,
+ * rows twice, which on a pair of tasks written together was every row. Those are under
+ * Mentioned both ways,
  * and the other two lists are what goes only one way.
  */
 function Links({
@@ -424,7 +425,7 @@ function Links({
   const mutual = new Set(both.map((stub) => stub.id));
   return (
     <>
-      <Mentions heading="Both ways" list={both} onOpen={onOpen} />
+      <Mentions heading="Mentioned both ways" list={both} onOpen={onOpen} />
       <Mentions
         heading="Mentions"
         list={detail.mentions.filter((stub) => !mutual.has(stub.id))}
