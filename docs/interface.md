@@ -34,6 +34,9 @@ The box under them has a Comment button, and while it has words in it, Mark done
 most worth writing on it, and the moment it is done is when it is known. A button that changes its
 word while something is typed says what it will do; a chevron menu of the same two would hide it.
 
+The box itself has Edit | Preview over it, GitHub's, because it has no dialog face of its own to
+turn. Posting a comment brings the box back to Edit.
+
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath
 is where somebody was, so closing the one on top comes back to it as it was left. Edit works

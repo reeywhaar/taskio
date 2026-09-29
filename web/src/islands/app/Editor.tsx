@@ -1,8 +1,15 @@
-import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import {
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 
 import { postAssets } from "@app/api/actions/assets";
 import { ApiError } from "@app/api/transport";
 import { Button } from "@app/components/Button";
+import { Segmented } from "@app/components/Segmented";
 
 function filesOf(list: FileList | null): File[] {
   return Array.from(list ?? []);
@@ -16,9 +23,9 @@ function markdownFor(name: string, url: string, image: boolean): string {
 /**
  * A textarea over the markdown itself.
  *
- * Only the writing. Reading it is the dialog's other face — View in its title bar — rather
- * than a tab here, which made a preview the same size and shape as the box it replaced, or a
- * second dialog over the first. See docs/interface.md.
+ * Only the writing, for a description: reading it is the dialog's other face — View in its
+ * title bar. A comment has no dialog of its own to turn, so given a preview it gets GitHub's
+ * Edit | Preview over the box. See docs/interface.md.
  */
 export function Editor({
   value,
@@ -26,6 +33,7 @@ export function Editor({
   limits,
   compact = false,
   prompt = "Markdown. Paste a file, or @ a task.",
+  preview,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -36,9 +44,20 @@ export function Editor({
   /** The per-file limit, so an oversized paste is refused here rather than after a minute of
    *  uploading. */
   limits: { assetMax: number };
+  /** The text as it reads. Given, the box has an Edit | Preview toggle. */
+  preview?: (source: string) => ReactNode;
 }) {
   const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Back to writing when the text is emptied from outside, which is a comment posted.
+  const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const [was, setWas] = useState(value);
+  if (value !== was) {
+    setWas(value);
+    if (!value) setTab("edit");
+  }
+  const reading = preview !== undefined && tab === "preview";
 
   /**
    * Insertion goes through execCommand where it exists.
@@ -108,21 +127,43 @@ export function Editor({
     // fields below it. The dialog's body scrolls; nothing in it has to shrink.
     <div className="flex flex-auto flex-col gap-2">
       <div className="flex items-center gap-1 text-sm">
-        <label className="ml-auto cursor-pointer text-muted hover:text-fg">
-          {/* A phone has no paste gesture for a photo, so the button is the only path there. */}
-          Attach
-          <input
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              void upload(filesOf(e.target.files));
-              e.target.value = "";
-            }}
+        {preview ? (
+          <Segmented
+            value={tab}
+            options={["edit", "preview"] as const}
+            label="Comment"
+            onChange={setTab}
           />
-        </label>
+        ) : null}
+        {reading ? null : (
+          <label className="ml-auto cursor-pointer text-muted hover:text-fg">
+            {/* A phone has no paste gesture for a photo, so the button is the only path there. */}
+            Attach
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void upload(filesOf(e.target.files));
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
       </div>
 
+      {reading ? (
+        // As tall as the box it stands for, so the buttons under it stay put.
+        <div className="min-h-20 flex-auto px-3 py-3">
+          {value.trim() ? (
+            preview(value)
+          ) : (
+            <p className="text-sm text-muted">Nothing to preview.</p>
+          )}
+        </div>
+      ) : null}
+      {/* Hidden rather than gone while reading: an upload still lands in it, and its undo
+          history survives the trip. */}
       <textarea
         ref={ref}
         rows={compact ? 3 : 10}
@@ -143,7 +184,7 @@ export function Editor({
         }}
         className={`sunken w-full flex-auto rounded-md border-0 bg-bg p-3 text-fg focus:outline-none ${
           compact ? "min-h-20" : "min-h-40"
-        }`}
+        } ${reading ? "hidden" : ""}`}
         placeholder={prompt}
       />
 

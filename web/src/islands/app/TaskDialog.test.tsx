@@ -543,6 +543,25 @@ describe("comments", () => {
     await waitFor(() => expect(box().value).toBe(""));
   });
 
+  it("previews one, and is back to editing once it is posted", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    fireEvent.change(box(), { target: { value: "Needs **washers**." } });
+    fireEvent.click(screen.getByRole("button", { name: "preview" }));
+
+    const group = screen.getByRole("group", { name: "Comment" });
+    const composer = group.parentElement!.parentElement!;
+    expect(composer.querySelector("strong")?.textContent).toBe("washers");
+    expect(box().classList.contains("hidden")).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Comment" }));
+    await waitFor(() => expect(box().value).toBe(""));
+    expect(box().classList.contains("hidden")).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "edit" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
   it("marks done with the comment, the comment first", async () => {
     open();
     await screen.findByPlaceholderText(/^Comment\./);

@@ -430,6 +430,14 @@ export function TaskDialog({
               onChange={setComment}
               prompt="Comment. Markdown, like the description."
               limits={{ assetMax: 10 << 20 }}
+              preview={(source) => (
+                <Preview
+                  source={source}
+                  compact
+                  onChange={setComment}
+                  onMention={setPeek}
+                />
+              )}
             />
             <div className="flex justify-end">
               <Button
