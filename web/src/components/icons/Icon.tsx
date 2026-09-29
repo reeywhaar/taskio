@@ -80,9 +80,36 @@ export const CopyIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+export const CommentIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1Z" />
+  </Icon>
+);
+
+/**
+ * A paperclip, not a pin: the pin is pinning a task.
+ *
+ * Drawn upright and turned, so its three loops are concentric by construction and the four legs
+ * sit far enough apart that a 2px stroke leaves a gap between them at 14px.
+ */
+export const PaperclipIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path
+      transform="rotate(45 12 12)"
+      d="M15 6v9.5a3 3 0 0 1-6 0v-9a4.75 4.75 0 0 1 9.5 0v9a6.5 6.5 0 0 1-13 0V9"
+    />
+  </Icon>
+);
+/**
+ * A pencil with a body, a band and a point, drawn upright and turned. The sliver it was read as a
+ * slash at 12px.
+ */
 export const PencilIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
-    <path d="M4 20h4L19.5 8.5a2 2 0 0 0-3-3L5 17l-1 3Z" />
+    <g transform="rotate(45 12 12)">
+      <path d="M9 16V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v11l-3 5Z" />
+      <path d="M9 7h6" />
+    </g>
   </Icon>
 );
 

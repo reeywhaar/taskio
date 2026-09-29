@@ -29,8 +29,8 @@ dialog: markdown like the description, each under who wrote it — the account, 
 label before it when one did, so a timeline that agents write to says which of them said what. A
 comment pokes the task.
 
-Edit, at the right of a comment's line, turns it into its box in place, with Save and Cancel under
-it; an edited one says "edited" beside its time. From the app any comment can be edited, since
+A dimmed pencil after a comment's time turns it into its box in place, with Save and Cancel under
+it; Escape there is Cancel, not the dialog's close. An edited one says "edited" beside its time. From the app any comment can be edited, since
 they are all the account's; a token edits only its own, so what the timeline says a token wrote
 stays what it wrote. Comments are not deleted.
 
@@ -38,9 +38,20 @@ The box under them has a Comment button, and while it has words in it, Mark done
 "with comment" and post it first — GitHub's Close with comment. Why a task is done is the thing
 most worth writing on it, and the moment it is done is when it is known. A button that changes its
 word while something is typed says what it will do; a chevron menu of the same two would hide it.
+On a phone the words are a speech bubble instead, since the three buttons with them took two
+lines; the button's label still says it in full.
 
-The box itself has Edit | Preview over it, GitHub's, because it has no dialog face of its own to
-turn. Posting a comment brings the box back to Edit.
+Mark done, Mark as todo and Restore close the dialog, as Delete does: the status is what somebody
+opened the task to change. The pin and the poke are properties, and leave it open.
+
+The box itself has Edit and Preview, because it has no dialog face of its own to turn: two words
+in small caps rather than a segmented control, which was a slab over a three-line box. The one not
+showing is a pseudo-link, dashed because it switches what is here rather than going anywhere.
+They are inside the box, along its floor with the paperclip and its buttons: under it, beside the
+well, they read as a line of text near the box rather than the box's own, which GitHub gets by
+making its tabs part of the frame. The description's box has the same floor, with only the clip.
+Posting a comment brings the box back to Edit. Shift+Enter posts it, or saves one being edited;
+Enter stays a new line, since a comment is markdown and has paragraphs.
 
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath
@@ -789,16 +800,15 @@ a phone and 65 above it, which on one short word is a band of nothing with a rul
 editor takes the slack, which is the point of the screen being full — a description is the thing
 you opened it to write.
 
-**A preview has a floor under it.** A description of two lines in a box of two lines is a dialog
-that has shrunk to fit, and the room is the point of opening it at all. Above the breakpoint
-only: on a phone the dialog is the whole screen already, and a minimum there could only make it
-scroll.
+**The floor is under the whole task, not its description.** Two lines in a box of two lines is
+a dialog that has shrunk to fit, so the column of the dialog — words, linked tasks, comments — is
+at least `200px` above the breakpoint. It was the description's once, and with comments under it
+that was an empty gap between a task's words and what was said about them.
 
-It carries `shrink-0` with that floor, and the two go together. A flex item's implicit
+The column carries `shrink-0` with that floor, and the two go together. A flex item's implicit
 `min-height: auto` is what stops it shrinking below its own content, and stating a `min-height`
-replaces it — so the prose shrank to fit the dialog, its text painted past the end of the
-scrollable area, and the last paragraphs sat under the bottom edge with no way to scroll to
-them.
+replaces it — the prose once shrank to fit the dialog, painted past the end of the scrollable
+area, and its last paragraphs sat under the bottom edge with no way to scroll to them.
 
 **The cushion at the end of a scroll is a box, not padding.** Measured: the scrolling body's
 `padding-bottom` reads 16px and contributes nothing at the end of the scroll, because a flex
@@ -917,13 +927,6 @@ a tick drawn with a clip path rather than typed — a glyph would be whatever fo
 load. Where `corner-shape: squircle` is understood it rounds further; everywhere else the
 radius stands on its own.
 
-## A card is clicked, not its title
-
-The whole card opens the task. The title is still a real button, so the keyboard and a screen
-reader have something to land on and announce, and its click reaches the card like any other.
-
-It carries no hover of its own: underlining one line of a card that is entirely clickable says
-the rest of it is not. Everything else in the card is a control in its own right — the mark,
 ## A box snug inside another is less round by the gap
 
 The outer radius is the inner one plus the padding between them, so the two corners share a
@@ -931,6 +934,13 @@ centre: the segmented control's track around its backdrop, a menu around its ite
 radius on both reads as the inner corner bulging at the outer's. A control that floats inside a
 larger block, like the copy button on code, is not snug and keeps its own radius.
 
+## A card is clicked, not its title
+
+The whole card opens the task. The title is still a real button, so the keyboard and a screen
+reader have something to land on and announce, and its click reaches the card like any other.
+
+It carries no hover of its own: underlining one line of a card that is entirely clickable says
+the rest of it is not. Everything else in the card is a control in its own right — the mark,
 the id, a link in the description — and each stops the click from reaching the card behind it.
 
 A click that ends a text selection does not open anything, because that is somebody reading.

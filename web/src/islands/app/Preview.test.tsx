@@ -21,15 +21,14 @@ describe("Preview", () => {
   });
 
   /**
-   * A flex item's implicit min-height:auto is what stops it shrinking below its own content, and
-   * stating a min-height replaces it. Without shrink-0 the prose shrank to fit the dialog and its
-   * last paragraphs sat under the bottom edge. jsdom lays nothing out, so this pins the class a
-   * browser proved was load-bearing.
+   * As tall as its words: a floor here was a gap between the description and the comments under
+   * it, so the dialog has it instead. shrink-0 so it never gets shorter either. jsdom lays
+   * nothing out, so this pins the classes.
    */
-  it("does not shrink below its own words", () => {
+  it("is as tall as its words", () => {
     preview("# Hello");
     expect(prose().className).toContain("shrink-0");
-    expect(prose().className).toContain("min-h-50");
+    expect(prose().className).not.toMatch(/min-h-/);
   });
 
   it("ticks a box as an edit to the text", () => {

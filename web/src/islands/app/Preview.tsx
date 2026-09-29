@@ -23,7 +23,6 @@ export function Preview({
   source,
   onChange,
   onMention,
-  compact = false,
 }: {
   source: string;
   /** A tick, as the text with that box flipped. Left out, the boxes do not tick: a comment is
@@ -31,8 +30,6 @@ export function Preview({
   onChange?: (next: string) => void;
   /** A mention pressed, by the id it names. */
   onMention: (id: string) => void;
-  /** Without the floor a description gets, for words in a timeline. */
-  compact?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -78,18 +75,13 @@ export function Preview({
     return <p className="text-sm text-muted">No description.</p>;
 
   return (
-    // A floor under it, because a description of two lines in a box of two lines is a dialog
-    // that has shrunk to fit and reads as cramped. Above the breakpoint only: on a phone the
-    // dialog is the whole screen already.
-    //
-    // shrink-0 with it, and not decoration: a flex item's implicit min-height:auto is what stops
-    // it shrinking below its own content, and stating a min-height replaces that — the prose then
-    // shrank to fit the dialog and its last paragraphs sat below the bottom edge.
+    // As tall as its words: the floor is the dialog's, under the comments too. shrink-0 so the
+    // dialog scrolls rather than the prose shrinking under it.
     <Boundary what="The description">
       <Rendered
         ref={box}
         source={source}
-        className={`prose shrink-0 text-sm ${compact ? "" : "sm:min-h-50"}`}
+        className="prose shrink-0 text-sm"
         onClick={press}
         onKeyDown={key}
       />

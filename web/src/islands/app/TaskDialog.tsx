@@ -24,7 +24,7 @@ import { qk } from "@app/api/keys";
 import { ago, MONTH, WEEK } from "@app/ago";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
-import { PinIcon } from "@app/components/icons/Icon";
+import { CommentIcon, PencilIcon, PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { Editor } from "@app/islands/app/Editor";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
@@ -167,6 +167,11 @@ export function TaskDialog({
    * that says Mark done and marks it todo.
    */
   const status = task.data?.status ?? "todo";
+  const finish = {
+    todo: "Mark done",
+    done: "Mark as todo",
+    deleted: "Restore",
+  }[status];
 
   const invalidate = () => {
     client.invalidateQueries({ queryKey: qk.tasks });
@@ -235,14 +240,18 @@ export function TaskDialog({
     invalidate();
   };
 
-  // Only a todo goes forward; done and deleted both come back.
+  // Only a todo goes forward; done and deleted both come back. A status is what somebody came to
+  // change, so it closes, as Delete does; the pin and the poke are properties, and stay.
   const toggleDone = useMutation({
     mutationFn: async () => {
       await flush();
       await postComment();
       await (status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id));
     },
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      onClose();
+    },
     onError: (err) =>
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
@@ -357,29 +366,27 @@ export function TaskDialog({
           {/* Not shown on a task already in the bin: there is nothing further to do to it
               from here, and a Delete that does nothing is worse than no Delete. */}
           {status === "deleted" ? null : (
-            <Button variant="danger" onClick={() => remove.mutate()}>
-              {said ? "Delete with comment" : "Delete"}
+            <Button
+              variant="danger"
+              aria-label={said ? "Delete with comment" : undefined}
+              title={said ? "Delete with comment" : undefined}
+              onClick={() => remove.mutate()}
+            >
+              Delete
+              <WithComment said={said} />
             </Button>
           )}
 
           <span className="flex-1" />
-          {/* What it does, rather than what it is called elsewhere. "Finish" sits where a
-              dialog's dismiss button lives and reads as finishing the editing — which is the one
-              thing it does not do. */}
-          <Button onClick={() => toggleDone.mutate()}>
-            {
-              (said
-                ? {
-                    todo: "Mark done with comment",
-                    done: "Mark as todo with comment",
-                    deleted: "Restore with comment",
-                  }
-                : {
-                    todo: "Mark done",
-                    done: "Mark as todo",
-                    deleted: "Restore",
-                  })[status]
-            }
+          {/* What it does, rather than what it is called elsewhere: "Finish" read as finishing
+              the editing. */}
+          <Button
+            aria-label={said ? `${finish} with comment` : undefined}
+            title={said ? `${finish} with comment` : undefined}
+            onClick={() => toggleDone.mutate()}
+          >
+            {finish}
+            <WithComment said={said} />
           </Button>
           <Button
             variant="solid"
@@ -417,7 +424,11 @@ export function TaskDialog({
       ) : null}
 
       {task.data ? (
-        <div className="flex flex-auto flex-col gap-4">
+        // A floor under all of it rather than under the description, so a short task does not
+        // read as a dialog shrunk to fit, and its comments sit right under its words. Growing
+        // and never shrinking: a stated min-height replaces the one that kept it from going
+        // shorter than its content. Above the breakpoint only; a phone's dialog is the screen.
+        <div className="flex flex-[1_0_auto] flex-col gap-4 sm:min-h-50">
           {mode === "edit" ? (
             <TaskForm draft={draft} onChange={setDraft} />
           ) : (
@@ -430,38 +441,45 @@ export function TaskDialog({
 
           <Links detail={task.data} onOpen={setPeek} />
 
-          <Timeline
-            list={task.data.comments}
-            onMention={setPeek}
-            onEdit={editComment}
-            onError={setError}
-          />
-          <div className="flex flex-col gap-2">
+          {/* One section, the box under the list it adds to, and set apart from the fields
+              above: it was as near the tags as a field is, and as far from its own comments. */}
+          <section className="mt-4 flex flex-col gap-3">
+            <h3 className="text-xs font-medium tracking-wide text-muted uppercase">
+              Comments
+            </h3>
+            <Timeline
+              list={task.data.comments}
+              onMention={setPeek}
+              onEdit={editComment}
+              onError={setError}
+            />
             <Editor
               compact
               value={comment}
               onChange={setComment}
-              prompt="Comment. Markdown, like the description."
+              prompt="Comment. Markdown; Shift+Enter sends."
               limits={{ assetMax: 10 << 20 }}
+              onSubmit={() => {
+                if (said && !send.isPending) send.mutate();
+              }}
               preview={(source) => (
                 <Preview
                   source={source}
-                  compact
                   onChange={setComment}
                   onMention={setPeek}
                 />
               )}
+              actions={
+                <Button
+                  size="compact"
+                  disabled={!said || send.isPending}
+                  onClick={() => send.mutate()}
+                >
+                  Comment
+                </Button>
+              }
             />
-            <div className="flex justify-end">
-              <Button
-                size="compact"
-                disabled={!said || send.isPending}
-                onClick={() => send.mutate()}
-              >
-                Comment
-              </Button>
-            </div>
-          </div>
+          </section>
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </div>
@@ -486,7 +504,8 @@ export function TaskDialog({
  * What has been said about the task, oldest first, in the order a timeline is read.
  *
  * Each says who: the account, and the token before it when one wrote it — so a timeline written
- * to by agents says which of them said what. Edit turns one into its box, in place.
+ * to by agents says which of them said what. The pencil after its time turns one into its box,
+ * in place.
  */
 function Timeline({
   list,
@@ -512,76 +531,92 @@ function Timeline({
 
   if (list.length === 0) return null;
   return (
-    <div>
-      <h3 className="text-xs font-medium tracking-wide text-muted uppercase">
-        Comments
-      </h3>
-      <ol className="mt-2 flex flex-col gap-3">
-        {list.map((c) => (
-          <li key={c.id} className="flex flex-col gap-1">
-            <p className="flex gap-2 text-xs text-muted">
-              <span>
-                {c.token ? `${c.token} • ${c.author}` : c.author}
-                <span className="text-faint">
-                  {" "}
-                  · {ago(c.created_at)}
-                  {c.edited_at ? (
-                    <span title={`Edited ${ago(c.edited_at)}`}> · edited</span>
-                  ) : null}
-                </span>
+    <ol className="flex flex-col gap-3">
+      {list.map((c) => (
+        <li key={c.id} className="flex flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <span>
+              {c.token ? `${c.token} • ${c.author}` : c.author}
+              <span className="text-faint">
+                {" "}
+                · {ago(c.created_at)}
+                {c.edited_at ? (
+                  <span title={`Edited ${ago(c.edited_at)}`}> · edited</span>
+                ) : null}
               </span>
-              {editing?.id === c.id ? null : (
-                <Button
-                  variant="link"
-                  size="compact"
-                  className="ml-auto"
-                  onClick={() => setEditing({ id: c.id, body: c.body })}
-                >
-                  Edit
-                </Button>
-              )}
-            </p>
-            {editing?.id === c.id ? (
-              <div className="flex flex-col gap-2">
-                <Editor
-                  compact
-                  value={editing.body}
+            </span>
+            {editing?.id === c.id ? null : (
+              <button
+                type="button"
+                aria-label="Edit comment"
+                title="Edit"
+                className="text-faint opacity-60 hover:text-fg hover:opacity-100"
+                onClick={() => setEditing({ id: c.id, body: c.body })}
+              >
+                <PencilIcon />
+              </button>
+            )}
+          </p>
+          {editing?.id === c.id ? (
+            <Editor
+              compact
+              value={editing.body}
+              onChange={(body) => setEditing({ id: c.id, body })}
+              limits={{ assetMax: 10 << 20 }}
+              onSubmit={() => {
+                if (changed(editing, c) && !save.isPending)
+                  save.mutate(editing);
+              }}
+              onCancel={() => setEditing(null)}
+              preview={(source) => (
+                <Preview
+                  source={source}
                   onChange={(body) => setEditing({ id: c.id, body })}
-                  limits={{ assetMax: 10 << 20 }}
-                  preview={(source) => (
-                    <Preview
-                      source={source}
-                      compact
-                      onChange={(body) => setEditing({ id: c.id, body })}
-                      onMention={onMention}
-                    />
-                  )}
+                  onMention={onMention}
                 />
-                <div className="flex justify-end gap-2">
+              )}
+              actions={
+                <>
                   <Button size="compact" onClick={() => setEditing(null)}>
                     Cancel
                   </Button>
                   <Button
                     size="compact"
-                    disabled={
-                      !editing.body.trim() ||
-                      editing.body === c.body ||
-                      save.isPending
-                    }
+                    disabled={!changed(editing, c) || save.isPending}
                     onClick={() => save.mutate(editing)}
                   >
                     Save
                   </Button>
-                </div>
-              </div>
-            ) : (
-              <Preview source={c.body} compact onMention={onMention} />
-            )}
-          </li>
-        ))}
-      </ol>
-    </div>
+                </>
+              }
+            />
+          ) : (
+            <Preview source={c.body} onMention={onMention} />
+          )}
+        </li>
+      ))}
+    </ol>
   );
+}
+
+/**
+ * What a footer button adds while a comment is typed: the words where there is room, and a
+ * bubble on a phone, where "Mark done with comment" beside "Delete with comment" and Save took
+ * two lines. The button's label says it in full either way.
+ */
+function WithComment({ said }: { said: boolean }) {
+  if (!said) return null;
+  return (
+    <>
+      <span className="hidden sm:inline">with comment</span>
+      <CommentIcon className="sm:hidden" />
+    </>
+  );
+}
+
+/** Whether an edit says something new, and something at all. */
+function changed(editing: { body: string }, c: Comment): boolean {
+  return editing.body.trim() !== "" && editing.body !== c.body;
 }
 
 /**

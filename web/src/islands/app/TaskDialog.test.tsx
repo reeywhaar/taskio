@@ -136,7 +136,7 @@ async function withVerdict(onClose = vi.fn()) {
 
 /**
  * The button used to read "Finish", in the place a dialog's dismiss button lives, and it was
- * read as finishing the editing — which is the one thing it does not do.
+ * read as finishing the editing.
  */
 describe("the task dialog's status button", () => {
   it("says what it does, and does it", async () => {
@@ -155,14 +155,26 @@ describe("the task dialog's status button", () => {
     await waitFor(() => expect(todo).toHaveBeenCalledWith("8qw4tz9k"));
   });
 
-  /** It changes the status and nothing else: nothing typed, nothing written, still open. */
-  it("writes nothing it was not given, and does not close the dialog", async () => {
+  /** It changes the status and nothing else: nothing typed, nothing written. Then it closes,
+   *  as Delete does: the status is what somebody opened the task to change. */
+  it("writes nothing it was not given, and closes the dialog", async () => {
     const onClose = vi.fn();
     mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
     fireEvent.click(await screen.findByRole("button", { name: "Mark done" }));
-    await waitFor(() => expect(done).toHaveBeenCalled());
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(done).toHaveBeenCalled();
     expect(patch).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes after marking a done task todo again", async () => {
+    task = detail("done");
+    const onClose = vi.fn();
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Mark as todo" }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(todo).toHaveBeenCalledWith("8qw4tz9k");
   });
 });
 
@@ -172,7 +184,7 @@ describe("the task dialog's status button", () => {
  * seeded the fields over it, so it was gone before Save could have been pressed at all.
  */
 describe("a verdict written and then acted on", () => {
-  it("is saved before the task is marked done, and stays on screen", async () => {
+  it("is saved before the task is marked done, and never seeded over", async () => {
     await withVerdict();
     fireEvent.click(screen.getByRole("button", { name: "Mark done" }));
 
@@ -567,7 +579,9 @@ describe("comments", () => {
     open();
     const heading = await screen.findByRole("heading", { name: "Comments" });
     const item = () => heading.parentElement!.querySelector("li")!;
-    fireEvent.click(within(item()).getByRole("button", { name: "Edit" }));
+    fireEvent.click(
+      within(item()).getByRole("button", { name: "Edit comment" }),
+    );
 
     const save = within(item()).getByRole("button", { name: "Save" });
     // Nothing changed is nothing to save.
@@ -587,6 +601,65 @@ describe("comments", () => {
     expect(item().textContent).toMatch(/· edited/);
   });
 
+  it("saves an edit on Shift+Enter", async () => {
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          body: "Ordred washers.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+          edited_at: null,
+        },
+      ],
+    };
+    open();
+    const heading = await screen.findByRole("heading", { name: "Comments" });
+    const item = () => heading.parentElement!.querySelector("li")!;
+    fireEvent.click(
+      within(item()).getByRole("button", { name: "Edit comment" }),
+    );
+    const field = within(item()).getByRole("textbox");
+    fireEvent.change(field, { target: { value: "Ordered washers." } });
+    fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+    await waitFor(() =>
+      expect(edit).toHaveBeenCalledWith("8qw4tz9k", "c_1", "Ordered washers."),
+    );
+  });
+
+  it("drops an edit on Escape, and keeps the dialog open", async () => {
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          body: "Ordered washers.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+          edited_at: null,
+        },
+      ],
+    };
+    const onClose = vi.fn();
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    const heading = await screen.findByRole("heading", { name: "Comments" });
+    const item = () => heading.parentElement!.querySelector("li")!;
+    fireEvent.click(
+      within(item()).getByRole("button", { name: "Edit comment" }),
+    );
+    const field = within(item()).getByRole("textbox");
+    fireEvent.change(field, { target: { value: "Something else." } });
+
+    // Not the dialog's to close: the keydown is cancelled before it becomes a close request.
+    expect(fireEvent.keyDown(field, { key: "Escape" })).toBe(false);
+    expect(within(item()).queryByRole("textbox")).toBeNull();
+    expect(item().textContent).toMatch(/Ordered washers\./);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("cancels an edit, leaving the words as they were", async () => {
     task = {
       ...detail("todo"),
@@ -604,7 +677,9 @@ describe("comments", () => {
     open();
     const heading = await screen.findByRole("heading", { name: "Comments" });
     const item = () => heading.parentElement!.querySelector("li")!;
-    fireEvent.click(within(item()).getByRole("button", { name: "Edit" }));
+    fireEvent.click(
+      within(item()).getByRole("button", { name: "Edit comment" }),
+    );
     fireEvent.change(within(item()).getByRole("textbox"), {
       target: { value: "Something else." },
     });
@@ -646,6 +721,18 @@ describe("comments", () => {
     expect(
       screen.getByRole("button", { name: "edit" }).getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  it("posts one on Shift+Enter, and leaves Enter a new line", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    fireEvent.change(box(), { target: { value: "Still drips." } });
+    fireEvent.keyDown(box(), { key: "Enter" });
+    expect(comment).not.toHaveBeenCalled();
+    fireEvent.keyDown(box(), { key: "Enter", shiftKey: true });
+    await waitFor(() =>
+      expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
+    );
   });
 
   it("marks done with the comment, the comment first", async () => {
