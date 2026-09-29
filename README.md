@@ -12,6 +12,24 @@ SDK, a schema, or anybody writing a wrapper.
   the other way round.
 - **Scoped tokens.** A token can be confined to a set of tags: it sees only tasks carrying them,
   and gives them to everything it creates.
+- **Pictures inline.** Paste a photo into a description or a comment and it stays where it was
+  written, rather than in a list of attachments.
+- **Comments.** A task's timeline, from you and from agents, each signed with the token that wrote
+  it.
+- **Fuzzy search.** A typo, dropped vowels or a task's initials still find it.
+
+[![The list](docs/screenshots/list.png)](docs/screenshots/list.png)
+
+[![One task in the list](docs/screenshots/row.png)](docs/screenshots/row.png)
+
+| | |
+| --- | --- |
+| [![A task, written](docs/screenshots/edit.png)](docs/screenshots/edit.png) | [![The same task, read](docs/screenshots/task.png)](docs/screenshots/task.png) |
+| [![Searching](docs/screenshots/search.png)](docs/screenshots/search.png) | [![Tokens](docs/screenshots/tokens.png)](docs/screenshots/tokens.png) |
+| [![Comments](docs/screenshots/comments.png)](docs/screenshots/comments.png) | [![The API page](docs/screenshots/docs.png)](docs/screenshots/docs.png) |
+
+Invented data, captured from the real thing by
+[`docs/screenshots/capture.mjs`](docs/screenshots/).
 
 ## Run it
 
@@ -78,6 +96,7 @@ Go 1.27 and Node 26. There is no code generation step and no Makefile.
 ```sh
 go test ./...                                   # the server
 npm --prefix web ci && npm --prefix web test    # the frontend
+docs/screenshots/capture.mjs                    # the screenshots above
 
 mkdir -p data && TASKIO_PUBLIC_URL=http://127.0.0.1 TASKIO_DATA_DIR=./data go run . serve
 ```
