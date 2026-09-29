@@ -4,7 +4,7 @@ import { getTags } from "@app/api/actions/tags";
 import { qk } from "@app/api/keys";
 import { Group as Caption } from "@app/components/Field";
 import { NumberField } from "@app/components/NumberField";
-import { Swatches } from "@app/components/Swatches";
+import { ColorSelect } from "@app/components/Swatches";
 import { TextField } from "@app/components/TextField";
 import { Editor } from "@app/islands/app/Editor";
 import { ProjectField } from "@app/islands/app/ProjectPicker";
@@ -150,7 +150,8 @@ export function TaskForm({
             </>
           }
         >
-          <Swatches
+          <ColorSelect
+            label="Color"
             value={draft.color}
             onChange={(color) => set({ color })}
             none="No color"

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { Button } from "@app/components/Button";
 import { ColorDialog } from "@app/components/ColorDialog";
-import { DropperIcon } from "@app/components/icons/Icon";
+import { ChevronDownIcon, DropperIcon } from "@app/components/icons/Icon";
 import { BRAND } from "@app/mark";
 
 /**
@@ -36,37 +37,24 @@ export const COLOURS = [
  * `none` names the empty choice, a dashed swatch of its own: nothing on a task, and on a group the
  * default, which is the brand. Either way the brand is a color like the rest beside it.
  *
- * 16px, where they were 20 with a thick ring: a block of ten at that size was the heaviest thing in
- * the form, for the one field that means least.
+ * One row, always. Where it shares a line with other fields it is behind ColorSelect instead.
  */
 export function Swatches({
   value,
   onChange,
   none,
-  row = false,
 }: {
   /** #rrggbb, or empty. */
   value: string;
   onChange: (color: string) => void;
   /** What an empty value is called: "No color", "Default color". */
   none: string;
-  /** All ten on one line, where nothing shares it: the group dialog. */
-  row?: boolean;
 }) {
   const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
 
   return (
-    // Five across rather than a row that runs on: the swatches share a line with the priority
-    // stepper, and ten of them in a row made one side of it twice the width of the other. Two
-    // short rows are the same swatches in a block the shape of the thing beside them.
-    //
-    // A fixed count rather than wrapping, because wrapping is decided by whatever width the
-    // swatches happen to be given — the same control would be one row in a wide dialog and
-    // three on a phone, and where it breaks would be arithmetic nobody chose.
-    <div
-      className={`grid w-fit items-center gap-1.5 ${row ? "grid-cols-10" : "grid-cols-5"}`}
-    >
+    <div className="flex w-fit items-center gap-1.5">
       <button
         type="button"
         aria-label={none}
@@ -120,6 +108,117 @@ export function Swatches({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * The color as a field: what it is, and the row of swatches when pressed.
+ *
+ * The swatches were a block of ten beside Project and Priority, the heaviest thing in the form for
+ * the one field that means least. As a field it is the height of the two beside it, and the row
+ * it opens is the same one the group dialog shows. Closes on a choice, on Escape and on a press
+ * elsewhere; Escape is the popover's, not the dialog's around it.
+ */
+export function ColorSelect({
+  value,
+  onChange,
+  none,
+  label,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  none: string;
+  /** What the field is, for a reader who meets the button alone. */
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  // Under the button, ending at its right edge, unless that runs out of what scrolls around it: off
+  // its left where the field starts a line, as on a phone or in a group's dialog, or off its
+  // bottom where the field is the last, which made the dialog scroll to show it.
+  const [flush, setFlush] = useState<"left" | "right">("right");
+  const [above, setAbove] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!open || !box.current || !pop.current) return;
+    const at = box.current.getBoundingClientRect();
+    const room = scroller(box.current).getBoundingClientRect();
+    setFlush(
+      at.right - pop.current.offsetWidth < room.left + 8 ? "left" : "right",
+    );
+    const tall = pop.current.offsetHeight + 8;
+    setAbove(at.bottom + tall > room.bottom && at.top - tall > room.top);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+
+  return (
+    <div
+      ref={box}
+      // As wide as its button, so the popover lines up with the button and not the line.
+      className="relative w-fit"
+      onKeyDown={(e) => {
+        if (!open || e.key !== "Escape") return;
+        // The picker's own dialog, opened from in here, closes itself.
+        const within = (e.target as Element).closest("dialog");
+        if (within && within !== box.current?.closest("dialog")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+      }}
+    >
+      <Button
+        aria-label={`${label}: ${value || none}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <Swatch color={value} />
+        <ChevronDownIcon className={open ? "rotate-180" : ""} />
+      </Button>
+      {open ? (
+        <div
+          ref={pop}
+          className={`aloft absolute z-40 rounded-lg bg-bg p-2.5 ${
+            flush === "right" ? "right-0" : "left-0"
+          } ${above ? "bottom-full mb-1.5" : "top-full mt-1.5"}`}
+        >
+          <Swatches
+            value={value}
+            none={none}
+            onChange={(color) => {
+              onChange(color);
+              setOpen(false);
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The nearest ancestor that scrolls, which is what would clip the popover. */
+function scroller(from: Element): Element {
+  for (let el = from.parentElement; el; el = el.parentElement) {
+    if (/(auto|scroll)/.test(getComputedStyle(el).overflowY)) return el;
+  }
+  return document.documentElement;
+}
+
+/** What a color field shows of its value: the color, or the dashed nothing. */
+function Swatch({ color }: { color: string }) {
+  return color ? (
+    <span className="size-4 rounded-sm" style={{ background: color }} />
+  ) : (
+    <span className="size-4 rounded-sm border border-dashed border-muted" />
   );
 }
 

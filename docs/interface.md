@@ -216,12 +216,16 @@ A bar the card crops, not a border along its edge. A border follows the radius, 
 inward at the corners and comes out as a leaf rather than a line; a bar behind `overflow-hidden`
 is straight, and the corners simply take its ends off.
 
-The swatches sit beside the priority field, which had the space, and the two are unrelated: one
-orders the list and the other is a mark somebody made for themselves.
+On a task the color is a field beside Project and Priority, the same height as they are: it shows
+what it holds, and pressed, it opens the swatches in one row under it. The swatches themselves
+were a block of ten there, the heaviest thing in the form for the field that means least. The two
+are unrelated: priority orders the list, and the color is a mark somebody made for themselves.
 
-Groups wear one too, and the palette is the same control, empty choice included: a dashed
+Groups wear one too, through the same field and the same row, empty choice included: a dashed
 swatch that is "No color" on a task, which then wears nothing, and "Default color" on a group,
-which then wears the brand. The brand is a color like any other beside it.
+which then wears the brand. The row opens under the field, or over it where it would be cut off
+by the end of the dialog, as a group's last field would. The brand is a color
+like any other beside it.
 
 ## The rail is projects, and the open one's groups
 

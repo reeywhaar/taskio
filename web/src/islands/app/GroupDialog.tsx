@@ -17,7 +17,7 @@ import { Group as Caption } from "@app/components/Field";
 import { TextField } from "@app/components/TextField";
 import { ProjectSelectDialog } from "@app/islands/app/ProjectPicker";
 import { TagCloud } from "@app/islands/app/TagCloud";
-import { Swatches } from "@app/components/Swatches";
+import { ColorSelect } from "@app/components/Swatches";
 
 /** Open on a group to change it, on "new" to write one, shut on null. */
 export type Editing = Group | "new" | null;
@@ -178,11 +178,11 @@ export function GroupDialog({
             label="Color"
             hint="What the tab wears while this group is the one on screen."
           >
-            <Swatches
+            <ColorSelect
+              label="Color"
               value={color}
               onChange={setColor}
               none="Default color"
-              row
             />
           </Caption>
 
