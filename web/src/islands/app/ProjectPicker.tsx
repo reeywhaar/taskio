@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getProjects } from "@app/api/actions/projects";
@@ -26,6 +26,7 @@ export function ProjectSelectDialog({
   title,
   current,
   taken = [],
+  hint,
   onChoose,
   onClose,
 }: {
@@ -36,6 +37,8 @@ export function ProjectSelectDialog({
   current: string | null;
   /** Slugs that cannot be chosen here, because something else already holds them. */
   taken?: string[];
+  /** What choosing does, under the pills. */
+  hint?: ReactNode;
   onChoose: (project: Project) => void;
   onClose: () => void;
 }) {
@@ -64,25 +67,28 @@ export function ProjectSelectDialog({
           );
         })}
       </div>
+      {hint ? <div className="text-sm text-muted">{hint}</div> : null}
     </Dialog>
   );
 }
 
 /**
- * Which project a task is in, as a field: a select to look at, and a dialog to choose in.
+ * Which project a task is in, as a label at the head of its dialog: the name, pressed to choose
+ * another.
  *
- * Not a native select, because the choice is drawn as pills everywhere else a project or a tag
- * is picked — the same thing chosen two ways is two things to learn.
+ * In the title bar rather than a field among the others, because it is not one of them: it is
+ * where the task lives, and everything in the form is inside it. Not a native select, because
+ * the choice is drawn as pills everywhere else a project or a tag is picked.
  */
-export function ProjectField({
+export function ProjectLabel({
   value,
-  taken,
+  hint,
   onChange,
 }: {
   /** The slug, or empty for the default project. */
   value: string;
-  /** Slugs it cannot be changed to. */
-  taken?: string[];
+  /** What moving it does, said in the dialog that moves it. */
+  hint?: ReactNode;
   onChange: (slug: string) => void;
 }) {
   const [choosing, setChoosing] = useState(false);
@@ -94,18 +100,18 @@ export function ProjectField({
       <button
         type="button"
         aria-haspopup="dialog"
+        title="Project"
         onClick={() => setChoosing(true)}
-        // The Select's own metrics and well, so it stands in a row of fields as one of them.
-        className="sunken relative inline-flex min-h-10 w-full items-center rounded-md bg-bg py-1.5 pr-9 pl-3 text-left text-fg sm:min-h-11 sm:py-2"
+        className="-ml-1.5 inline-flex max-w-40 shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm text-muted hover:bg-fill hover:text-fg"
       >
         <span className="truncate">{shown?.name ?? " "}</span>
-        <ChevronDownIcon className="pointer-events-none absolute right-3 text-muted" />
+        <ChevronDownIcon className="shrink-0 text-xs" />
       </button>
       <ProjectSelectDialog
         open={choosing}
         title="Project"
         current={value}
-        taken={taken}
+        hint={hint}
         onChoose={(project) => {
           setChoosing(false);
           onChange(project.slug);

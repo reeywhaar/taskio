@@ -7,6 +7,7 @@ import { qk } from "@app/api/keys";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { Preview } from "@app/islands/app/Preview";
+import { ProjectLabel } from "@app/islands/app/ProjectPicker";
 import { TaskDialog, type Mode } from "@app/islands/app/TaskDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 
@@ -87,6 +88,12 @@ export function NewTaskDialog({
       open={open}
       onClose={onClose}
       title={mode === "preview" ? draft.title.trim() || "New task" : "New task"}
+      lead={
+        <ProjectLabel
+          value={draft.project}
+          onChange={(slug) => setDraft({ ...draft, project: slug })}
+        />
+      }
       actions={
         mode === "edit" ? (
           draft.description.trim() ? (
@@ -118,6 +125,9 @@ export function NewTaskDialog({
           <TaskForm
             draft={draft}
             onChange={setDraft}
+            onSubmit={() => {
+              if (usable) create.mutate();
+            }}
             titlePlaceholder="What needs doing?"
           />
         ) : (

@@ -124,12 +124,15 @@ export function ColorSelect({
   onChange,
   none,
   label,
+  compact = false,
 }: {
   value: string;
   onChange: (color: string) => void;
   none: string;
   /** What the field is, for a reader who meets the button alone. */
   label: string;
+  /** Small and flat, for a row of small settings. */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -175,15 +178,31 @@ export function ColorSelect({
         setOpen(false);
       }}
     >
-      <Button
-        aria-label={`${label}: ${value || none}`}
-        aria-haspopup="true"
-        aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
-      >
-        <Swatch color={value} />
-        <ChevronDownIcon className={open ? "rotate-180" : ""} />
-      </Button>
+      {compact ? (
+        // Flat, like the stepper beside it, and hung out by its padding so the swatch lines up
+        // with the caption.
+        <button
+          type="button"
+          aria-label={`${label}: ${value || none}`}
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={() => setOpen((was) => !was)}
+          className="-ml-1.5 flex h-7 items-center gap-1 rounded-md px-1.5 text-muted hover:bg-fill hover:text-fg pointer-coarse:h-9"
+        >
+          <Swatch color={value} />
+          <ChevronDownIcon className={open ? "rotate-180" : ""} />
+        </button>
+      ) : (
+        <Button
+          aria-label={`${label}: ${value || none}`}
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={() => setOpen((was) => !was)}
+        >
+          <Swatch color={value} />
+          <ChevronDownIcon className={open ? "rotate-180" : ""} />
+        </Button>
+      )}
       {open ? (
         <div
           ref={pop}

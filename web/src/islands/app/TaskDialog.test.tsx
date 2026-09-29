@@ -228,6 +228,21 @@ describe("a verdict written and then acted on", () => {
   });
 });
 
+/** Shift+Enter in the description is Save, as it is Comment in a comment's box. */
+describe("Shift+Enter", () => {
+  it("saves and closes from the description", async () => {
+    const onClose = vi.fn();
+    await withVerdict(onClose);
+    fireEvent.keyDown(description(), { key: "Enter" });
+    expect(patch).not.toHaveBeenCalled();
+    fireEvent.keyDown(description(), { key: "Enter", shiftKey: true });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(patch.mock.calls[0]![1]).toMatchObject({
+      description: "Verdict: not worth it",
+    });
+  });
+});
+
 /** A move is a field like any other, saved with the rest — and only sent when it changed. */
 describe("moving a task", () => {
   it("sends the project it was moved to", async () => {
@@ -242,6 +257,14 @@ describe("moving a task", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(patch.mock.calls[0]![1]).toMatchObject({ project: "garden" });
+  });
+
+  it("says what a move does, where the move is chosen", async () => {
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    await screen.findByPlaceholderText(/Markdown\. Paste a file/);
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Main" }));
+    expect(await screen.findByText(/takes its tags along/)).toBeDefined();
   });
 
   it("does not so much as ask to move a task saved where it is", async () => {

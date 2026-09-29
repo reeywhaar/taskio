@@ -51,7 +51,8 @@ They are inside the box, along its floor with the paperclip and its buttons: und
 well, they read as a line of text near the box rather than the box's own, which GitHub gets by
 making its tabs part of the frame. The description's box has the same floor, with only the clip.
 Posting a comment brings the box back to Edit. Shift+Enter posts it, or saves one being edited;
-Enter stays a new line, since a comment is markdown and has paragraphs.
+Enter stays a new line, since a comment is markdown and has paragraphs. In a task's description it
+is the dialog's Save, or Add for a new one, and closes it.
 
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath
@@ -216,10 +217,15 @@ A bar the card crops, not a border along its edge. A border follows the radius, 
 inward at the corners and comes out as a leaf rather than a line; a bar behind `overflow-hidden`
 is straight, and the corners simply take its ends off.
 
-On a task the color is a field beside Project and Priority, the same height as they are: it shows
-what it holds, and pressed, it opens the swatches in one row under it. The swatches themselves
-were a block of ten there, the heaviest thing in the form for the field that means least. The two
-are unrelated: priority orders the list, and the color is a mark somebody made for themselves.
+On a task the color is a field beside Priority, from the left, small and flat: it shows what
+it holds, and pressed, it opens the swatches in one row under it. The swatches themselves were a
+block of ten there, the heaviest thing in the form for the field that means least. The two are
+unrelated: priority orders the list, and the color is a mark somebody made for themselves.
+
+**The project is the title bar's, not the form's.** A label at its head, "Main ⌄ Task 8qw4…",
+opens the project pills, and the one line about what moving does is in there, where the move is
+chosen. It is where the task lives rather than one of its fields, and everything in the form is
+inside it. A new task's dialog carries the same label.
 
 Groups wear one too, through the same field and the same row, empty choice included: a dashed
 swatch that is "No color" on a task, which then wears nothing, and "Default color" on a group,
@@ -930,6 +936,13 @@ new password at the login form once is the cheapest confirmation that the right 
 a tick drawn with a clip path rather than typed — a glyph would be whatever font happened to
 load. Where `corner-shape: squircle` is understood it rounds further; everywhere else the
 radius stands on its own.
+
+## Labels are small caps
+
+A field's caption, a group's, and the words over a box are small caps at 10px, question mark
+included: the `caps` utility. They name what is under them and are read once, so they are the
+quietest text in a form rather than the same size as what somebody types. Section headings are the
+same idea at full caps, one step up.
 
 ## A box snug inside another is less round by the gap
 

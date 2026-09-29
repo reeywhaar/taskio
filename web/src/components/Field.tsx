@@ -39,10 +39,12 @@ export function Field({
         thing it explains — which is the order it is useful in.
       */}
       <label className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1 gap-y-1">
-        <span className="col-start-1 row-start-1 text-muted">{label}</span>
+        <span className="col-start-1 row-start-1 caps text-[0.625rem] text-muted">
+          {label}
+        </span>
         <span className="col-span-3 row-start-2 block">{children}</span>
         {hint ? (
-          <span className="col-start-2 row-start-1 flex">
+          <span className="col-start-2 row-start-1 flex text-[0.625rem]">
             <Help label={label}>{hint}</Help>
           </span>
         ) : null}
@@ -72,8 +74,8 @@ export function Group({
 }) {
   return (
     <div className={`text-sm ${wide ? "sm:col-span-2" : ""}`}>
-      <div className="mb-1 flex items-center gap-1">
-        <p className="text-muted">{label}</p>
+      <div className="mb-1 flex items-center gap-1 text-[0.625rem]">
+        <p className="caps text-muted">{label}</p>
         {hint ? <Help label={label}>{hint}</Help> : null}
       </div>
       <div role="group" aria-label={label}>

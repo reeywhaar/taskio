@@ -23,6 +23,7 @@ export function NumberField({
   value,
   onChange,
   label,
+  compact = false,
   className = "",
   ...props
 }: {
@@ -37,6 +38,8 @@ export function NumberField({
    * is a button, not the field — so the callers use Group, and the name comes down as a prop.
    */
   label: string;
+  /** Small and flat, for a row of small settings rather than a form's fields. */
+  compact?: boolean;
 } & Omit<
   InputHTMLAttributes<HTMLInputElement>,
   "value" | "onChange" | "type"
@@ -47,8 +50,16 @@ export function NumberField({
   };
 
   return (
-    <div className="flex items-center gap-1.5">
-      <Step label={`Decrease ${label}`} onClick={() => step(-1)}>
+    // Compact hangs its first button's padding out to the left, so the minus lines up with the
+    // caption above rather than sitting a hover's width in from it.
+    <div
+      className={`flex items-center ${compact ? "-ml-1.5 gap-0.5" : "gap-1.5"}`}
+    >
+      <Step
+        label={`Decrease ${label}`}
+        compact={compact}
+        onClick={() => step(-1)}
+      >
         <MinusIcon />
       </Step>
       <TextField
@@ -56,10 +67,14 @@ export function NumberField({
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-16 text-center ${className}`}
+        className={`text-center ${compact ? "w-12 min-h-7! py-0.5! text-sm" : "w-16"} ${className}`}
         {...props}
       />
-      <Step label={`Increase ${label}`} onClick={() => step(1)}>
+      <Step
+        label={`Increase ${label}`}
+        compact={compact}
+        onClick={() => step(1)}
+      >
         <PlusIcon />
       </Step>
     </div>
@@ -69,10 +84,12 @@ export function NumberField({
 /** Square, and the height of the field it stands beside, which is where the size comes from. */
 function Step({
   label,
+  compact,
   onClick,
   children,
 }: {
   label: string;
+  compact: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -82,7 +99,12 @@ function Step({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="raised flex size-10 shrink-0 items-center justify-center rounded-md bg-bg text-muted sm:size-11 hover:text-fg"
+      // Compact is flat: in a row of small settings a raised button is more button than setting.
+      className={`flex shrink-0 items-center justify-center rounded-md text-muted hover:text-fg ${
+        compact
+          ? "size-7 hover:bg-fill pointer-coarse:size-9"
+          : "raised size-10 bg-bg sm:size-11"
+      }`}
     >
       {children}
     </button>

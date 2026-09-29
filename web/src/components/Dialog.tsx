@@ -36,6 +36,7 @@ export function Dialog({
   open,
   onClose,
   title,
+  lead,
   aside,
   actions,
   children,
@@ -45,6 +46,8 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title: string;
+  /** Before the title, on its line: where what the dialog holds lives, like a task's project. */
+  lead?: ReactNode;
   /** What the title is about — an id, a state — on the title's own line rather than on a row of
    *  its own underneath it. */
   aside?: ReactNode;
@@ -171,6 +174,7 @@ export function Dialog({
               which has three buttons and none of them is "not this". */}
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
             <div className="flex min-w-0 items-center gap-2">
+              {lead}
               <h2 className="truncate text-base font-semibold">{title}</h2>
               {aside}
             </div>

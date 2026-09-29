@@ -17,6 +17,23 @@ beforeEach(() => {
 });
 
 describe("NewTaskDialog", () => {
+  it("adds on Shift+Enter in the description, once it has a title", async () => {
+    const onClose = vi.fn();
+    mount(
+      <NewTaskDialog project="" open tags={[]} title="" onClose={onClose} />,
+    );
+    const box = screen.getByPlaceholderText(/Markdown\. Paste a file/);
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    expect(postTasks).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText("What needs doing?"), {
+      target: { value: "Renew the passport" },
+    });
+    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(postTasks).toHaveBeenCalled();
+  });
+
   /**
    * A search that matched nothing is usually a task somebody has written into the wrong box, so
    * the words come with them rather than being typed twice.

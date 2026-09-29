@@ -746,3 +746,11 @@ input[type="checkbox"]:focus-visible {
     corner-shape: round;
   }
 }
+
+/* Labels are written in small caps, at 10px with their question mark: a field's, a group's, the words
+   over a box. The section headings are the same idea at full caps, one step up. See
+   docs/interface.md. */
+@utility caps {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.04em;
+}

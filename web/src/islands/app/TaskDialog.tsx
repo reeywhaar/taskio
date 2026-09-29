@@ -29,7 +29,7 @@ import { Dummy } from "@app/components/Dummy";
 import { Editor } from "@app/islands/app/Editor";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
-import { projectNamed } from "@app/islands/app/ProjectPicker";
+import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
 
 /** The fields as the server has them. */
@@ -332,6 +332,20 @@ export function TaskDialog({
           )
         ) : null
       }
+      lead={
+        task.data ? (
+          <ProjectLabel
+            value={draft.project}
+            onChange={(slug) => setDraft({ ...draft, project: slug })}
+            hint={
+              <p>
+                Moving it takes its tags along: they are the new project&apos;s
+                tags from then on.
+              </p>
+            }
+          />
+        ) : null
+      }
       aside={
         task.data ? (
           <>
@@ -430,7 +444,13 @@ export function TaskDialog({
         // shorter than its content. Above the breakpoint only; a phone's dialog is the screen.
         <div className="flex flex-[1_0_auto] flex-col gap-4 sm:min-h-50">
           {mode === "edit" ? (
-            <TaskForm draft={draft} onChange={setDraft} />
+            <TaskForm
+              draft={draft}
+              onChange={setDraft}
+              onSubmit={() => {
+                if (!save.isPending) save.mutate();
+              }}
+            />
           ) : (
             <Preview
               source={shown ?? draft.description}

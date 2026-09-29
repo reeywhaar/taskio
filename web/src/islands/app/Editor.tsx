@@ -146,7 +146,7 @@ export function Editor({
               type="button"
               aria-pressed={tab === option}
               onClick={() => setTab(option)}
-              className={`text-xs tracking-wide [font-variant-caps:all-small-caps] ${
+              className={`caps text-xs ${
                 tab === option
                   ? "text-fg"
                   : "text-muted underline decoration-dashed underline-offset-4 hover:text-fg"
