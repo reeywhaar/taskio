@@ -5,6 +5,7 @@ import {
   deleteTasksById,
   getTasksById,
   patchTasksById,
+  patchTasksByIdCommentsById,
   postTasksByIdComments,
   postTasksByIdDone,
   postTasksByIdPoke,
@@ -227,6 +228,13 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  /** Waits for the task to come back, so an editor closing shows the new words and not the old. */
+  const editComment = async (which: string, body: string) => {
+    await patchTasksByIdCommentsById(id, which, body);
+    await client.invalidateQueries({ queryKey: qk.task(id) });
+    invalidate();
+  };
+
   // Only a todo goes forward; done and deleted both come back.
   const toggleDone = useMutation({
     mutationFn: async () => {
@@ -422,7 +430,12 @@ export function TaskDialog({
 
           <Links detail={task.data} onOpen={setPeek} />
 
-          <Timeline list={task.data.comments} onMention={setPeek} />
+          <Timeline
+            list={task.data.comments}
+            onMention={setPeek}
+            onEdit={editComment}
+            onError={setError}
+          />
           <div className="flex flex-col gap-2">
             <Editor
               compact
@@ -473,15 +486,30 @@ export function TaskDialog({
  * What has been said about the task, oldest first, in the order a timeline is read.
  *
  * Each says who: the account, and the token before it when one wrote it — so a timeline written
- * to by agents says which of them said what.
+ * to by agents says which of them said what. Edit turns one into its box, in place.
  */
 function Timeline({
   list,
   onMention,
+  onEdit,
+  onError,
 }: {
   list: Comment[];
   onMention: (id: string) => void;
+  onEdit: (comment: string, body: string) => Promise<void>;
+  onError: (message: string) => void;
 }) {
+  const [editing, setEditing] = useState<{ id: string; body: string } | null>(
+    null,
+  );
+  const save = useMutation({
+    mutationFn: (next: { id: string; body: string }) =>
+      onEdit(next.id, next.body),
+    onSuccess: () => setEditing(null),
+    onError: (err) =>
+      onError(err instanceof ApiError ? err.message : "Something went wrong."),
+  });
+
   if (list.length === 0) return null;
   return (
     <div>
@@ -491,11 +519,64 @@ function Timeline({
       <ol className="mt-2 flex flex-col gap-3">
         {list.map((c) => (
           <li key={c.id} className="flex flex-col gap-1">
-            <p className="text-xs text-muted">
-              {c.token ? `${c.token} • ${c.author}` : c.author}
-              <span className="text-faint"> · {ago(c.created_at)}</span>
+            <p className="flex gap-2 text-xs text-muted">
+              <span>
+                {c.token ? `${c.token} • ${c.author}` : c.author}
+                <span className="text-faint">
+                  {" "}
+                  · {ago(c.created_at)}
+                  {c.edited_at ? (
+                    <span title={`Edited ${ago(c.edited_at)}`}> · edited</span>
+                  ) : null}
+                </span>
+              </span>
+              {editing?.id === c.id ? null : (
+                <Button
+                  variant="link"
+                  size="compact"
+                  className="ml-auto"
+                  onClick={() => setEditing({ id: c.id, body: c.body })}
+                >
+                  Edit
+                </Button>
+              )}
             </p>
-            <Preview source={c.body} compact onMention={onMention} />
+            {editing?.id === c.id ? (
+              <div className="flex flex-col gap-2">
+                <Editor
+                  compact
+                  value={editing.body}
+                  onChange={(body) => setEditing({ id: c.id, body })}
+                  limits={{ assetMax: 10 << 20 }}
+                  preview={(source) => (
+                    <Preview
+                      source={source}
+                      compact
+                      onChange={(body) => setEditing({ id: c.id, body })}
+                      onMention={onMention}
+                    />
+                  )}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="compact" onClick={() => setEditing(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="compact"
+                    disabled={
+                      !editing.body.trim() ||
+                      editing.body === c.body ||
+                      save.isPending
+                    }
+                    onClick={() => save.mutate(editing)}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Preview source={c.body} compact onMention={onMention} />
+            )}
           </li>
         ))}
       </ol>

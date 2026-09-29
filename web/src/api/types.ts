@@ -50,6 +50,8 @@ export type Comment = {
   /** The label of the token that wrote it, or empty when it came from a session. */
   token: string;
   created_at: number;
+  /** When its words were last replaced, or null for never. */
+  edited_at: number | null;
 };
 
 export type TaskPage = {

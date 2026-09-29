@@ -27,7 +27,12 @@ tasks written together mention each other, and listing both directions drew the 
 **Comments are the task's timeline.** Under the linked tasks, oldest first, in both faces of the
 dialog: markdown like the description, each under who wrote it — the account, and the token's
 label before it when one did, so a timeline that agents write to says which of them said what. A
-comment pokes the task. They are not edited or deleted: a timeline is a record.
+comment pokes the task.
+
+Edit, at the right of a comment's line, turns it into its box in place, with Save and Cancel under
+it; an edited one says "edited" beside its time. From the app any comment can be edited, since
+they are all the account's; a token edits only its own, so what the timeline says a token wrote
+stays what it wrote. Comments are not deleted.
 
 The box under them has a Comment button, and while it has words in it, Mark done and Delete say
 "with comment" and post it first — GitHub's Close with comment. Why a task is done is the thing

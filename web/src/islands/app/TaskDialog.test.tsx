@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@app/api/transport";
@@ -11,6 +11,7 @@ const todo = vi.fn();
 const patch = vi.fn();
 const remove = vi.fn();
 const comment = vi.fn();
+const edit = vi.fn();
 /** The order things reached the server in, which is the point of several of these. */
 let calls: string[] = [];
 let task: TaskDetail;
@@ -36,6 +37,10 @@ vi.mock("@app/api/actions/tasks", () => ({
   postTasksByIdComments: (id: string, body: string) => {
     calls.push("comment");
     return comment(id, body);
+  },
+  patchTasksByIdCommentsById: (id: string, which: string, body: string) => {
+    calls.push("edit");
+    return edit(id, which, body);
   },
   deleteTasksById: (id: string) => {
     calls.push("delete");
@@ -98,6 +103,18 @@ beforeEach(() => {
   patch.mockReset().mockResolvedValue(undefined);
   remove.mockReset().mockResolvedValue(undefined);
   comment.mockReset().mockResolvedValue(undefined);
+  // Edited on the server, so the refetch after it has the new words.
+  edit
+    .mockReset()
+    .mockImplementation((_id: string, which: string, body: string) => {
+      task = {
+        ...task,
+        comments: task.comments.map((c) =>
+          c.id === which ? { ...c, body, edited_at: 1789343500 } : c,
+        ),
+      };
+      return Promise.resolve();
+    });
   calls = [];
   task = detail("todo");
   others = {};
@@ -497,10 +514,10 @@ describe("the linked tasks", () => {
 });
 
 /** A timeline under the description, and a comment carried by Mark done and Delete. */
-describe("comments", () => {
-  const box = () =>
-    screen.getByPlaceholderText(/^Comment\./) as HTMLTextAreaElement;
+const box = () =>
+  screen.getByPlaceholderText(/^Comment\./) as HTMLTextAreaElement;
 
+describe("comments", () => {
   it("lists them oldest first, saying who wrote each", async () => {
     task = {
       ...detail("todo"),
@@ -511,6 +528,7 @@ describe("comments", () => {
           author: "robin",
           token: "",
           created_at: 1,
+          edited_at: null,
         },
         {
           id: "c_2",
@@ -518,6 +536,7 @@ describe("comments", () => {
           author: "robin",
           token: "claude",
           created_at: 2,
+          edited_at: 3,
         },
       ],
     };
@@ -527,6 +546,73 @@ describe("comments", () => {
     expect(items[0]!.textContent).toMatch(/^robin ·/);
     expect(items[0]!.querySelector("strong")?.textContent).toBe("washers");
     expect(items[1]!.textContent).toMatch(/^claude • robin ·/);
+    expect(items[0]!.textContent).not.toMatch(/edited/);
+    expect(items[1]!.textContent).toMatch(/· edited/);
+  });
+
+  it("edits one in place, and shows the new words once saved", async () => {
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          body: "Ordred washers.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+          edited_at: null,
+        },
+      ],
+    };
+    open();
+    const heading = await screen.findByRole("heading", { name: "Comments" });
+    const item = () => heading.parentElement!.querySelector("li")!;
+    fireEvent.click(within(item()).getByRole("button", { name: "Edit" }));
+
+    const save = within(item()).getByRole("button", { name: "Save" });
+    // Nothing changed is nothing to save.
+    expect(save.hasAttribute("disabled")).toBe(true);
+    fireEvent.change(within(item()).getByRole("textbox"), {
+      target: { value: "Ordered washers." },
+    });
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(edit).toHaveBeenCalledWith("8qw4tz9k", "c_1", "Ordered washers."),
+    );
+    await waitFor(() =>
+      expect(within(item()).queryByRole("textbox")).toBeNull(),
+    );
+    expect(item().textContent).toMatch(/Ordered washers\./);
+    expect(item().textContent).toMatch(/· edited/);
+  });
+
+  it("cancels an edit, leaving the words as they were", async () => {
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          body: "Ordered washers.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+          edited_at: null,
+        },
+      ],
+    };
+    open();
+    const heading = await screen.findByRole("heading", { name: "Comments" });
+    const item = () => heading.parentElement!.querySelector("li")!;
+    fireEvent.click(within(item()).getByRole("button", { name: "Edit" }));
+    fireEvent.change(within(item()).getByRole("textbox"), {
+      target: { value: "Something else." },
+    });
+    fireEvent.click(within(item()).getByRole("button", { name: "Cancel" }));
+
+    expect(within(item()).queryByRole("textbox")).toBeNull();
+    expect(item().textContent).toMatch(/Ordered washers\./);
+    expect(edit).not.toHaveBeenCalled();
   });
 
   it("posts one and empties the box", async () => {

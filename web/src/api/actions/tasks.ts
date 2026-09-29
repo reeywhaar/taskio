@@ -62,6 +62,16 @@ export const postTasksByIdComments = (id: string, body: string) =>
     body: { body },
   });
 
+export const patchTasksByIdCommentsById = (
+  id: string,
+  comment: string,
+  body: string,
+) =>
+  request<Comment>(`/api/tasks/${id}/comments/${comment}`, {
+    method: "PATCH",
+    body: { body },
+  });
+
 export const deleteTasksById = (id: string) =>
   request<void>(`/api/tasks/${id}`, { method: "DELETE" });
 
