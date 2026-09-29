@@ -37,6 +37,19 @@ export type TaskStub = {
 export type TaskDetail = Task & {
   mentions: TaskStub[];
   mentioned_by: TaskStub[];
+  /** Oldest first. */
+  comments: Comment[];
+};
+
+/** One entry in a task's timeline. */
+export type Comment = {
+  id: string;
+  body: string;
+  /** The account that wrote it. */
+  author: string;
+  /** The label of the token that wrote it, or empty when it came from a session. */
+  token: string;
+  created_at: number;
 };
 
 export type TaskPage = {

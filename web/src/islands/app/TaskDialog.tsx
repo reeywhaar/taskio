@@ -5,19 +5,27 @@ import {
   deleteTasksById,
   getTasksById,
   patchTasksById,
+  postTasksByIdComments,
   postTasksByIdDone,
   postTasksByIdPoke,
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
 import { getProjects } from "@app/api/actions/projects";
-import type { Project, Task, TaskDetail, TaskStub } from "@app/api/types";
+import type {
+  Comment,
+  Project,
+  Task,
+  TaskDetail,
+  TaskStub,
+} from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { ago, MONTH, WEEK } from "@app/ago";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
+import { Editor } from "@app/islands/app/Editor";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { projectNamed } from "@app/islands/app/ProjectPicker";
@@ -201,10 +209,29 @@ export function TaskDialog({
     if (task.data && differs(draft, task.data)) await write();
   };
 
+  /**
+   * The comment being written, which rides along with Mark done and Delete when there is one:
+   * why a task is done belongs on its timeline, said at the moment it was done.
+   */
+  const [comment, setComment] = useState("");
+  const said = comment.trim() !== "";
+  const postComment = async () => {
+    if (!said) return;
+    await postTasksByIdComments(id, comment);
+    setComment("");
+  };
+  const send = useMutation({
+    mutationFn: postComment,
+    onSuccess: () => invalidate(),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
+  });
+
   // Only a todo goes forward; done and deleted both come back.
   const toggleDone = useMutation({
     mutationFn: async () => {
       await flush();
+      await postComment();
       await (status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id));
     },
     onSuccess: () => invalidate(),
@@ -237,6 +264,7 @@ export function TaskDialog({
   const remove = useMutation({
     mutationFn: async () => {
       await flush();
+      await postComment();
       await deleteTasksById(id);
     },
     onSuccess: () => {
@@ -322,7 +350,7 @@ export function TaskDialog({
               from here, and a Delete that does nothing is worse than no Delete. */}
           {status === "deleted" ? null : (
             <Button variant="danger" onClick={() => remove.mutate()}>
-              Delete
+              {said ? "Delete with comment" : "Delete"}
             </Button>
           )}
 
@@ -332,9 +360,17 @@ export function TaskDialog({
               thing it does not do. */}
           <Button onClick={() => toggleDone.mutate()}>
             {
-              { todo: "Mark done", done: "Mark as todo", deleted: "Restore" }[
-                status
-              ]
+              (said
+                ? {
+                    todo: "Mark done with comment",
+                    done: "Mark as todo with comment",
+                    deleted: "Restore with comment",
+                  }
+                : {
+                    todo: "Mark done",
+                    done: "Mark as todo",
+                    deleted: "Restore",
+                  })[status]
             }
           </Button>
           <Button
@@ -386,6 +422,26 @@ export function TaskDialog({
 
           <Links detail={task.data} onOpen={setPeek} />
 
+          <Timeline list={task.data.comments} onMention={setPeek} />
+          <div className="flex flex-col gap-2">
+            <Editor
+              compact
+              value={comment}
+              onChange={setComment}
+              prompt="Comment. Markdown, like the description."
+              limits={{ assetMax: 10 << 20 }}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="compact"
+                disabled={!said || send.isPending}
+                onClick={() => send.mutate()}
+              >
+                Comment
+              </Button>
+            </div>
+          </div>
+
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </div>
       ) : null}
@@ -402,6 +458,40 @@ export function TaskDialog({
         />
       ) : null}
     </Dialog>
+  );
+}
+
+/**
+ * What has been said about the task, oldest first, in the order a timeline is read.
+ *
+ * Each says who: the account, and the token before it when one wrote it — so a timeline written
+ * to by agents says which of them said what.
+ */
+function Timeline({
+  list,
+  onMention,
+}: {
+  list: Comment[];
+  onMention: (id: string) => void;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-medium tracking-wide text-muted uppercase">
+        Comments
+      </h3>
+      <ol className="mt-2 flex flex-col gap-3">
+        {list.map((c) => (
+          <li key={c.id} className="flex flex-col gap-1">
+            <p className="text-xs text-muted">
+              {c.token ? `${c.token} • ${c.author}` : c.author}
+              <span className="text-faint"> · {ago(c.created_at)}</span>
+            </p>
+            <Preview source={c.body} compact onMention={onMention} />
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 

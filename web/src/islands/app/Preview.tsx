@@ -23,12 +23,16 @@ export function Preview({
   source,
   onChange,
   onMention,
+  compact = false,
 }: {
   source: string;
-  /** A tick, as the text with that box flipped. */
-  onChange: (next: string) => void;
+  /** A tick, as the text with that box flipped. Left out, the boxes do not tick: a comment is
+   *  not edited. */
+  onChange?: (next: string) => void;
   /** A mention pressed, by the id it names. */
   onMention: (id: string) => void;
+  /** Without the floor a description gets, for words in a timeline. */
+  compact?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -44,7 +48,7 @@ export function Preview({
     const index = [...box.current.querySelectorAll("li[data-check]")].indexOf(
       item,
     );
-    if (index >= 0) onChange(toggleCheck(source, index));
+    if (index >= 0) onChange?.(toggleCheck(source, index));
   };
 
   const press = (e: MouseEvent) => {
@@ -85,7 +89,7 @@ export function Preview({
       <Rendered
         ref={box}
         source={source}
-        className="prose shrink-0 text-sm sm:min-h-50"
+        className={`prose shrink-0 text-sm ${compact ? "" : "sm:min-h-50"}`}
         onClick={press}
         onKeyDown={key}
       />

@@ -24,6 +24,16 @@ Update beside Edit. A tick in it is an edit like any other, sent by Save.
 one and is mentioned by it, then Mentions and Mentioned by for what goes only one way. A pair of
 tasks written together mention each other, and listing both directions drew the same rows twice.
 
+**Comments are the task's timeline.** Under the linked tasks, oldest first, in both faces of the
+dialog: markdown like the description, each under who wrote it — the account, and the token's
+label before it when one did, so a timeline that agents write to says which of them said what. A
+comment pokes the task. They are not edited or deleted: a timeline is a record.
+
+The box under them has a Comment button, and while it has words in it, Mark done and Delete say
+"with comment" and post it first — GitHub's Close with comment. Why a task is done is the thing
+most worth writing on it, and the moment it is done is when it is known. A button that changes its
+word while something is typed says what it will do; a chevron menu of the same two would hide it.
+
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath
 is where somebody was, so closing the one on top comes back to it as it was left. Edit works

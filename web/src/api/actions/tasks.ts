@@ -1,5 +1,5 @@
 import { query, request } from "@app/api/transport";
-import type { Task, TaskDetail, TaskPage } from "@app/api/types";
+import type { Comment, Task, TaskDetail, TaskPage } from "@app/api/types";
 
 export type ListParams = {
   /** The project's slug; empty is the default project. */
@@ -54,6 +54,13 @@ export const postTasksByIdTodo = (id: string) =>
 /** Says it still stands: its age counts from now. */
 export const postTasksByIdPoke = (id: string) =>
   request<Task>(`/api/tasks/${id}/poke`, { method: "POST" });
+
+/** One onto the timeline, which pokes the task. */
+export const postTasksByIdComments = (id: string, body: string) =>
+  request<Comment>(`/api/tasks/${id}/comments`, {
+    method: "POST",
+    body: { body },
+  });
 
 export const deleteTasksById = (id: string) =>
   request<void>(`/api/tasks/${id}`, { method: "DELETE" });

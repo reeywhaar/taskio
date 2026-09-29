@@ -24,9 +24,15 @@ export function Editor({
   value,
   onChange,
   limits,
+  compact = false,
+  prompt = "Markdown. Paste a file, or @ a task.",
 }: {
   value: string;
   onChange: (next: string) => void;
+  /** A few lines rather than ten, for a comment. */
+  compact?: boolean;
+  /** What the empty box says. */
+  prompt?: string;
   /** The per-file limit, so an oversized paste is refused here rather than after a minute of
    *  uploading. */
   limits: { assetMax: number };
@@ -119,7 +125,7 @@ export function Editor({
 
       <textarea
         ref={ref}
-        rows={10}
+        rows={compact ? 3 : 10}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onPaste={(e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -135,8 +141,10 @@ export function Editor({
           e.preventDefault();
           void upload(files);
         }}
-        className="sunken w-full min-h-40 flex-auto rounded-md border-0 bg-bg p-3 text-fg focus:outline-none"
-        placeholder="Markdown. Paste a file, or @ a task."
+        className={`sunken w-full flex-auto rounded-md border-0 bg-bg p-3 text-fg focus:outline-none ${
+          compact ? "min-h-20" : "min-h-40"
+        }`}
+        placeholder={prompt}
       />
 
       {error ? <p className="text-sm text-accent">{error}</p> : null}

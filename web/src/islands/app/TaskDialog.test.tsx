@@ -10,6 +10,7 @@ const done = vi.fn();
 const todo = vi.fn();
 const patch = vi.fn();
 const remove = vi.fn();
+const comment = vi.fn();
 /** The order things reached the server in, which is the point of several of these. */
 let calls: string[] = [];
 let task: TaskDetail;
@@ -31,6 +32,10 @@ vi.mock("@app/api/actions/tasks", () => ({
   postTasksByIdPoke: (id: string) => {
     calls.push("poke");
     return Promise.resolve(id);
+  },
+  postTasksByIdComments: (id: string, body: string) => {
+    calls.push("comment");
+    return comment(id, body);
   },
   deleteTasksById: (id: string) => {
     calls.push("delete");
@@ -80,6 +85,7 @@ const detail = (status: "todo" | "done"): TaskDetail =>
     deleted_at: null,
     mentions: [],
     mentioned_by: [],
+    comments: [],
   }) as TaskDetail;
 
 beforeEach(() => {
@@ -91,6 +97,7 @@ beforeEach(() => {
   todo.mockReset().mockResolvedValue(undefined);
   patch.mockReset().mockResolvedValue(undefined);
   remove.mockReset().mockResolvedValue(undefined);
+  comment.mockReset().mockResolvedValue(undefined);
   calls = [];
   task = detail("todo");
   others = {};
@@ -486,5 +493,73 @@ describe("the linked tasks", () => {
     await screen.findByRole("heading", { name: "Mentioned both ways" });
     expect(screen.queryByRole("heading", { name: "Mentions" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Mentioned by" })).toBeNull();
+  });
+});
+
+/** A timeline under the description, and a comment carried by Mark done and Delete. */
+describe("comments", () => {
+  const box = () =>
+    screen.getByPlaceholderText(/^Comment\./) as HTMLTextAreaElement;
+
+  it("lists them oldest first, saying who wrote each", async () => {
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          body: "Ordered **washers**.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+        },
+        {
+          id: "c_2",
+          body: "Fitted them.",
+          author: "robin",
+          token: "claude",
+          created_at: 2,
+        },
+      ],
+    };
+    open();
+    const heading = await screen.findByRole("heading", { name: "Comments" });
+    const items = heading.parentElement!.querySelectorAll("li");
+    expect(items[0]!.textContent).toMatch(/^robin ·/);
+    expect(items[0]!.querySelector("strong")?.textContent).toBe("washers");
+    expect(items[1]!.textContent).toMatch(/^claude • robin ·/);
+  });
+
+  it("posts one and empties the box", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    const send = screen.getByRole("button", { name: "Comment" });
+    expect(send.hasAttribute("disabled")).toBe(true);
+
+    fireEvent.change(box(), { target: { value: "Still drips." } });
+    fireEvent.click(send);
+    await waitFor(() =>
+      expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
+    );
+    await waitFor(() => expect(box().value).toBe(""));
+  });
+
+  it("marks done with the comment, the comment first", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    fireEvent.change(box(), { target: { value: "Fixed: new washers." } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mark done with comment" }),
+    );
+    await waitFor(() => expect(calls).toEqual(["comment", "done"]));
+  });
+
+  it("deletes with the comment, the comment first", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    fireEvent.change(box(), { target: { value: "Not worth it." } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete with comment" }),
+    );
+    await waitFor(() => expect(calls).toEqual(["comment", "delete"]));
   });
 });
