@@ -82,31 +82,58 @@ describe("href", () => {
 });
 
 /** The tab for a list with these tags lit and nothing else going on. */
-const at = (tags: string[]) =>
-  title({
-    route: { name: "list" },
-    filters: { project: "", tags, view: "todo", q: "" },
-  });
+const at = (tags: string[], names = {}) =>
+  title(
+    {
+      route: { name: "list" },
+      filters: { project: "", tags, view: "todo", q: "" },
+    },
+    names,
+  );
 
 describe("title", () => {
-  it("is the name alone when nothing is lit", () => {
+  it("is the name alone before the projects have answered", () => {
     expect(at([])).toBe("taskio");
   });
 
-  /** Commas: a tab strip cuts off at about twenty characters and "and" costs four a tag. */
-  it("names the lit tags", () => {
-    expect(at(["web"])).toBe("web :: taskio");
-    expect(at(["web", "job"])).toBe("web, job :: taskio");
+  it("names the project when nothing is lit", () => {
+    expect(at([], { project: "Main" })).toBe("Main :: taskio");
+  });
+
+  /** The most particular first, because a tab strip cuts from the end. */
+  it("puts the lit tags before the project, with commas", () => {
+    expect(at(["garden"], { project: "Main" })).toBe("garden • Main :: taskio");
+    expect(at(["garden", "reading"], { project: "Main" })).toBe(
+      "garden, reading • Main :: taskio",
+    );
+  });
+
+  it("names the group when the lit tags are one", () => {
+    expect(
+      at(["garden", "reading"], { project: "Main", group: "Weekend" }),
+    ).toBe("Weekend • Main :: taskio");
   });
 
   // The view and the search box are what somebody is doing, not where they have parked.
   it("says nothing about the view or the search", () => {
     expect(
+      title(
+        {
+          route: { name: "list" },
+          filters: { project: "", tags: ["garden"], view: "done", q: "plumb" },
+        },
+        { project: "Main" },
+      ),
+    ).toBe("garden • Main :: taskio");
+  });
+
+  it("names Settings on Settings", () => {
+    expect(
       title({
-        route: { name: "list" },
-        filters: { project: "", tags: ["web"], view: "done", q: "plumb" },
+        route: { name: "settings" },
+        filters: { project: "", tags: [], view: "todo", q: "" },
       }),
-    ).toBe("web :: taskio");
+    ).toBe("Settings :: taskio");
   });
 });
 

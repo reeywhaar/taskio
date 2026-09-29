@@ -13,7 +13,7 @@ import {
   type EditingProject,
 } from "@app/islands/app/ProjectDialog";
 import { markURI } from "@app/mark";
-import type { Location } from "@app/islands/app/route";
+import { title, type Location } from "@app/islands/app/route";
 
 /**
  * The nav rail is the only thing always in the same place: the projects, the open one's groups,
@@ -157,6 +157,15 @@ export function Nav({
    */
   const current = (groups.data?.groups ?? []).find((g) => litBy(g.tags));
   const color = current?.color ?? "";
+
+  // The tab's name, here with its icon: both say where the list is, and this is where the
+  // project's and the group's names already are. The location alone has only slugs.
+  useEffect(() => {
+    document.title = title(location, {
+      project: opened?.name,
+      group: current?.name,
+    });
+  }, [location, opened?.name, current?.name]);
 
   // The tab wears it, which is the whole point of a group having one: two windows open on two
   // groups are two icons rather than two of the same icon.

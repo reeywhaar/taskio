@@ -616,17 +616,18 @@ Search ranks by relevance, and ranking by that alone put a pinned task below an 
 the moment somebody typed in the box — which reads as the pin having stopped working rather
 than as the list having changed its question. Pinned first, then the score.
 
-## The tab is named after the filter
+## The tab is named after where the list is
 
-`web and job :: taskio`, or just `taskio` with nothing lit.
+`Weekend • Main :: taskio` with a group lit, `garden, reading • Main :: taskio` with tags that
+are no group, and `Main :: taskio` with nothing lit.
 
 A tab is worth naming when it is one of several, and what makes one of these different from
-another is which tags are lit — the view and the search box are things somebody is doing right
-now rather than a place they have parked. "and" between them because that is what the filter
-means, and what the pills spell into the URL: tasks carrying every one of them, not any.
+another is where it is — the project, and the group or tags lit in it. The view and the search box
+are things somebody is doing right now rather than a place they have parked. The most particular
+comes first, because a tab strip cuts from the end.
 
-It is set where the location is kept, not by whoever renders the list. A tab kept in step by
-the call sites that remember to is a tab that falls behind one of them.
+It is set by the rail, beside the tab's icon: the location has the project's slug and the tags,
+and the rail has the names they stand for.
 
 ## A section waits as a shape, not as its own words with gaps in
 
