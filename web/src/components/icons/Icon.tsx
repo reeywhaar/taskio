@@ -103,10 +103,13 @@ export const PaperclipIcon = (p: SVGProps<SVGSVGElement>) => (
 /**
  * A pencil with a body, a band and a point, drawn upright and turned. The sliver it was read as a
  * slash at 12px.
+ *
+ * Turned, its shape sat a unit up and to the right of the box's centre, and read high beside a
+ * line of text; the translate puts it back, and a touch low, where words sit.
  */
 export const PencilIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
-    <g transform="rotate(45 12 12)">
+    <g transform="translate(-1 2) rotate(45 12 12)">
       <path d="M9 16V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v11l-3 5Z" />
       <path d="M9 7h6" />
     </g>
