@@ -30,6 +30,9 @@ var (
 	// ErrGone is something that existed and was deleted — a project a token still names.
 	// Not found would tell it the project never was, and it has to be told what happened.
 	ErrGone = errors.New("gone")
+
+	// ErrNotYours is a token changing what something else wrote: a comment is its writer's.
+	ErrNotYours = errors.New("not yours")
 )
 
 // These wrap a sentinel with a written sentence.
@@ -41,6 +44,7 @@ func Conflict(format string, a ...any) error  { return classify(ErrConflict, for
 func Invalid(format string, a ...any) error   { return classify(ErrInvalid, format, a...) }
 func Ambiguous(format string, a ...any) error { return classify(ErrAmbiguous, format, a...) }
 func Gone(format string, a ...any) error      { return classify(ErrGone, format, a...) }
+func NotYours(format string, a ...any) error  { return classify(ErrNotYours, format, a...) }
 
 // TagsRequired names what a scoped write left out, and where to ask for the whole list.
 func TagsRequired(missing []string) error {

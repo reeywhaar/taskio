@@ -136,6 +136,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/{id}/todo", s.requireAuth(s.setDone(false)))
 	s.handleAgent("POST /api/tasks/{id}/poke", s.requireAuth(s.pokeTask))
 	s.handleAgent("POST /api/tasks/{id}/comments", s.requireAuth(s.addComment))
+	s.handleAgent("PATCH /api/tasks/{id}/comments/{comment}", s.requireAuth(s.editComment))
 	s.handleAgent("DELETE /api/tasks/{id}", s.requireAuth(s.deleteTask))
 
 	s.handleAgent("POST /api/tasks/bulk/done", s.requireAuth(s.bulkDone(true)))
@@ -357,6 +358,8 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 		refuse(w, http.StatusBadRequest, CodeScopeTagsMissing, sentence(err, "That leaves out tags this token requires."))
 	case errors.Is(err, store.ErrGone):
 		refuse(w, http.StatusGone, CodeProjectDeleted, sentence(err, "That project was deleted."))
+	case errors.Is(err, store.ErrNotYours):
+		refuse(w, http.StatusForbidden, CodeForbidden, sentence(err, "That is not this token's."))
 	case errors.Is(err, store.ErrNotFound):
 		refuse(w, http.StatusNotFound, CodeNotFound, sentence(err, "There is no such thing."))
 	case errors.Is(err, store.ErrAmbiguous):

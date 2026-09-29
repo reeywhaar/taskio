@@ -197,6 +197,7 @@ POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 POST   /api/tasks/{id}/poke
 POST   /api/tasks/{id}/comments  {body}
+PATCH  /api/tasks/{id}/comments/{comment}  {body}
 DELETE /api/tasks/{id}
 
 POST   /api/tasks/bulk/done      {ids}
@@ -378,7 +379,7 @@ A task's timeline: markdown like the description, oldest first, in `GET /api/tas
 POST /api/tasks/{id}/comments  { "body": "Washers in; it still drips at the base." }
 // 201
 { "id": "c_01j9z…", "body": "Washers in; it still drips at the base.",
-  "author": "robin", "token": "claude", "created_at": 1789343452 }
+  "author": "robin", "token": "claude", "created_at": 1789343452, "edited_at": null }
 ```
 
 `author` is the account; `token` is the label of the token that wrote it, empty from a session —
@@ -387,8 +388,11 @@ about it has looked at it. It goes the way a description does: inline images bec
 `@prefix` becomes a whole id, and a task it mentions is linked, both ways.
 
 **Say why when you finish something.** Post the comment, then `POST /api/tasks/{id}/done`: the
-verdict belongs in the timeline, not in a description rewritten after the fact. Comments are not
-edited or deleted.
+verdict belongs in the timeline, not in a description rewritten after the fact.
+
+`PATCH /api/tasks/{id}/comments/{comment} {body}` replaces a comment's words and sets
+`edited_at`. A token edits only the comments it wrote — `403 token_forbidden` for another's — so
+what a timeline says each wrote stays true. An edit does not poke. Comments are not deleted.
 
 ## Mentioning another task
 
@@ -428,7 +432,7 @@ the value that was wrong.
 | `filter_invalid` | 400 | The expression does not parse |
 | `cursor_invalid` | 400 | Start the list again |
 | `unauthenticated` | 401 | The token is missing, wrong, expired or revoked |
-| `token_forbidden` | 403 | That route is not open to tokens |
+| `token_forbidden` | 403 | That route is not open to tokens, or that comment is not this token's |
 | `out_of_scope` | 403 | The task is outside this token's scope |
 | `scope_tags_missing` | 400 | A write leaves a task without what this token's scope requires. The message names the tags; `GET /api/scope` lists them |
 | `project_required` | 400 | This token reaches several projects and the request named none. The message lists their slugs |

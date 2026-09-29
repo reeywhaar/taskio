@@ -230,10 +230,12 @@ type commentBody struct {
 	Author    string `json:"author"`
 	Token     string `json:"token"`
 	CreatedAt int64  `json:"created_at"`
+	EditedAt  *int64 `json:"edited_at"`
 }
 
 func renderComment(c *store.Comment, p *store.Principal) commentBody {
-	return commentBody{ID: c.ID, Body: c.Body, Author: p.Username, Token: c.TokenLabel, CreatedAt: c.CreatedAt.Unix()}
+	return commentBody{ID: c.ID, Body: c.Body, Author: p.Username, Token: c.TokenLabel,
+		CreatedAt: c.CreatedAt.Unix(), EditedAt: unixPtr(c.EditedAt)}
 }
 
 type commentRequest struct {
@@ -258,6 +260,25 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, renderComment(c, principalOf(r)))
+}
+
+// editComment replaces a comment's words: a token's own, or any from a session.
+func (s *Server) editComment(w http.ResponseWriter, r *http.Request) {
+	var req commentRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	task, err := s.task(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	c, err := s.store.EditComment(r.Context(), principalOf(r).ID, reachOf(r), task.ID, r.PathValue("comment"), req.Body, tokenOf(r))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, renderComment(c, principalOf(r)))
 }
 
 // taskStub is a mention: enough to draw a link with a title on it.
