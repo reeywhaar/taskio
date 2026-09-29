@@ -134,6 +134,27 @@ func (s *Store) visible(ctx context.Context, principalID, id string, reach Reach
 // Both from the text rather than from what the request asked for, so neither can drift from the
 // words — and in the same transaction as the write, so they cannot disagree with it either.
 func syncContent(ctx context.Context, tx *sql.Tx, seq int64, principalID string, reach Reach, title, description string) error {
+	// The comments are part of the task's text: an image in one is referenced, so the sweep keeps
+	// it through the next edit of the description, and a task one mentions is linked.
+	rows, err := tx.QueryContext(ctx, `SELECT body FROM comments WHERE task_seq = ?`, seq)
+	if err != nil {
+		return fmt.Errorf("sync content: %w", err)
+	}
+	var said strings.Builder
+	for rows.Next() {
+		var body string
+		if err := rows.Scan(&body); err != nil {
+			rows.Close()
+			return fmt.Errorf("sync content: %w", err)
+		}
+		said.WriteString("\n")
+		said.WriteString(body)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("sync content: %w", err)
+	}
+	description += said.String()
 	text := title + "\n" + description
 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM task_assets WHERE task_seq = ?`, seq); err != nil {

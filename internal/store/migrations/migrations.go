@@ -33,6 +33,7 @@ var all = []Migration{
 	projects,
 	taskPoked,
 	liveByPoke,
+	comments,
 }
 
 // exec runs a statement block as one migration.

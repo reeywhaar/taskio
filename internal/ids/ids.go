@@ -35,6 +35,7 @@ const (
 	Recovery = "r_"
 	// Project takes two letters because a principal already has the one it would want.
 	Project = "pj_"
+	Comment = "c_"
 )
 
 // How long each kind is.

@@ -209,7 +209,55 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 	}
 	body["mentions"] = renderStubs(mentions.Mentions, reachOf(r), slugs)
 	body["mentioned_by"] = renderStubs(mentions.MentionedBy, reachOf(r), slugs)
+	comments, err := s.store.Comments(r.Context(), task.Seq)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	rendered := make([]commentBody, 0, len(comments))
+	for _, c := range comments {
+		rendered = append(rendered, renderComment(c, principalOf(r)))
+	}
+	body["comments"] = rendered
 	writeJSON(w, http.StatusOK, body)
+}
+
+// commentBody is one entry in a task's timeline. Author is the account; token is the label of the
+// token that wrote it, empty when it was written from a session.
+type commentBody struct {
+	ID        string `json:"id"`
+	Body      string `json:"body"`
+	Author    string `json:"author"`
+	Token     string `json:"token"`
+	CreatedAt int64  `json:"created_at"`
+}
+
+func renderComment(c *store.Comment, p *store.Principal) commentBody {
+	return commentBody{ID: c.ID, Body: c.Body, Author: p.Username, Token: c.TokenLabel, CreatedAt: c.CreatedAt.Unix()}
+}
+
+type commentRequest struct {
+	Body string `json:"body"`
+}
+
+// addComment writes one onto a task, as whoever is asking — the account, and the token when it
+// is one — and pokes the task.
+func (s *Server) addComment(w http.ResponseWriter, r *http.Request) {
+	var req commentRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	task, err := s.task(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	c, err := s.store.AddComment(r.Context(), principalOf(r).ID, reachOf(r), task.ID, req.Body, tokenOf(r))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, renderComment(c, principalOf(r)))
 }
 
 // taskStub is a mention: enough to draw a link with a title on it.

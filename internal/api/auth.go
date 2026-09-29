@@ -181,7 +181,8 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			return
 		}
 
-		r = r.WithContext(contextWith(contextWith(r.Context(), ctxPrincipal, p), ctxReach, reach))
+		authed := contextWith(contextWith(r.Context(), ctxPrincipal, p), ctxReach, reach)
+		r = r.WithContext(contextWith(authed, ctxToken, tok))
 		next.ServeHTTP(w, r)
 	})
 }
@@ -234,6 +235,7 @@ const (
 	ctxSession
 	ctxReach
 	ctxStart
+	ctxToken
 )
 
 func withPrincipal(r *http.Request, p *store.Principal, sess *store.Session) *http.Request {
@@ -241,6 +243,12 @@ func withPrincipal(r *http.Request, p *store.Principal, sess *store.Session) *ht
 	ctx = contextWith(ctx, ctxPrincipal, p)
 	ctx = contextWith(ctx, ctxSession, sess)
 	return r.WithContext(ctx)
+}
+
+// tokenOf is the token a request came with, or nil when it came with a session.
+func tokenOf(r *http.Request) *store.Token {
+	tok, _ := r.Context().Value(ctxToken).(*store.Token)
+	return tok
 }
 
 func principalOf(r *http.Request) *store.Principal {

@@ -196,6 +196,7 @@ PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?,
 POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 POST   /api/tasks/{id}/poke
+POST   /api/tasks/{id}/comments  {body}
 DELETE /api/tasks/{id}
 
 POST   /api/tasks/bulk/done      {ids}
@@ -367,6 +368,27 @@ PNG, JPEG, GIF, WebP and AVIF. **SVG is refused**: it is an image format that ru
 declared type and the bytes must agree.
 
 `GET /api/assets/{id}` serves one, and only to the account that owns it.
+
+## Comments
+
+A task's timeline: markdown like the description, oldest first, in `GET /api/tasks/{id}` as
+`comments` — not in the list, which stays one row a task.
+
+```jsonc
+POST /api/tasks/{id}/comments  { "body": "Washers in; it still drips at the base." }
+// 201
+{ "id": "c_01j9z…", "body": "Washers in; it still drips at the base.",
+  "author": "robin", "token": "claude", "created_at": 1789343452 }
+```
+
+`author` is the account; `token` is the label of the token that wrote it, empty from a session —
+so a timeline says which of your agents said what. A comment **pokes** the task: somebody writing
+about it has looked at it. It goes the way a description does: inline images become assets and
+`@prefix` becomes a whole id, and a task it mentions is linked, both ways.
+
+**Say why when you finish something.** Post the comment, then `POST /api/tasks/{id}/done`: the
+verdict belongs in the timeline, not in a description rewritten after the fact. Comments are not
+edited or deleted.
 
 ## Mentioning another task
 
