@@ -460,6 +460,8 @@ curl -sS -H "$AUTH" -H "$JSON" -X POST "$TASKIO/api/tasks" \
 curl -sS -H "$AUTH" "$TASKIO/api/tasks?tags=and(home,repair)"
 curl -sS -H "$AUTH" "$TASKIO/api/tasks?q=tpa"
 
-# Mark it done
+# Say why, then mark it done
+curl -sS -H "$AUTH" -H "$JSON" -X POST "$TASKIO/api/tasks/8qw4/comments" \
+  -d '{"body":"New washers; it no longer drips."}'
 curl -sS -H "$AUTH" -X POST "$TASKIO/api/tasks/8qw4/done"
 ```
