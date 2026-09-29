@@ -54,7 +54,7 @@ export function Menu({
       {open ? (
         <div
           role="menu"
-          className="aloft absolute right-0 bottom-full z-40 mb-1.5 flex min-w-32 flex-col rounded-md bg-bg p-1"
+          className="aloft absolute right-0 bottom-full z-40 mb-1.5 flex min-w-32 flex-col rounded-lg bg-bg p-1"
         >
           {children(() => setOpen(false))}
         </div>

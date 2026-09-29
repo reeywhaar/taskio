@@ -924,6 +924,13 @@ reader have something to land on and announce, and its click reaches the card li
 
 It carries no hover of its own: underlining one line of a card that is entirely clickable says
 the rest of it is not. Everything else in the card is a control in its own right — the mark,
+## A box snug inside another is less round by the gap
+
+The outer radius is the inner one plus the padding between them, so the two corners share a
+centre: the segmented control's track around its backdrop, a menu around its items. The same
+radius on both reads as the inner corner bulging at the outer's. A control that floats inside a
+larger block, like the copy button on code, is not snug and keeps its own radius.
+
 the id, a link in the description — and each stops the click from reaching the card behind it.
 
 A click that ends a text selection does not open anything, because that is somebody reading.
