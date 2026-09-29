@@ -42,6 +42,15 @@ tkc_<unix seconds>.<token id>.<sha256("<nonce>.<id>.<key>")>
 where `key` is the lowercase hex of `sha256(<the whole token, prefix included>)` and `id` is its
 first 12 characters. Good for five minutes either way.
 
+**The recipe needs nothing of taskio.** The `tkc_` is optional, and `id` may be any 8 to 64
+characters from the start of the key — only the digest proves anything, and it is checked against
+the whole key. So a client that knows the recipe and nothing about taskio works as it is —
+proxio's recipe, which takes 8, included, sent without a prefix.
+
+```
+1789343452.b7e1cda9.4f2c…        bare, with an 8-character id — the same token
+```
+
 ```sh
 key=$(printf %s "$TOKEN" | shasum -a 256 | cut -d' ' -f1)
 id=${key:0:12}

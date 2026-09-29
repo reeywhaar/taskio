@@ -2,11 +2,14 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -801,5 +804,49 @@ func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
 	refusal(t, c.do("POST", "/api/tokens/"+oldID+"/rotate", ""), http.StatusBadRequest)
 	if resp := fresh.do("POST", "/api/tokens/"+tok["id"].(string)+"/rotate", ""); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("a token rotating one = %s, want 401", resp.Status)
+	}
+}
+
+// The recipe with nothing of taskio in it: no prefix, and an id of however many characters of
+// the key the caller took — so a client written for proxio, which takes 8, works here too.
+func TestABareNoncedTokenWorks(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	a := mintToken(t, s, c, "agent", "")
+
+	sum := sha256.Sum256([]byte(a.secret))
+	key := hex.EncodeToString(sum[:])
+	nonced := func(idLength int, fake bool) string {
+		ts := strconv.FormatInt(st.Now().Unix(), 10)
+		id := key[:idLength]
+		digest := sha256.Sum256([]byte(ts + "." + id + "." + key))
+		out := hex.EncodeToString(digest[:])
+		if fake {
+			out = strings.Repeat("0", 64)
+		}
+		return ts + "." + id + "." + out
+	}
+	bearer := func(v string) int {
+		return do(t, s, "GET", "/api/tasks", "", map[string]string{"Authorization": "Bearer " + v}).StatusCode
+	}
+
+	for _, n := range []int{12, 8, 64} {
+		if got := bearer(nonced(n, false)); got != http.StatusOK {
+			t.Errorf("a bare nonced value with a %d-character id = %d, want 200", n, got)
+		}
+	}
+	if got := do(t, s, "GET", "/api/tasks?token="+nonced(8, false), "", nil).StatusCode; got != http.StatusOK {
+		t.Errorf("a bare nonced value as ?token= = %d, want 200", got)
+	}
+
+	if got := bearer(nonced(12, true)); got != http.StatusUnauthorized {
+		t.Errorf("a wrong digest = %d, want 401", got)
+	}
+	if got := bearer(nonced(7, false)); got != http.StatusUnauthorized {
+		t.Errorf("a 7-character id = %d, want 401", got)
+	}
+	// A raw token still stays out of URLs.
+	if got := do(t, s, "GET", "/api/tasks?token="+a.secret, "", nil).StatusCode; got != http.StatusUnauthorized {
+		t.Errorf("a raw token as ?token= = %d, want 401", got)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -564,7 +565,7 @@ func (s *Store) ForgetRevokedTokens(ctx context.Context, principalID string) (in
 func (s *Store) AuthenticateToken(ctx context.Context, presented string) (*Token, error) {
 	now := s.Now()
 
-	if strings.HasPrefix(presented, NoncedPrefix) {
+	if IsNonced(presented) {
 		return s.authenticateNonced(ctx, presented, now)
 	}
 	if !strings.HasPrefix(presented, TokenPrefix) {
@@ -582,12 +583,27 @@ type NonceRefusal struct {
 	Reason string
 }
 
+// bareNonced is a nonced value without the prefix: what a client makes that knows the recipe and
+// nothing about taskio — one written for proxio, whose prefix and id length differ, included.
+var bareNonced = regexp.MustCompile(`^[0-9]+\.[0-9a-f]{8,64}\.[0-9a-f]{64}$`)
+
+// IsNonced reports whether a presented value is the nonced form, prefixed or bare. A raw token
+// always carries TokenPrefix, so the two cannot be mistaken for each other.
+func IsNonced(presented string) bool {
+	return strings.HasPrefix(presented, NoncedPrefix) || bareNonced.MatchString(presented)
+}
+
 func (s *Store) authenticateNonced(ctx context.Context, presented string, now time.Time) (*Token, error) {
 	parts := strings.Split(strings.TrimPrefix(presented, NoncedPrefix), NonceSep)
 	if len(parts) != 3 {
 		return nil, noncedErr("", "it is not <nonce>.<id>.<digest>")
 	}
 	nonce, id, digest := parts[0], parts[1], parts[2]
+	// Any length of the key from 8 to 64: the id only says which token to check, and the digest
+	// is proved against the whole key. Taskio prints 12; proxio's recipe takes 8.
+	if len(id) < 8 || len(id) > 64 || strings.Trim(id, "0123456789abcdef") != "" {
+		return nil, noncedErr("", "the id is not 8 to 64 lowercase hex characters of the key")
+	}
 
 	// Parsed strictly as digits, which is what keeps the hashed base unambiguous.
 	secs, err := strconv.ParseInt(nonce, 10, 64)
@@ -601,23 +617,46 @@ func (s *Store) authenticateNonced(ctx context.Context, presented string, now ti
 			skew.Round(time.Second).Abs(), NonceWindow))
 	}
 
-	var key []byte
-	err = s.reader.QueryRowContext(ctx, `SELECT secret_hash FROM tokens WHERE id = ?`, id).Scan(&key)
-	if errors.Is(err, sql.ErrNoRows) {
-		// Nothing is said about whether the id exists: this must be no oracle for one.
-		return nil, ErrNotFound
+	// The stored id is the key's first 12. A longer one is looked up by those and must go on
+	// matching the key; a shorter one can name more than one token, and each is tried.
+	query, arg := `SELECT secret_hash FROM tokens WHERE id = ?`, id
+	if len(id) > 12 {
+		arg = id[:12]
+	} else if len(id) < 12 {
+		query, arg = `SELECT secret_hash FROM tokens WHERE id LIKE ?`, id+"%"
 	}
+	rows, err := s.reader.QueryContext(ctx, query, arg)
 	if err != nil {
 		return nil, err
 	}
-
-	// The key goes last, where a length extension cannot reach it, and the comparison is
-	// constant time.
-	want := sha256.Sum256([]byte(nonce + NonceSep + id + NonceSep + hex.EncodeToString(key)))
-	if subtle.ConstantTimeCompare([]byte(digest), []byte(hex.EncodeToString(want[:]))) != 1 {
-		return nil, ErrNotFound
+	var keys [][]byte
+	for rows.Next() {
+		var key []byte
+		if err := rows.Scan(&key); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		keys = append(keys, key)
 	}
-	return s.tokenByKey(ctx, key, now)
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, key := range keys {
+		hexKey := hex.EncodeToString(key)
+		if !strings.HasPrefix(hexKey, id) {
+			continue
+		}
+		// The key goes last, where a length extension cannot reach it, and the comparison is
+		// constant time.
+		want := sha256.Sum256([]byte(nonce + NonceSep + id + NonceSep + hexKey))
+		if subtle.ConstantTimeCompare([]byte(digest), []byte(hex.EncodeToString(want[:]))) == 1 {
+			return s.tokenByKey(ctx, key, now)
+		}
+	}
+	// Nothing is said about whether the id exists: this must be no oracle for one.
+	return nil, ErrNotFound
 }
 
 func noncedErr(id, reason string) error {

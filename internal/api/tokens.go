@@ -276,7 +276,8 @@ func bearer(r *http.Request) string {
 		}
 		return ""
 	}
-	if v := r.URL.Query().Get("token"); strings.HasPrefix(v, store.NoncedPrefix) {
+	// Nonced only, prefixed or bare: a raw token in a URL is written down everywhere it goes.
+	if v := r.URL.Query().Get("token"); store.IsNonced(v) {
 		return v
 	}
 	return ""
