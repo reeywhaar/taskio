@@ -9,10 +9,11 @@
  *
  *   node scripts/smoke.mjs http://127.0.0.1
  */
-import { spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import { Browser } from "./cdp.mjs";
 
 const base = process.argv[2] ?? "http://127.0.0.1";
 const chromium = process.env.CHROMIUM ?? "chromium";
@@ -23,133 +24,6 @@ function check(name, ok, detail = "") {
   const mark = ok ? "ok  " : "FAIL";
   console.log(`${mark} ${name}${detail ? `  ${detail}` : ""}`);
   if (!ok) failures.push(name);
-}
-
-/** One CDP connection, with commands addressed to a page session. */
-class Browser {
-  #ws;
-  #next = 1;
-  #pending = new Map();
-  #session;
-
-  static async launch(profile) {
-    const proc = spawn(
-      chromium,
-      [
-        "--headless=new",
-        `--remote-debugging-port=${port}`,
-        `--user-data-dir=${profile}`,
-        "--no-first-run",
-        "--disable-gpu",
-        // The instance under test serves http on a loopback address.
-        "--ignore-certificate-errors",
-        // Nothing here reads chromium's output, and a pipe nobody drains fills and blocks the
-        // process writing into it — which looks like a browser that never finished starting.
-      ],
-      { stdio: "ignore" },
-    );
-    proc.on("error", (err) => {
-      console.error(`could not start ${chromium}: ${err.message}`);
-      process.exit(2);
-    });
-
-    const endpoint = await waitFor(async () => {
-      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
-      return (await res.json()).webSocketDebuggerUrl;
-    });
-
-    const browser = new Browser();
-    await browser.#connect(endpoint);
-    await browser.#attach();
-    browser.proc = proc;
-    return browser;
-  }
-
-  async #connect(endpoint) {
-    this.#ws = new WebSocket(endpoint);
-    await new Promise((resolve, reject) => {
-      this.#ws.onopen = resolve;
-      this.#ws.onerror = reject;
-    });
-    this.#ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      const waiting = this.#pending.get(msg.id);
-      if (!waiting) return;
-      this.#pending.delete(msg.id);
-      if (msg.error) waiting.reject(new Error(msg.error.message));
-      else waiting.resolve(msg.result);
-    };
-  }
-
-  async #attach() {
-    const { targetId } = await this.send("Target.createTarget", {
-      url: "about:blank",
-    });
-    const { sessionId } = await this.send("Target.attachToTarget", {
-      targetId,
-      flatten: true,
-    });
-    this.#session = sessionId;
-    await this.send("Page.enable");
-    await this.send("Runtime.enable");
-  }
-
-  send(method, params = {}) {
-    const id = this.#next++;
-    const message = { id, method, params };
-    if (this.#session && !method.startsWith("Target."))
-      message.sessionId = this.#session;
-    this.#ws.send(JSON.stringify(message));
-    return new Promise((resolve, reject) =>
-      this.#pending.set(id, { resolve, reject }),
-    );
-  }
-
-  /** Navigates and waits for the island to have rendered something. */
-  async open(path) {
-    await this.send("Page.navigate", { url: base + path });
-    await waitFor(async () => {
-      const value = await this.eval(
-        "document.querySelector('#root')?.children.length ?? 0",
-      );
-      return value > 0 ? value : undefined;
-    });
-  }
-
-  async eval(expression) {
-    const { result, exceptionDetails } = await this.send("Runtime.evaluate", {
-      expression: `(() => { return (${expression}); })()`,
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    if (exceptionDetails) throw new Error(exceptionDetails.text);
-    return result.value;
-  }
-
-  scheme(value) {
-    return this.send("Emulation.setEmulatedMedia", {
-      features: [{ name: "prefers-color-scheme", value }],
-    });
-  }
-
-  close() {
-    this.#ws.close();
-    this.proc.kill();
-  }
-}
-
-async function waitFor(f, attempts = 60) {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const value = await f();
-      if (value !== undefined && value !== null && value !== false)
-        return value;
-    } catch {
-      // Not up yet.
-    }
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  throw new Error("gave up waiting");
 }
 
 /** Relative luminance, so a contrast ratio can be asserted rather than eyeballed. */
@@ -166,7 +40,7 @@ const contrast = `(a, b) => {
 }`;
 
 const profile = await mkdtemp(join(tmpdir(), "taskio-smoke-"));
-const browser = await Browser.launch(profile);
+const browser = await Browser.launch({ chromium, port, profile, base });
 
 try {
   // --- the login island, which is what an unauthenticated visitor loads -------------------
