@@ -16,9 +16,10 @@ Needs `go`, `node`, `sqlite3` and Chromium or Chrome, and port 80, where taskio 
 
 **A run with nothing changed changes nothing.** The server's ids are random, so before each shot
 every task, picture and token id on the page is swapped for a stand-in made from its seed key, in
-the same shape; the caret is hidden and transitions are finished. Two runs give the same bytes, so
-a PNG shows up in `git status` only when the screen it is of did. A new Chromium can still move a
-pixel, and that is a real change to what the screen looks like.
+the same shape; the caret is hidden and transitions are finished. The rasteriser still moves a few
+anti-aliased pixels now and then, so a new shot that differs from the file already there in under
+a thousandth of its pixels, by at most 24 levels, leaves the file alone. A PNG shows up in
+`git status` only when the screen it is of changed.
 
 | knob | |
 | --- | --- |

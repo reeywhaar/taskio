@@ -22,6 +22,7 @@ import {
   mkdirSync,
   mkdtempSync,
   rmSync,
+  readFileSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -29,7 +30,7 @@ import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { crc32 } from "node:zlib";
+import { crc32, inflateSync } from "node:zlib";
 
 import { Browser, findChromium, waitFor } from "../../web/scripts/cdp.mjs";
 import { account, images, projects, search, tokens } from "./seed.mjs";
@@ -604,10 +605,13 @@ for (const shot of shots) {
   await disguise();
   if (NOTES && shot.notes) await annotate(shot.notes);
   const clip = shot.element ? await around(shot.element) : undefined;
-  writeFileSync(
-    join(OUT, `${shot.name}.png`),
-    stamp(await browser.png(clip), SCALE),
-  );
+  const file = join(OUT, `${shot.name}.png`);
+  const png = stamp(await browser.png(clip), SCALE);
+  if (existsSync(file) && alike(readFileSync(file), png)) {
+    console.log(`  ${shot.name}.png, unchanged`);
+    continue;
+  }
+  writeFileSync(file, png);
   console.log(`  ${shot.name}.png`);
 }
 
@@ -644,4 +648,81 @@ function stamp(png, scale) {
     at = end;
   }
   return Buffer.concat(parts);
+}
+
+/**
+ * Whether two captures are one picture, give or take the rasteriser.
+ *
+ * With the content pinned, a run still moved a few dozen anti-aliased pixels at an edge by a few
+ * levels now and then, and git saw a new file. Kept when under a thousandth of the pixels differ
+ * and none by more than 24 of 255: a moved icon or a changed word is far more than 24 levels,
+ * and a changed colour is far more than a thousandth of the picture.
+ */
+function alike(before, after) {
+  const a = decode(before);
+  const b = decode(after);
+  if (
+    !a ||
+    !b ||
+    a.width !== b.width ||
+    a.height !== b.height ||
+    a.channels !== b.channels
+  ) {
+    return false;
+  }
+  let differing = 0;
+  for (let at = 0; at < a.pixels.length; at += a.channels) {
+    let worst = 0;
+    for (let c = 0; c < a.channels; c++) {
+      worst = Math.max(worst, Math.abs(a.pixels[at + c] - b.pixels[at + c]));
+    }
+    if (worst > 24) return false;
+    if (worst > 0) differing++;
+  }
+  return differing <= (a.pixels.length / a.channels) * 0.001;
+}
+
+/** The pixels of an 8-bit, non-interlaced RGB or RGBA PNG, which is what Chromium writes. */
+function decode(png) {
+  let width, height, channels;
+  const data = [];
+  for (let at = 8; at < png.length;) {
+    const length = png.readUInt32BE(at);
+    const type = png.toString("latin1", at + 4, at + 8);
+    const body = png.subarray(at + 8, at + 8 + length);
+    if (type === "IHDR") {
+      width = body.readUInt32BE(0);
+      height = body.readUInt32BE(4);
+      channels = { 2: 3, 6: 4 }[body[9]];
+      if (body[8] !== 8 || !channels || body[12] !== 0) return null;
+    }
+    if (type === "IDAT") data.push(body);
+    at += 12 + length;
+  }
+  const raw = inflateSync(Buffer.concat(data));
+  const stride = width * channels;
+  const pixels = Buffer.alloc(height * stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = y * (stride + 1) + 1;
+    for (let x = 0; x < stride; x++) {
+      const a = x >= channels ? pixels[y * stride + x - channels] : 0;
+      const b = y > 0 ? pixels[(y - 1) * stride + x] : 0;
+      const c =
+        x >= channels && y > 0 ? pixels[(y - 1) * stride + x - channels] : 0;
+      let value = raw[line + x];
+      if (filter === 1) value += a;
+      else if (filter === 2) value += b;
+      else if (filter === 3) value += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a),
+          pb = Math.abs(p - b),
+          pc = Math.abs(p - c);
+        value += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      pixels[y * stride + x] = value & 255;
+    }
+  }
+  return { width, height, channels, pixels };
 }
