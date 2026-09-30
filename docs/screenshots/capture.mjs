@@ -607,7 +607,11 @@ for (const shot of shots) {
   const clip = shot.element ? await around(shot.element) : undefined;
   const file = join(OUT, `${shot.name}.png`);
   const png = stamp(await browser.png(clip), SCALE);
-  if (existsSync(file) && alike(readFileSync(file), png)) {
+  const before = existsSync(file) ? readFileSync(file) : null;
+  if (before && alike(before, png)) {
+    // The same picture, kept; its metadata brought up to date if the stamp has changed.
+    const restamped = stamp(before, SCALE);
+    if (!restamped.equals(before)) writeFileSync(file, restamped);
     console.log(`  ${shot.name}.png, unchanged`);
     continue;
   }
@@ -619,8 +623,9 @@ step("done");
 process.exit(0);
 
 /**
- * The density a PNG was drawn at, as a pHYs chunk, which is what the macOS screenshot tool
- * writes: a 2x capture says 144 dpi, and a viewer that reads it shows it at the size it was on
+ * The density a PNG was drawn at, said the two ways a macOS screenshot says it: a pHYs chunk,
+ * and an EXIF block with the same resolution in inches, which is what some of the system reads
+ * instead. A 2x capture says 144 dpi, and a viewer that reads it shows it at the size it was on
  * screen rather than twice that.
  */
 function stamp(png, scale) {
@@ -632,19 +637,43 @@ function stamp(png, scale) {
     tail.writeUInt32BE(crc32(body));
     return Buffer.concat([head, body, tail]);
   };
-  const perMetre = Math.round((72 * scale) / 0.0254);
+  const dpi = 72 * scale;
   const phys = Buffer.alloc(9);
-  phys.writeUInt32BE(perMetre, 0);
-  phys.writeUInt32BE(perMetre, 4);
+  phys.writeUInt32BE(Math.round(dpi / 0.0254), 0);
+  phys.writeUInt32BE(Math.round(dpi / 0.0254), 4);
   phys[8] = 1; // the unit is the metre
-  // After IHDR, which is always first, and in place of any the browser wrote.
+
+  // A big-endian TIFF header and one directory of three entries: XResolution and YResolution,
+  // each a rational stored after the directory, and ResolutionUnit, 2 being the inch.
+  const exif = Buffer.alloc(66);
+  exif.write("MM", 0, "latin1");
+  exif.writeUInt16BE(42, 2);
+  exif.writeUInt32BE(8, 4);
+  exif.writeUInt16BE(3, 8);
+  const entry = (at, tag, type, value) => {
+    exif.writeUInt16BE(tag, at);
+    exif.writeUInt16BE(type, at + 2);
+    exif.writeUInt32BE(1, at + 4);
+    if (type === 3) exif.writeUInt16BE(value, at + 8);
+    else exif.writeUInt32BE(value, at + 8);
+  };
+  entry(10, 0x011a, 5, 50);
+  entry(22, 0x011b, 5, 58);
+  entry(34, 0x0128, 3, 2);
+  exif.writeUInt32BE(0, 46); // no next directory
+  for (const at of [50, 58]) {
+    exif.writeUInt32BE(dpi, at);
+    exif.writeUInt32BE(1, at + 4);
+  }
+
+  // After IHDR, which is always first, and in place of any already there.
   const parts = [png.subarray(0, 8)];
   for (let at = 8; at < png.length;) {
     const length = png.readUInt32BE(at);
     const type = png.toString("latin1", at + 4, at + 8);
     const end = at + 12 + length;
-    if (type !== "pHYs") parts.push(png.subarray(at, end));
-    if (type === "IHDR") parts.push(chunk("pHYs", phys));
+    if (type !== "pHYs" && type !== "eXIf") parts.push(png.subarray(at, end));
+    if (type === "IHDR") parts.push(chunk("pHYs", phys), chunk("eXIf", exif));
     at = end;
   }
   return Buffer.concat(parts);
