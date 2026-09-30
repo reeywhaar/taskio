@@ -132,10 +132,10 @@ export function Editor({
     }
   };
 
-  // A floor of its own shade, so the browser's resize grip reads as the corner of the words above
+  // A floor of its own tint, so the browser's resize grip reads as the corner of the words above
   // it rather than something standing on the controls.
   const controls = (
-    <div className="flex items-center gap-3 rounded-b-md bg-shade px-3 py-1.5 text-xs">
+    <div className="flex items-center gap-3 rounded-b-md bg-floor px-3 py-1.5 text-xs">
       {preview ? (
         <div role="group" aria-label="Comment" className="flex gap-3">
           {(["edit", "preview"] as const).map((option) => (
@@ -236,7 +236,7 @@ export function Editor({
             e.preventDefault();
             void upload(files);
           }}
-          className={`w-full flex-auto border-0 bg-transparent p-3 text-fg focus:outline-none ${
+          className={`grip w-full flex-auto border-0 bg-transparent p-3 text-fg focus:outline-none ${
             compact ? "min-h-20" : "min-h-40"
           } ${reading ? "hidden" : ""}`}
           placeholder={prompt}

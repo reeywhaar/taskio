@@ -49,6 +49,9 @@
    * from it, which is what a pressed or current thing looks like on paper.
    */
   --color-shade: rgb(0 0 0 / 0.06);
+  /* The floor inside a box, under its words: a tint of the ground's own warmth rather than a grey,
+     and lighter than a shade, because it is furniture and not something pressed. */
+  --color-floor: rgb(100 50 0 / 0.04);
   /*
    * The rail's edge. A shadow rather than a rule: the rail is a surface in front of the page,
    * and the one it casts says so without drawing a line nobody asked for.
@@ -78,6 +81,7 @@
     /* White rather than black: a dark ground has nothing left to darken, and the row somebody is
        looking at has to come forward rather than fall through the floor. */
     --color-shade: rgb(255 255 255 / 0.07);
+    --color-floor: rgb(255 230 200 / 0.04);
     /* Darker, because a shadow on a dark ground has almost nothing to darken. */
     --shadow-rail: 4px 0 14px -6px rgb(0 0 0 / 0.7);
     --color-brand: #818cf8;
@@ -753,4 +757,17 @@ input[type="checkbox"]:focus-visible {
 @utility caps {
   font-variant-caps: all-small-caps;
   letter-spacing: 0.04em;
+}
+
+/* The browser's resize grip, fainter: its own is three dark strokes, the darkest thing in a box
+   whose words are what it is for. Where the pseudo-element is not understood, the browser's own
+   stands. */
+.grip::-webkit-resizer {
+  background: no-repeat right 3px bottom 3px / 9px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9'%3E%3Cpath d='M8.5 .5l-8 8M8.5 4.5l-4 4' stroke='%23000' stroke-opacity='.2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  .grip::-webkit-resizer {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9'%3E%3Cpath d='M8.5 .5l-8 8M8.5 4.5l-4 4' stroke='%23fff' stroke-opacity='.22' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
 }

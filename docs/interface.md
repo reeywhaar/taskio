@@ -48,9 +48,10 @@ opened the task to change. The pin and the poke are properties, and leave it ope
 The box itself has Edit and Preview, because it has no dialog face of its own to turn: two words
 in small caps rather than a segmented control, which was a slab over a three-line box. The one not
 showing is a pseudo-link, dashed because it switches what is here rather than going anywhere.
-They are inside the box, along its floor with the paperclip and its buttons: under it, beside the
-well, they read as a line of text near the box rather than the box's own, which GitHub gets by
-making its tabs part of the frame. The description's box has the same floor, with only the clip.
+They are inside the box, along its floor with the paperclip and its buttons, on a floor tinted
+with the ground's own warmth rather than a grey: under it, beside the well, they read as a line
+of text near the box rather than the box's own, which GitHub gets by making its tabs part of the
+frame. The description's box has the same floor, with only the clip.
 Posting a comment brings the box back to Edit. Shift+Enter posts it, or saves one being edited;
 Enter stays a new line, since a comment is markdown and has paragraphs. In a task's description it
 is the dialog's Save, or Add for a new one, and closes it.
