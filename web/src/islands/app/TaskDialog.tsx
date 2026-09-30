@@ -26,6 +26,7 @@ import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { CommentIcon, PencilIcon, PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
+import { Group as Caption } from "@app/components/Field";
 import { Editor } from "@app/islands/app/Editor";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
@@ -453,11 +454,14 @@ export function TaskDialog({
               }}
             />
           ) : (
-            <Preview
-              source={shown ?? draft.description}
-              onChange={ticked}
-              onMention={setPeek}
-            />
+            <>
+              <Preview
+                source={shown ?? draft.description}
+                onChange={ticked}
+                onMention={setPeek}
+              />
+              <Facts draft={draft} />
+            </>
           )}
 
           <Links detail={task.data} onOpen={setPeek} />
@@ -631,6 +635,49 @@ function WithComment({ said }: { said: boolean }) {
     <>
       <span className="hidden sm:inline">with comment</span>
       <CommentIcon className="sm:hidden" />
+    </>
+  );
+}
+
+/**
+ * The fields, read: priority, color and tags where the edit face has them, so the two faces show
+ * the same task in the same order. Drawn as the row draws them, and nothing for what is unset.
+ */
+function Facts({ draft }: { draft: Draft }) {
+  const priority = Number(draft.priority) || 0;
+  return (
+    <>
+      {priority || draft.color ? (
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
+          {priority ? (
+            <Caption label="Priority">
+              <span className="wash inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-xs font-medium tabular-nums">
+                {priority}
+              </span>
+            </Caption>
+          ) : null}
+          {draft.color ? (
+            <Caption label="Color">
+              <span
+                className="block size-5 rounded-md"
+                style={{ background: draft.color }}
+              />
+            </Caption>
+          ) : null}
+        </div>
+      ) : null}
+      {draft.tags.length > 0 ? (
+        <ul aria-label="Tags" className="flex flex-wrap gap-1.5">
+          {draft.tags.map((slug) => (
+            <li
+              key={slug}
+              className="rounded-full bg-fill px-2.5 py-0.5 text-sm text-muted"
+            >
+              {slug}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </>
   );
 }

@@ -284,6 +284,35 @@ describe("opening a task", () => {
   });
 });
 
+describe("the read view", () => {
+  it("shows the priority, color and tags the fields hold", async () => {
+    task = {
+      ...detail("todo"),
+      description: "It drips.",
+      priority: 2,
+      color: "#16a34a",
+      tags: ["home", "repair"],
+    };
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    const priority = await screen.findByRole("group", { name: "Priority" });
+    expect(priority.textContent).toBe("2");
+    expect(screen.getByRole("group", { name: "Color" })).toBeDefined();
+    const tags = screen.getByRole("list", { name: "Tags" });
+    expect(
+      [...tags.querySelectorAll("li")].map((li) => li.textContent),
+    ).toEqual(["home", "repair"]);
+  });
+
+  it("leaves out what is not set", async () => {
+    task = { ...detail("todo"), description: "It drips." };
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    await waitFor(() => expect(prose()).toBe("It drips."));
+    expect(screen.queryByRole("group", { name: "Priority" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Color" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Tags" })).toBeNull();
+  });
+});
+
 /** Shift+Enter in the description is Save, as it is Comment in a comment's box. */
 describe("Shift+Enter", () => {
   it("saves and closes from the description", async () => {
