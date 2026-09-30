@@ -185,9 +185,10 @@ export function Dialog({
                 aria-label="Close"
                 title="Close"
                 onClick={onClose}
-                className="-mr-1 shrink-0 rounded-md p-1.5 text-faint hover:bg-fill hover:text-fg"
+                // Still 28px, with more of it cross: at 16px the mark was 8px of a phone's screen.
+                className="-mr-1 shrink-0 rounded-md p-1 text-faint hover:bg-fill hover:text-fg"
               >
-                <CrossIcon />
+                <CrossIcon className="text-xl" />
               </button>
             </div>
           </div>

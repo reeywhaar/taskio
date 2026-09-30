@@ -809,7 +809,8 @@ own name off the top. Both are ruled off from the body with the same line, from 
 The head is a title bar and not a panel: 49px at every width, around a 28px close. It was 57 on
 a phone and 65 above it, which on one short word is a band of nothing with a rule under it. The
 editor takes the slack, which is the point of the screen being full — a description is the thing
-you opened it to write.
+you opened it to write. The close is a 20px cross in that 28px, because at 16px the mark itself
+was 8px of a phone's screen.
 
 **The floor is under the whole task, not its description.** Two lines in a box of two lines is
 a dialog that has shrunk to fit, so the column of the dialog — words, linked tasks, comments — is
