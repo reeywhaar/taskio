@@ -9,7 +9,8 @@ docs/screenshots/capture.mjs
 That builds the frontend and the binary, starts taskio on an empty data directory, signs in
 through the first-run invitation, fills it from [`seed.mjs`](seed.mjs) through its own API, drives
 headless Chromium over the DevTools protocol, and overwrites the PNGs here. Everything it starts
-is stopped on the way out.
+is stopped on the way out. Each PNG says its density, 72 dpi times `SCALE`, as a macOS
+screenshot does, so a viewer that reads it shows it at its size on screen.
 
 Needs `go`, `node`, `sqlite3` and Chromium or Chrome, and port 80, where taskio listens.
 

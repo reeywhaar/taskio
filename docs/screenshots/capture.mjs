@@ -28,6 +28,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { crc32 } from "node:zlib";
 
 import { Browser, findChromium, waitFor } from "../../web/scripts/cdp.mjs";
 import { account, images, projects, search, tokens } from "./seed.mjs";
@@ -542,9 +543,44 @@ for (const shot of shots) {
   await settled();
   if (NOTES && shot.notes) await annotate(shot.notes);
   const clip = shot.element ? await around(shot.element) : undefined;
-  writeFileSync(join(OUT, `${shot.name}.png`), await browser.png(clip));
+  writeFileSync(
+    join(OUT, `${shot.name}.png`),
+    stamp(await browser.png(clip), SCALE),
+  );
   console.log(`  ${shot.name}.png`);
 }
 
 step("done");
 process.exit(0);
+
+/**
+ * The density a PNG was drawn at, as a pHYs chunk, which is what the macOS screenshot tool
+ * writes: a 2x capture says 144 dpi, and a viewer that reads it shows it at the size it was on
+ * screen rather than twice that.
+ */
+function stamp(png, scale) {
+  const chunk = (type, data) => {
+    const head = Buffer.alloc(4);
+    head.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type), data]);
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc32(body));
+    return Buffer.concat([head, body, tail]);
+  };
+  const perMetre = Math.round((72 * scale) / 0.0254);
+  const phys = Buffer.alloc(9);
+  phys.writeUInt32BE(perMetre, 0);
+  phys.writeUInt32BE(perMetre, 4);
+  phys[8] = 1; // the unit is the metre
+  // After IHDR, which is always first, and in place of any the browser wrote.
+  const parts = [png.subarray(0, 8)];
+  for (let at = 8; at < png.length;) {
+    const length = png.readUInt32BE(at);
+    const type = png.toString("latin1", at + 4, at + 8);
+    const end = at + 12 + length;
+    if (type !== "pHYs") parts.push(png.subarray(at, end));
+    if (type === "IHDR") parts.push(chunk("pHYs", phys));
+    at = end;
+  }
+  return Buffer.concat(parts);
+}
