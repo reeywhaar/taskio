@@ -237,7 +237,7 @@
   /* A well: a hard pale lip on the far side, and a soft shade tucked under the near one. */
   --well-lit: #fff8;
   --well-shade: #0001;
-  --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.02);
+  --sheen-stops: rgb(255 255 255 / 0.2), rgb(0 0 0 / 0.008);
   /* What the floating bar lays over the page.
 
      Warm rather than black, because the grounds are: black fog on a beige rail greys it, and
