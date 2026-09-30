@@ -14,7 +14,8 @@ beside the close, and switch the dialog between the fields and the task as it re
 after the task, with its words and its mentions, and the same footer. The preview was a second
 tab once, which made it the same size and shape as the box it replaced, and then a second dialog
 over the first, which was a second thing to close for what is the same task in the same place.
-View appears only once there is something to read.
+View appears only once there is something to read. A task opens read, since it is looked at far
+more often than changed and Edit is one press away; a new task opens written.
 
 The words it shows are held while it is open. An edit arriving from elsewhere replaces the draft
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an

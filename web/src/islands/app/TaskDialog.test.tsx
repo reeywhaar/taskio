@@ -125,7 +125,14 @@ const description = () =>
 
 /** Opened, loaded, and a verdict typed into the description. */
 async function withVerdict(onClose = vi.fn()) {
-  mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+  mount(
+    <TaskDialog
+      initialMode="edit"
+      id="8qw4tz9k"
+      project=""
+      onClose={onClose}
+    />,
+  );
   // The field, not the button: the footer is drawn while the task is still on its way.
   await screen.findByPlaceholderText(/Markdown\. Paste a file/);
   await settle();
@@ -140,7 +147,14 @@ async function withVerdict(onClose = vi.fn()) {
  */
 describe("the task dialog's status button", () => {
   it("says what it does, and does it", async () => {
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     const button = await screen.findByRole("button", { name: "Mark done" });
     fireEvent.click(button);
     await waitFor(() => expect(done).toHaveBeenCalledWith("8qw4tz9k"));
@@ -149,7 +163,14 @@ describe("the task dialog's status button", () => {
 
   it("says the other thing on a task that is already done", async () => {
     task = detail("done");
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     const button = await screen.findByRole("button", { name: "Mark as todo" });
     fireEvent.click(button);
     await waitFor(() => expect(todo).toHaveBeenCalledWith("8qw4tz9k"));
@@ -159,7 +180,14 @@ describe("the task dialog's status button", () => {
    *  as Delete does: the status is what somebody opened the task to change. */
   it("writes nothing it was not given, and closes the dialog", async () => {
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Mark done" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(done).toHaveBeenCalled();
@@ -169,7 +197,14 @@ describe("the task dialog's status button", () => {
   it("closes after marking a done task todo again", async () => {
     task = detail("done");
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Mark as todo" }),
     );
@@ -209,7 +244,14 @@ describe("a verdict written and then acted on", () => {
   });
 
   it("is not written again when nothing was typed", async () => {
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
     await waitFor(() => expect(remove).toHaveBeenCalled());
     expect(calls).toEqual(["delete"]);
@@ -225,6 +267,20 @@ describe("a verdict written and then acted on", () => {
 
     await screen.findByText("A task needs a title.");
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+/** A task is opened to be read; Edit turns it into the fields. Only a new one opens written. */
+describe("opening a task", () => {
+  it("shows it as it reads, with Edit to write", async () => {
+    task = { ...detail("todo"), description: "It **drips**." };
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    await waitFor(() => expect(prose()).toBe("It drips."));
+    expect(screen.queryByPlaceholderText(/Markdown\. Paste a file/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      await screen.findByPlaceholderText(/Markdown\. Paste a file/),
+    ).toBeDefined();
   });
 });
 
@@ -247,7 +303,14 @@ describe("Shift+Enter", () => {
 describe("moving a task", () => {
   it("sends the project it was moved to", async () => {
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
     await screen.findByPlaceholderText(/Markdown\. Paste a file/);
     await settle();
 
@@ -260,7 +323,14 @@ describe("moving a task", () => {
   });
 
   it("says what a move does, where the move is chosen", async () => {
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     await screen.findByPlaceholderText(/Markdown\. Paste a file/);
     await settle();
     fireEvent.click(screen.getByRole("button", { name: "Main" }));
@@ -302,6 +372,7 @@ describe("a task from another project", () => {
     const onElsewhere = vi.fn();
     mount(
       <TaskDialog
+        initialMode="edit"
         id="8qw4tz9k"
         project=""
         onClose={vi.fn()}
@@ -330,7 +401,14 @@ describe("pinning from the dialog", () => {
 
   it("unpins a pinned task", async () => {
     task = { ...detail("todo"), pinned: true };
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Unpin" }));
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("8qw4tz9k", { pinned: false }),
@@ -354,7 +432,14 @@ describe("poking from the dialog", () => {
   /** A finished task's age is when it was finished, and a poke would move nothing read. */
   it("is not offered on a finished task", async () => {
     task = detail("done");
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     await screen.findByRole("button", { name: "Mark as todo" });
     expect(screen.queryByRole("button", { name: "poke?" })).toBeNull();
   });
@@ -367,7 +452,14 @@ describe("how stale the task is", () => {
       ...detail("todo"),
       poked_at: Math.floor(Date.now() / 1000) - 15 * 86400,
     };
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     const line = await screen.findByText(/Stale for 2 weeks/);
     expect(line.className).toContain("text-warn");
   });
@@ -377,7 +469,14 @@ describe("how stale the task is", () => {
       ...detail("todo"),
       poked_at: Math.floor(Date.now() / 1000) - 3 * 86400,
     };
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     expect((await screen.findByText("3 days ago")).className).toContain(
       "text-faint",
     );
@@ -389,7 +488,14 @@ describe("how stale the task is", () => {
       ...detail("done"),
       done_at: Math.floor(Date.now() / 1000) - 60 * 86400,
     };
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     expect(
       (await screen.findByText("finished 2 months ago")).className,
     ).toContain("text-faint");
@@ -398,7 +504,14 @@ describe("how stale the task is", () => {
 
 /** The task open, read or written, with nothing else to say about how. */
 const open = () =>
-  mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+  mount(
+    <TaskDialog
+      initialMode="edit"
+      id="8qw4tz9k"
+      project=""
+      onClose={vi.fn()}
+    />,
+  );
 /** The rendered words, not the textarea holding the same ones. */
 const prose = () => document.querySelector(".prose")?.textContent?.trim();
 
@@ -475,7 +588,14 @@ describe("a mention", () => {
       mentions: [{ id: "kr20fj8m", title: "Buy washers", status: "todo" }],
     } as TaskDetail;
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: /Buy washers/ }));
 
     expect(
@@ -496,7 +616,14 @@ describe("a mention", () => {
 
   it("opens the same way from a chip in the description", async () => {
     task = { ...detail("todo"), description: "See @kr20fj8m first." };
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "View" }));
     fireEvent.click(document.querySelector("a.mention")!);
     expect(
@@ -667,7 +794,14 @@ describe("comments", () => {
       ],
     };
     const onClose = vi.fn();
-    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
     const heading = await screen.findByRole("heading", { name: "Comments" });
     const item = () => heading.parentElement!.querySelector("li")!;
     fireEvent.click(

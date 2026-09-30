@@ -68,7 +68,8 @@ export type Mode = "edit" | "preview";
  *
  * Two faces, switched from the title bar: the fields, and the task as it reads. One dialog
  * rather than a preview opened over the editor, because they are the same task in the same
- * place, and a second modal is a second thing to close.
+ * place, and a second modal is a second thing to close. It opens read: a task is looked at far
+ * more often than it is changed, and Edit is one press. A new task opens written.
  *
  * A mention opens the task it names over this one, read rather than written: following a
  * reference is reading, and the task underneath is where somebody was.
@@ -78,7 +79,7 @@ export function TaskDialog({
   project,
   onClose,
   onElsewhere,
-  initialMode = "edit",
+  initialMode = "preview",
 }: {
   id: string;
   /** The project the list behind it is showing, by slug; empty is the default. */

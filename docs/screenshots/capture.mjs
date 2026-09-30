@@ -436,6 +436,10 @@ const shots = [
     go: async () => {
       await browser.open(`/t/${ids.tap}`);
       await waitFor(() =>
+        browser.eval("!!document.querySelector('dialog[open] .prose')"),
+      );
+      await click("dialog[open] button", "Edit");
+      await waitFor(() =>
         browser.eval("!!document.querySelector('dialog[open] textarea')"),
       );
     },
@@ -450,12 +454,12 @@ const shots = [
   },
   {
     name: "task",
+    // Read, which is how a task opens.
     go: async () => {
       await browser.open(`/t/${ids.tap}`);
       await waitFor(() =>
-        browser.eval("!!document.querySelector('dialog[open] textarea')"),
+        browser.eval("!!document.querySelector('dialog[open] .prose img')"),
       );
-      await click("dialog[open] button", "View");
     },
     notes: [
       {
@@ -481,7 +485,6 @@ const shots = [
       await waitFor(() =>
         browser.eval("!!document.querySelector('dialog[open] section')"),
       );
-      await click("dialog[open] button", "View");
       await into("dialog[open] section");
     },
     element: "dialog[open] section",
