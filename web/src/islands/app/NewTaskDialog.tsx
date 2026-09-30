@@ -8,7 +8,7 @@ import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
 import { Preview } from "@app/islands/app/Preview";
 import { ProjectLabel } from "@app/islands/app/ProjectPicker";
-import { TaskDialog, type Mode } from "@app/islands/app/TaskDialog";
+import { TaskDialog, TitleRead, type Mode } from "@app/islands/app/TaskDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 
 /**
@@ -87,7 +87,7 @@ export function NewTaskDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={mode === "preview" ? draft.title.trim() || "New task" : "New task"}
+      title="New task"
       lead={
         <ProjectLabel
           value={draft.project}
@@ -131,11 +131,14 @@ export function NewTaskDialog({
             titlePlaceholder="What needs doing?"
           />
         ) : (
-          <Preview
-            source={draft.description}
-            onChange={(description) => setDraft({ ...draft, description })}
-            onMention={setPeek}
-          />
+          <>
+            <TitleRead title={draft.title} />
+            <Preview
+              source={draft.description}
+              onChange={(description) => setDraft({ ...draft, description })}
+              onMention={setPeek}
+            />
+          </>
         )}
         {error ? <p className="text-sm text-accent">{error}</p> : null}
       </div>

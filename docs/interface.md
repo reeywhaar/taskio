@@ -10,8 +10,10 @@ way in, serialise on the way out — and every round trip is a chance to lose a 
 tested. So it is a textarea, and what you type is what is stored.
 
 **Reading is the dialog's other face.** View and Edit sit at the right of the title bar,
-beside the close, and switch the dialog between the fields and the task as it reads — named
-after the task, with its words and its mentions, and the same footer. The preview was a second
+beside the close, and switch the dialog between the fields and the task as it reads — its name
+as a heading at the head of the body, with its words and its mentions, and the same footer. The
+name is in the body rather than the title bar, which on a phone cut it to a letter or two beside
+the project, id and age; the bar says "Task" in both faces. The preview was a second
 tab once, which made it the same size and shape as the box it replaced, and then a second dialog
 over the first, which was a second thing to close for what is the same task in the same place.
 View appears only once there is something to read. A task opens read, since it is looked at far

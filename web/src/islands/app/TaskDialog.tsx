@@ -299,14 +299,8 @@ export function TaskDialog({
       open
       wide
       onClose={onClose}
-      // Read, it is named after the task, like a page is; written, the title is a field below.
-      title={
-        !task.data
-          ? "Loading"
-          : mode === "preview"
-            ? draft.title.trim() || "Task"
-            : "Task"
-      }
+      // "Task" either way: the name itself is at the head of the body, read or written.
+      title={task.data ? "Task" : "Loading"}
       actions={
         task.data ? (
           mode === "edit" ? (
@@ -455,6 +449,7 @@ export function TaskDialog({
             />
           ) : (
             <>
+              <TitleRead title={draft.title} />
               <Preview
                 source={shown ?? draft.description}
                 onChange={ticked}
@@ -636,6 +631,19 @@ function WithComment({ said }: { said: boolean }) {
       <span className="hidden sm:inline">with comment</span>
       <CommentIcon className="sm:hidden" />
     </>
+  );
+}
+
+/**
+ * The task's name, read: at the head of the body, where it wraps, rather than in the title bar,
+ * where on a phone it was cut to a letter or two beside the project, id and age. The same place
+ * the title field is when written.
+ */
+export function TitleRead({ title }: { title: string }) {
+  return (
+    <h2 className="text-xl leading-snug font-semibold wrap-break-word">
+      {title.trim() || "Untitled"}
+    </h2>
   );
 }
 
