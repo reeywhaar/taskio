@@ -28,6 +28,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { crc32 } from "node:zlib";
 
 import { Browser, findChromium, waitFor } from "../../web/scripts/cdp.mjs";
@@ -388,6 +389,65 @@ const annotate = (notes) =>
     return true;
   })()`);
 
+/**
+ * Every id the page shows, swapped for one that is the same on every run.
+ *
+ * The server's are random, so without this each capture drew new ones into the rows, the title
+ * bars, the mention chips and the token list, and git saw eight changed pictures of the same
+ * screens. Each stand-in is made from its seed key, in the real one's shape and length, so the
+ * layout does not move. Swapped in the page's text and fields just before the picture, with the
+ * caret hidden and every transition finished, which would otherwise differ from run to run.
+ */
+const hashed = (key, length, alphabet) =>
+  [...createHash("sha256").update(key).digest()]
+    .slice(0, length)
+    .map((byte) => alphabet[byte % alphabet.length])
+    .join("");
+const CROCKFORD = "0123456789abcdefghjkmnpqrstvwxyz";
+const standIns = [
+  ...Object.entries(ids).map(([key, id]) => [
+    id,
+    hashed(`task:${key}`, 8, CROCKFORD),
+  ]),
+  ...Object.entries(pictures).map(([key, url]) => {
+    const id = /a_[0-9a-z]+/.exec(url)[0];
+    return [id, `a_${hashed(`picture:${key}`, 26, CROCKFORD)}`];
+  }),
+  ...(await api("/api/tokens")).tokens.flatMap((t) => {
+    const key =
+      tokens.find((seeded) => seeded.label === t.label)?.key ?? t.label;
+    const bare = t.id.replace(/^k_/, "");
+    const fake = hashed(`token:${key}`, bare.length, "0123456789abcdef");
+    return bare === t.id
+      ? [[t.id, fake]]
+      : [
+          [t.id, `k_${fake}`],
+          [bare, fake],
+        ];
+  }),
+];
+const disguise = () =>
+  browser.eval(`(() => {
+    const pairs = ${JSON.stringify(standIns)};
+    const swap = (text) => pairs.reduce((t, [real, fake]) => t.split(real).join(fake), text);
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node; (node = walk.nextNode()); ) {
+      const next = swap(node.nodeValue);
+      if (next !== node.nodeValue) node.nodeValue = next;
+    }
+    for (const field of document.querySelectorAll("textarea, input")) {
+      const next = swap(field.value);
+      if (next !== field.value) field.value = next;
+    }
+    // And everything at rest: a colour mid-transition was a few pixels different each run.
+    const style = document.createElement("style");
+    style.textContent =
+      "*, ::before, ::after { caret-color: transparent !important; transition: none !important; }";
+    document.head.append(style);
+    for (const animation of document.getAnimations()) animation.finish();
+    return new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))));
+  })()`);
+
 const tokensPanel = `(() => [...document.querySelectorAll("section")].find((s) => s.querySelector("h2")?.textContent.trim() === "Tokens"))()`;
 
 // Each shot is the whole window unless it names an element, which is photographed alone.
@@ -541,6 +601,7 @@ for (const shot of shots) {
   await browser.viewport(SIZE, SIZE, SCALE);
   await shot.go();
   await settled();
+  await disguise();
   if (NOTES && shot.notes) await annotate(shot.notes);
   const clip = shot.element ? await around(shot.element) : undefined;
   writeFileSync(
