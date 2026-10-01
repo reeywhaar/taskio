@@ -8,7 +8,10 @@ import { useEffect, useState } from "react";
  * the first route needing a nested layout or a segment worth loading lazily.
  */
 export type Route =
-  { name: "list" } | { name: "task"; id: string } | { name: "settings" };
+  | { name: "list" }
+  /** comment is one of its comments by number, from a link to 8qw4tz9k#3: /t/8qw4tz9k#c3. */
+  | { name: "task"; id: string; comment?: number }
+  | { name: "settings" };
 
 /**
  * Which list is on screen.
@@ -39,15 +42,22 @@ const MARK = "taskio";
 export function read(): Location {
   const url = new URL(window.location.href);
   return {
-    route: readRoute(url.pathname),
+    route: readRoute(url.pathname, url.hash),
     filters: readFilters(url.searchParams),
   };
 }
 
-function readRoute(path: string): Route {
+function readRoute(path: string, hash = ""): Route {
   if (path === "/settings") return { name: "settings" };
   const task = /^\/t\/([0-9a-zA-Z]{4,8})$/.exec(path);
-  if (task?.[1]) return { name: "task", id: task[1].toLowerCase() };
+  if (task?.[1]) {
+    const comment = Number(/^#c(\d+)$/.exec(hash)?.[1]) || undefined;
+    return {
+      name: "task",
+      id: task[1].toLowerCase(),
+      ...(comment ? { comment } : {}),
+    };
+  }
   return { name: "list" };
 }
 
@@ -152,7 +162,11 @@ export function href(location: Location): string {
   if (location.filters.q) params.set("q", location.filters.q);
 
   const search = params.toString();
-  return search ? `${path}?${search}` : path;
+  const hash =
+    location.route.name === "task" && location.route.comment
+      ? `#c${location.route.comment}`
+      : "";
+  return (search ? `${path}?${search}` : path) + hash;
 }
 
 /**

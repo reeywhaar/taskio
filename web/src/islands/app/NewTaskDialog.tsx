@@ -48,7 +48,9 @@ export function NewTaskDialog({
   // The same two faces as a task's dialog. Nothing arrives from elsewhere to swap the words
   // under a reader, so the draft is what it shows.
   const [mode, setMode] = useState<Mode>("edit");
-  const [peek, setPeek] = useState<string | null>(null);
+  const [peek, setPeek] = useState<{ id: string; comment?: number } | null>(
+    null,
+  );
 
   // Emptied when it opens, not when it closes: a dialog cleared on the way out shows what was
   // typed for as long as it takes to close.
@@ -136,7 +138,7 @@ export function NewTaskDialog({
             <Preview
               source={draft.description}
               onChange={(description) => setDraft({ ...draft, description })}
-              onMention={setPeek}
+              onMention={(to, n) => setPeek({ id: to, comment: n })}
             />
           </>
         )}
@@ -145,8 +147,9 @@ export function NewTaskDialog({
 
       {peek ? (
         <TaskDialog
-          key={peek}
-          id={peek}
+          key={`${peek.id}#${peek.comment ?? ""}`}
+          id={peek.id}
+          toComment={peek.comment}
           project={project}
           initialMode="preview"
           onClose={() => setPeek(null)}

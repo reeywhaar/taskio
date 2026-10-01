@@ -718,6 +718,8 @@ describe("comments", () => {
       comments: [
         {
           id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
           body: "Ordered **washers**.",
           author: "robin",
           token: "",
@@ -726,6 +728,8 @@ describe("comments", () => {
         },
         {
           id: "c_2",
+          n: 2,
+          ref: "8qw4tz9k#2",
           body: "Fitted them.",
           author: "robin",
           token: "claude",
@@ -737,11 +741,63 @@ describe("comments", () => {
     open();
     const heading = await screen.findByRole("heading", { name: "Comments" });
     const items = heading.parentElement!.querySelectorAll("li");
-    expect(items[0]!.textContent).toMatch(/^robin ·/);
+    expect(items[0]!.textContent).toMatch(/^#1robin ·/);
     expect(items[0]!.querySelector("strong")?.textContent).toBe("washers");
-    expect(items[1]!.textContent).toMatch(/^claude • robin ·/);
+    expect(items[1]!.textContent).toMatch(/^#2claude • robin ·/);
     expect(items[0]!.textContent).not.toMatch(/edited/);
     expect(items[1]!.textContent).toMatch(/· edited/);
+  });
+
+  it("copies a comment's whole name from its number", async () => {
+    const copied = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: copied },
+      configurable: true,
+    });
+    task = {
+      ...detail("todo"),
+      comments: [
+        {
+          id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
+          body: "Ordered washers.",
+          author: "robin",
+          token: "",
+          created_at: 1,
+          edited_at: null,
+        },
+      ],
+    };
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "#1" }));
+    await waitFor(() => expect(copied).toHaveBeenCalledWith("8qw4tz9k#1"));
+  });
+
+  it("opens onto the comment it was asked for, and marks it", async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    task = {
+      ...detail("todo"),
+      comments: [1, 2].map((n) => ({
+        id: `c_${n}`,
+        n,
+        ref: `8qw4tz9k#${n}`,
+        body: `Comment ${n}.`,
+        author: "robin",
+        token: "",
+        created_at: n,
+        edited_at: null,
+      })),
+    };
+    mount(
+      <TaskDialog id="8qw4tz9k" project="" toComment={2} onClose={vi.fn()} />,
+    );
+    await screen.findByRole("heading", { name: "Comments" });
+    const second = document.querySelector('[data-comment="2"]')!;
+    await waitFor(() => expect(scrolled).toHaveBeenCalled());
+    expect(scrolled.mock.contexts[0]).toBe(second);
+    expect(second.className).toContain("bg-shade");
   });
 
   it("edits one in place, and shows the new words once saved", async () => {
@@ -750,6 +806,8 @@ describe("comments", () => {
       comments: [
         {
           id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
           body: "Ordred washers.",
           author: "robin",
           token: "",
@@ -789,6 +847,8 @@ describe("comments", () => {
       comments: [
         {
           id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
           body: "Ordred washers.",
           author: "robin",
           token: "",
@@ -817,6 +877,8 @@ describe("comments", () => {
       comments: [
         {
           id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
           body: "Ordered washers.",
           author: "robin",
           token: "",
@@ -855,6 +917,8 @@ describe("comments", () => {
       comments: [
         {
           id: "c_1",
+          n: 1,
+          ref: "8qw4tz9k#1",
           body: "Ordered washers.",
           author: "robin",
           token: "",

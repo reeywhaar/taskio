@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   href,
   parseAnd,
+  read,
   parseScope,
   printAnd,
   printScope,
@@ -74,6 +75,24 @@ describe("href", () => {
   it("writes the whole id into the path, never a prefix", () => {
     const url = href({ route: { name: "task", id: "8qw4tz9k" }, filters });
     expect(url).toBe("/t/8qw4tz9k");
+  });
+
+  // 8qw4tz9k#3 is a comment; its link is the task's, and the hash says which.
+  it("writes a comment as the hash after the query", () => {
+    expect(
+      href({
+        route: { name: "task", id: "8qw4tz9k", comment: 3 },
+        filters: { ...filters, project: "garden" },
+      }),
+    ).toBe("/t/8qw4tz9k?project=garden#c3");
+  });
+
+  it("reads a comment back from the hash, and nothing from any other", () => {
+    window.history.replaceState(null, "", "/t/8qw4tz9k#c3");
+    expect(read().route).toEqual({ name: "task", id: "8qw4tz9k", comment: 3 });
+    window.history.replaceState(null, "", "/t/8qw4tz9k#elsewhere");
+    expect(read().route).toEqual({ name: "task", id: "8qw4tz9k" });
+    window.history.replaceState(null, "", "/");
   });
 
   it("round-trips the canonical filter spelling", () => {

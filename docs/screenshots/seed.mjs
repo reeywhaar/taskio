@@ -4,7 +4,8 @@
 // capture.mjs walks this file and makes each thing through the API, in the order it is written.
 //
 // Inside a description or a comment:
-//   @{key}         a mention of the task with that key, turned into its id once it exists
+//   @{key}         a mention of the task with that key, turned into its id once it exists;
+//                  @{key}#1 is that task's first comment
 //   (image:key)    one of the pictures below, drawn in the browser and uploaded first
 //
 // age is how long ago the task was written and last poked, and ago how long ago a comment was:
@@ -79,7 +80,7 @@ Parts: @{parts}`,
         description: `- 35 mm ceramic cartridge
 - O-rings, 2 × 18 mm
 
-For @{tap}.`,
+For @{tap}, the size from @{tap}#1.`,
       },
       {
         key: "beds",

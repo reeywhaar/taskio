@@ -28,8 +28,8 @@ export function Preview({
   /** A tick, as the text with that box flipped. Left out, the boxes do not tick: a comment is
    *  not edited. */
   onChange?: (next: string) => void;
-  /** A mention pressed, by the id it names. */
-  onMention: (id: string) => void;
+  /** A mention pressed, by the id it names, and the comment's number when it names one. */
+  onMention: (id: string, comment?: number) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -55,7 +55,8 @@ export function Preview({
       // A new tab or window is the link's own business, and it is a real link for that.
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
-      onMention(chip.getAttribute("data-task") ?? "");
+      const comment = Number(chip.getAttribute("data-comment")) || undefined;
+      onMention(chip.getAttribute("data-task") ?? "", comment);
       return;
     }
     tick(e.target);

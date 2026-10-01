@@ -44,6 +44,10 @@ export type TaskDetail = Task & {
 /** One entry in a task's timeline. */
 export type Comment = {
   id: string;
+  /** Its number within the task, from 1. */
+  n: number;
+  /** The name to mention it by: 8qw4tz9k#3. */
+  ref: string;
   body: string;
   /** The account that wrote it. */
   author: string;

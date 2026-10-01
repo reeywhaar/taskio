@@ -12,6 +12,7 @@ import {
   postTasksByIdTodo,
 } from "@app/api/actions/tasks";
 import { ApiError } from "@app/api/transport";
+import { copy } from "@app/clipboard";
 import { getProjects } from "@app/api/actions/projects";
 import type {
   Comment,
@@ -81,6 +82,7 @@ export function TaskDialog({
   onClose,
   onElsewhere,
   initialMode = "preview",
+  toComment,
 }: {
   id: string;
   /** The project the list behind it is showing, by slug; empty is the default. */
@@ -89,6 +91,8 @@ export function TaskDialog({
   /** The task turned out to be in another project, which the list should be showing. */
   onElsewhere?: (project: Project) => void;
   initialMode?: Mode;
+  /** One of its comments, by number, to open onto: a mention of 8qw4tz9k#3, or a link to it. */
+  toComment?: number;
 }) {
   const client = useQueryClient();
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
@@ -99,8 +103,11 @@ export function TaskDialog({
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [error, setError] = useState("");
   const [mode, setMode] = useState<Mode>(initialMode);
-  /** The task a mention opened over this one, read first. */
-  const [peek, setPeek] = useState<string | null>(null);
+  /** The task a mention opened over this one, read first, and the comment it named if any. */
+  const [peek, setPeek] = useState<{ id: string; comment?: number } | null>(
+    null,
+  );
+  const openPeek = (to: string, n?: number) => setPeek({ id: to, comment: n });
 
   /**
    * What the preview is showing, which is not always what the task now says.
@@ -453,13 +460,13 @@ export function TaskDialog({
               <Preview
                 source={shown ?? draft.description}
                 onChange={ticked}
-                onMention={setPeek}
+                onMention={openPeek}
               />
               <Facts draft={draft} />
             </>
           )}
 
-          <Links detail={task.data} onOpen={setPeek} />
+          <Links detail={task.data} onOpen={openPeek} />
 
           {/* One section, the box under the list it adds to, and set apart from the fields
               above: it was as near the tags as a field is, and as far from its own comments. */}
@@ -468,8 +475,9 @@ export function TaskDialog({
               Comments
             </h3>
             <Timeline
+              focus={toComment}
               list={task.data.comments}
-              onMention={setPeek}
+              onMention={openPeek}
               onEdit={editComment}
               onError={setError}
             />
@@ -486,7 +494,7 @@ export function TaskDialog({
                 <Preview
                   source={source}
                   onChange={setComment}
-                  onMention={setPeek}
+                  onMention={openPeek}
                 />
               )}
               actions={
@@ -509,8 +517,9 @@ export function TaskDialog({
           here, and the page behind both stays where it was. */}
       {peek ? (
         <TaskDialog
-          key={peek}
-          id={peek}
+          key={`${peek.id}#${peek.comment ?? ""}`}
+          id={peek.id}
+          toComment={peek.comment}
           project={project}
           initialMode="preview"
           onClose={() => setPeek(null)}
@@ -529,18 +538,32 @@ export function TaskDialog({
  */
 function Timeline({
   list,
+  focus,
   onMention,
   onEdit,
   onError,
 }: {
   list: Comment[];
-  onMention: (id: string) => void;
+  /** The comment it was opened onto, scrolled to and marked for a moment. */
+  focus?: number;
+  onMention: (id: string, comment?: number) => void;
   onEdit: (comment: string, body: string) => Promise<void>;
   onError: (message: string) => void;
 }) {
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(
     null,
   );
+  const items = useRef<HTMLOListElement>(null);
+  const [lit, setLit] = useState(focus);
+  const arrived = list.length > 0;
+  useEffect(() => {
+    if (!focus || !arrived) return;
+    items.current
+      ?.querySelector(`[data-comment="${focus}"]`)
+      ?.scrollIntoView?.({ block: "center" });
+    const out = window.setTimeout(() => setLit(undefined), 1600);
+    return () => window.clearTimeout(out);
+  }, [focus, arrived]);
   const save = useMutation({
     mutationFn: (next: { id: string; body: string }) =>
       onEdit(next.id, next.body),
@@ -551,10 +574,18 @@ function Timeline({
 
   if (list.length === 0) return null;
   return (
-    <ol className="flex flex-col gap-3">
+    <ol ref={items} className="flex flex-col gap-3">
       {list.map((c) => (
-        <li key={c.id} className="flex flex-col gap-1">
+        <li
+          key={c.id}
+          data-comment={c.n}
+          // Hung out by its padding, so marking it moves nothing.
+          className={`-mx-2 -my-1 flex flex-col gap-1 rounded-md px-2 py-1 transition-colors duration-700 ${
+            lit === c.n ? "bg-shade" : ""
+          }`}
+        >
           <p className="flex items-center gap-1.5 text-xs text-muted">
+            <CommentRef value={c.ref} n={c.n} />
             <span>
               {c.token ? `${c.token} • ${c.author}` : c.author}
               <span className="text-faint">
@@ -686,6 +717,29 @@ function Facts({ draft }: { draft: Draft }) {
         </ul>
       ) : null}
     </>
+  );
+}
+
+/**
+ * A comment's number, which copies the whole name to mention it by: #3 copies 8qw4tz9k#3, since a
+ * number alone means nothing anywhere else.
+ */
+function CommentRef({ value, n }: { value: string; n: number }) {
+  const [copied, setCopied] = useState(false);
+  const press = async () => {
+    if (!(await copy(value))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
+  return (
+    <button
+      type="button"
+      onClick={press}
+      title={copied ? "Copied" : `Copy ${value}`}
+      className={`font-mono tabular-nums ${copied ? "text-brand" : "text-faint hover:text-muted"}`}
+    >
+      #{n}
+    </button>
   );
 }
 

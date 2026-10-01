@@ -50,8 +50,18 @@ describe("Preview", () => {
     preview("See @kr20fj8m.", vi.fn(), onMention);
     const chip = document.querySelector("a.mention")!;
     const followed = !fireEvent.click(chip);
-    expect(onMention).toHaveBeenCalledWith("kr20fj8m");
+    expect(onMention).toHaveBeenCalledWith("kr20fj8m", undefined);
     expect(followed).toBe(true);
+  });
+
+  it("opens a comment's mention onto that comment", () => {
+    const onMention = vi.fn();
+    render(<Preview source="See @kr20fj8m#3." onMention={onMention} />);
+    const chip = document.querySelector("a.mention")!;
+    expect(chip.textContent).toBe("@kr20fj8m#3");
+    expect(chip.getAttribute("href")).toBe("/t/kr20fj8m#c3");
+    fireEvent.click(chip);
+    expect(onMention).toHaveBeenCalledWith("kr20fj8m", 3);
   });
 
   /** A new tab is the link's own business, and it is a real link for that. */

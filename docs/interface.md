@@ -34,6 +34,12 @@ dialog: markdown like the description, each under who wrote it — the account, 
 label before it when one did, so a timeline that agents write to says which of them said what. A
 comment pokes the task.
 
+Each is numbered within its task, and the number at the head of its line, `#3`, copies the whole
+name, `8qw4tz9k#3`: a number alone means nothing anywhere else. `@8qw4tz9k#3` in any text is a
+chip that opens that task over this one, onto that comment, marked for a moment; `/t/8qw4tz9k#c3`
+opens onto it from a link. A number, not an id of its own, because comments are never deleted, so
+the third is the third for good, and the name says which task it is on.
+
 A dimmed pencil after a comment's time turns it into its box in place, with Save and Cancel under
 it; Escape there is Cancel, not the dialog's close. An edited one says "edited" beside its time. From the app any comment can be edited, since
 they are all the account's; a token edits only its own, so what the timeline says a token wrote

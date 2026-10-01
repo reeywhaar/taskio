@@ -574,6 +574,7 @@ function List({
       {route.name === "task" ? (
         <TaskDialog
           id={route.id}
+          toComment={route.comment}
           project={filters.project}
           onClose={() => onClose({ ...location, route: { name: "list" } })}
           // Replaced rather than pushed: it is the same place, drawn over the right list.

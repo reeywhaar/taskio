@@ -56,8 +56,9 @@ export function toggleCheck(source: string, index: number): string {
   );
 }
 
-/** @ and a task id, turned into a chip after the markdown is rendered. */
-const mention = /(^|[^0-9A-Za-z_@>])@([0-9a-z]{8})\b/g;
+/** @ and a task id, and #n for one of its comments, turned into a chip after the markdown is
+ *  rendered. */
+const mention = /(^|[^0-9A-Za-z_@>])@([0-9a-z]{8})(?:#(\d+))?\b/g;
 
 /** A block that rendered: sanitized HTML, mentions already chips. */
 export class Rendered {
@@ -79,10 +80,10 @@ function sanitize(html: string): string {
     // An external image is a read receipt for whoever hosts it.
     ADD_ATTR: ["referrerpolicy", "loading"],
   });
-  return safe.replace(
-    mention,
-    (_m, lead: string, id: string) =>
-      `${lead}<a href="/t/${id}" class="mention" data-task="${id}">@${id}</a>`,
+  return safe.replace(mention, (_m, lead: string, id: string, n?: string) =>
+    n
+      ? `${lead}<a href="/t/${id}#c${n}" class="mention" data-task="${id}" data-comment="${n}">@${id}#${n}</a>`
+      : `${lead}<a href="/t/${id}" class="mention" data-task="${id}">@${id}</a>`,
   );
 }
 
