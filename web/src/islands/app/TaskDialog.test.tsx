@@ -285,7 +285,7 @@ describe("opening a task", () => {
 });
 
 describe("the read view", () => {
-  it("shows the priority, color and tags the fields hold", async () => {
+  it("shows the priority and tags the fields hold, and the color by the name", async () => {
     task = {
       ...detail("todo"),
       description: "It drips.",
@@ -296,7 +296,10 @@ describe("the read view", () => {
     mount(<TaskDialog id="8qw4tz9k" project="" onClose={vi.fn()} />);
     const priority = await screen.findByRole("group", { name: "Priority" });
     expect(priority.textContent).toBe("2");
-    expect(screen.getByRole("group", { name: "Color" })).toBeDefined();
+    // Beside the name, not a field of its own, and not part of what the heading is called.
+    const heading = screen.getByRole("heading", { name: "Fix the tap" });
+    expect(heading.querySelector('[title="Color #16a34a"]')).not.toBeNull();
+    expect(screen.queryByRole("group", { name: "Color" })).toBeNull();
     const tags = screen.getByRole("list", { name: "Tags" });
     expect(
       [...tags.querySelectorAll("li")].map((li) => li.textContent),

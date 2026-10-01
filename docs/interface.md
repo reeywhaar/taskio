@@ -18,7 +18,8 @@ tab once, which made it the same size and shape as the box it replaced, and then
 over the first, which was a second thing to close for what is the same task in the same place.
 View appears only once there is something to read. A task opens read, since it is looked at far
 more often than changed and Edit is one press away; a new task opens written. Read, it shows the
-priority, color and tags too, where the fields have them, so switching faces moves nothing.
+priority and tags too, where the fields have them, so switching faces moves nothing, and the color
+as a square before the name, the mark the row wears rather than a field of its own.
 
 The words it shows are held while it is open. An edit arriving from elsewhere replaces the draft
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an

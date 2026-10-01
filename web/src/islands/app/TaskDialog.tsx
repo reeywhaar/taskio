@@ -449,7 +449,7 @@ export function TaskDialog({
             />
           ) : (
             <>
-              <TitleRead title={draft.title} />
+              <TitleRead title={draft.title} color={draft.color} />
               <Preview
                 source={shown ?? draft.description}
                 onChange={ticked}
@@ -639,40 +639,39 @@ function WithComment({ said }: { said: boolean }) {
  * where on a phone it was cut to a letter or two beside the project, id and age. The same place
  * the title field is when written.
  */
-export function TitleRead({ title }: { title: string }) {
+export function TitleRead({ title, color }: { title: string; color: string }) {
   return (
     <h2 className="text-xl leading-snug font-semibold wrap-break-word">
+      {/* The color as the row wears it, a mark beside the name rather than a field of its own.
+          Hidden from a reader: it means only what somebody decided, and says nothing aloud. */}
+      {color ? (
+        <span
+          aria-hidden="true"
+          title={`Color ${color}`}
+          className="mr-2 inline-block size-[0.75em] rounded-[0.2em] align-[-0.02em]"
+          style={{ background: color }}
+        />
+      ) : null}
       {title.trim() || "Untitled"}
     </h2>
   );
 }
 
 /**
- * The fields, read: priority, color and tags where the edit face has them, so the two faces show
- * the same task in the same order. Drawn as the row draws them, and nothing for what is unset.
+ * The fields, read: priority and tags where the edit face has them, so the two faces show the
+ * same task in the same order — the color is beside the name. Drawn as the row draws them, and
+ * nothing for what is unset.
  */
 function Facts({ draft }: { draft: Draft }) {
   const priority = Number(draft.priority) || 0;
   return (
     <>
-      {priority || draft.color ? (
-        <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-          {priority ? (
-            <Caption label="Priority">
-              <span className="wash inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-xs font-medium tabular-nums">
-                {priority}
-              </span>
-            </Caption>
-          ) : null}
-          {draft.color ? (
-            <Caption label="Color">
-              <span
-                className="block size-5 rounded-md"
-                style={{ background: draft.color }}
-              />
-            </Caption>
-          ) : null}
-        </div>
+      {priority ? (
+        <Caption label="Priority">
+          <span className="wash inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-xs font-medium tabular-nums">
+            {priority}
+          </span>
+        </Caption>
       ) : null}
       {draft.tags.length > 0 ? (
         <ul aria-label="Tags" className="flex flex-wrap gap-1.5">

@@ -132,7 +132,7 @@ export function NewTaskDialog({
           />
         ) : (
           <>
-            <TitleRead title={draft.title} />
+            <TitleRead title={draft.title} color={draft.color} />
             <Preview
               source={draft.description}
               onChange={(description) => setDraft({ ...draft, description })}
