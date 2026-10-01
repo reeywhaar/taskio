@@ -83,6 +83,7 @@ export function TaskDialog({
   onElsewhere,
   initialMode = "preview",
   toComment,
+  onComment,
 }: {
   id: string;
   /** The project the list behind it is showing, by slug; empty is the default. */
@@ -93,6 +94,9 @@ export function TaskDialog({
   initialMode?: Mode;
   /** One of its comments, by number, to open onto: a mention of 8qw4tz9k#3, or a link to it. */
   toComment?: number;
+  /** A comment's number pressed, for the address to name it. Only the dialog the address is
+   *  about has one; a task opened over it from a mention leaves the address alone. */
+  onComment?: (n: number) => void;
 }) {
   const client = useQueryClient();
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
@@ -476,6 +480,7 @@ export function TaskDialog({
             </h3>
             <Timeline
               focus={toComment}
+              onLink={onComment}
               list={task.data.comments}
               onMention={openPeek}
               onEdit={editComment}
@@ -542,6 +547,7 @@ function Timeline({
   onMention,
   onEdit,
   onError,
+  onLink,
 }: {
   list: Comment[];
   /** The comment it was opened onto, scrolled to and marked for a moment. */
@@ -549,6 +555,8 @@ function Timeline({
   onMention: (id: string, comment?: number) => void;
   onEdit: (comment: string, body: string) => Promise<void>;
   onError: (message: string) => void;
+  /** A comment's number pressed: the address to say so, where there is one to change. */
+  onLink?: (n: number) => void;
 }) {
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(
     null,
@@ -556,14 +564,21 @@ function Timeline({
   const items = useRef<HTMLOListElement>(null);
   const [lit, setLit] = useState(focus);
   const arrived = list.length > 0;
-  useEffect(() => {
-    if (!focus || !arrived) return;
+  // Marked for a moment and brought into view: on opening onto it, and when its number is pressed.
+  const mark = (n: number) => {
+    setLit(n);
     items.current
-      ?.querySelector(`[data-comment="${focus}"]`)
-      ?.scrollIntoView?.({ block: "center" });
+      ?.querySelector(`[data-comment="${n}"]`)
+      ?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  };
+  useEffect(() => {
+    if (focus && arrived) mark(focus);
+  }, [focus, arrived]);
+  useEffect(() => {
+    if (lit === undefined) return;
     const out = window.setTimeout(() => setLit(undefined), 1600);
     return () => window.clearTimeout(out);
-  }, [focus, arrived]);
+  }, [lit]);
   const save = useMutation({
     mutationFn: (next: { id: string; body: string }) =>
       onEdit(next.id, next.body),
@@ -585,7 +600,14 @@ function Timeline({
           }`}
         >
           <p className="flex items-center gap-1.5 text-xs text-muted">
-            <CommentRef value={c.ref} n={c.n} />
+            <CommentRef
+              value={c.ref}
+              n={c.n}
+              onPress={(n) => {
+                mark(n);
+                onLink?.(n);
+              }}
+            />
             <span>
               {c.token ? `${c.token} • ${c.author}` : c.author}
               <span className="text-faint">
@@ -721,25 +743,38 @@ function Facts({ draft }: { draft: Draft }) {
 }
 
 /**
- * A comment's number, which copies the whole name to mention it by: #3 copies 8qw4tz9k#3, since a
- * number alone means nothing anywhere else.
+ * A comment's number, and the way to its address: a link to /t/8qw4tz9k#c3. Pressed, it copies the
+ * comment's id, 8qw4tz9k#3 — a number alone means nothing anywhere else — and goes there, which is
+ * the address bar showing the comment and the comment marked. Opened elsewhere, it is a link.
  */
-function CommentRef({ value, n }: { value: string; n: number }) {
+function CommentRef({
+  value,
+  n,
+  onPress,
+}: {
+  value: string;
+  n: number;
+  onPress: (n: number) => void;
+}) {
   const [copied, setCopied] = useState(false);
-  const press = async () => {
-    if (!(await copy(value))) return;
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
-  };
+  const [task] = value.split("#");
   return (
-    <button
-      type="button"
-      onClick={press}
-      title={copied ? "Copied" : `Copy ${value}`}
+    <a
+      href={`/t/${task}#c${n}`}
+      title={copied ? "Copied" : `Copy ${value}, and go to it`}
+      onClick={async (e) => {
+        // A new tab or window is the link's own business.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        onPress(n);
+        if (!(await copy(value))) return;
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      }}
       className={`font-mono tabular-nums ${copied ? "text-brand" : "text-faint hover:text-muted"}`}
     >
       #{n}
-    </button>
+    </a>
   );
 }
 

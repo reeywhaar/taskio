@@ -91,6 +91,29 @@ Case is ignored on input, and `i`/`l` read as `1` and `o` as `0`. Output is alwa
 **Send back the whole id, not a prefix.** A prefix that names one task today names two next
 month. Every response carries the full one.
 
+**A comment's id is its task's id, `#`, and its number: `8qw4tz9k#3`** is the third comment on
+`8qw4tz9k`, counted from 1 in the order they were written. Comments are never deleted, so the
+number never moves. Wherever you meet one — in a task, in a message, from a person — that is what
+it means, and it reads at:
+
+```sh
+curl -H "Authorization: Bearer tk_…" "$TASKIO/api/tasks/8qw4tz9k/comments/3"
+```
+
+The task half takes a prefix like any task id; send back the whole one. In a description or a
+comment, `@8qw4tz9k#3` links it.
+
+### Links from the app
+
+A person may hand you an address from the app rather than an id. Two kinds name a thing:
+
+| address | names | read it with |
+| --- | --- | --- |
+| `/t/8qw4tz9k` | the task | `GET /api/tasks/8qw4tz9k` |
+| `/t/8qw4tz9k#c3` | its third comment, `8qw4tz9k#3` | `GET /api/tasks/8qw4tz9k/comments/3` |
+
+The pages themselves are the app's and need a browser session; a token reads through `/api`.
+
 ## Tags
 
 A tag is a slug written on a task: lowercase letters, digits, `-` and `_`.
@@ -384,9 +407,8 @@ POST /api/tasks/{id}/comments  { "body": "Washers in; it still drips at the base
   "author": "robin", "token": "claude", "created_at": 1789343452, "edited_at": null }
 ```
 
-`n` is the comment's number within its task, counted from 1 in the order they were written, and
-`ref` is the name to mention it by: **`8qw4tz9k#3`** is the task's third comment. Comments are not
-deleted, so a number never moves. `GET /api/tasks/{id}/comments/{n}` reads one.
+`n` is the comment's number within its task and `ref` its id, `8qw4tz9k#3` — see
+[Ids](#ids). `GET /api/tasks/{id}/comments/{n}` reads one.
 
 `author` is the account; `token` is the label of the token that wrote it, empty from a session —
 so a timeline says which of your agents said what. A comment **pokes** the task: somebody writing

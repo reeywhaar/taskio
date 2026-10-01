@@ -34,8 +34,10 @@ dialog: markdown like the description, each under who wrote it — the account, 
 label before it when one did, so a timeline that agents write to says which of them said what. A
 comment pokes the task.
 
-Each is numbered within its task, and the number at the head of its line, `#3`, copies the whole
-name, `8qw4tz9k#3`: a number alone means nothing anywhere else. `@8qw4tz9k#3` in any text is a
+Each is numbered within its task, and its id is the task's and the number, `8qw4tz9k#3` — typed
+to a person or an agent, it says which comment. The number at the head of its line, `#3`, is a
+link to `/t/8qw4tz9k#c3`: pressed, it copies the id, puts that address in the bar and marks the
+comment; opened in a new tab it is a link like any other. `@8qw4tz9k#3` in any text is a
 chip that opens that task over this one, onto that comment, marked for a moment; `/t/8qw4tz9k#c3`
 opens onto it from a link. A number, not an id of its own, because comments are never deleted, so
 the third is the third for good, and the name says which task it is on.

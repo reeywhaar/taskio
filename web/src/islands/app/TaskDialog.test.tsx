@@ -748,12 +748,13 @@ describe("comments", () => {
     expect(items[1]!.textContent).toMatch(/· edited/);
   });
 
-  it("copies a comment's whole name from its number", async () => {
+  it("links a comment's number to it, copying its id and naming it in the address", async () => {
     const copied = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: copied },
       configurable: true,
     });
+    Element.prototype.scrollIntoView = vi.fn();
     task = {
       ...detail("todo"),
       comments: [
@@ -769,9 +770,21 @@ describe("comments", () => {
         },
       ],
     };
-    open();
-    fireEvent.click(await screen.findByRole("button", { name: "#1" }));
+    const onComment = vi.fn();
+    mount(
+      <TaskDialog
+        id="8qw4tz9k"
+        project=""
+        onComment={onComment}
+        onClose={vi.fn()}
+      />,
+    );
+    const link = await screen.findByRole("link", { name: "#1" });
+    expect(link.getAttribute("href")).toBe("/t/8qw4tz9k#c1");
+    fireEvent.click(link);
     await waitFor(() => expect(copied).toHaveBeenCalledWith("8qw4tz9k#1"));
+    expect(onComment).toHaveBeenCalledWith(1);
+    expect(link.closest("li")!.className).toContain("bg-shade");
   });
 
   it("opens onto the comment it was asked for, and marks it", async () => {

@@ -575,6 +575,13 @@ function List({
         <TaskDialog
           id={route.id}
           toComment={route.comment}
+          // Replaced: the same task, its address now naming the comment pressed.
+          onComment={(n) =>
+            onReplace({
+              ...location,
+              route: { name: "task", id: route.id, comment: n },
+            })
+          }
           project={filters.project}
           onClose={() => onClose({ ...location, route: { name: "list" } })}
           // Replaced rather than pushed: it is the same place, drawn over the right list.
