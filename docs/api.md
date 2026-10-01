@@ -197,6 +197,7 @@ POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 POST   /api/tasks/{id}/poke
 POST   /api/tasks/{id}/comments  {body}
+GET    /api/tasks/{id}/comments/{n}
 PATCH  /api/tasks/{id}/comments/{comment}  {body}
 DELETE /api/tasks/{id}
 
@@ -378,9 +379,14 @@ A task's timeline: markdown like the description, oldest first, in `GET /api/tas
 ```jsonc
 POST /api/tasks/{id}/comments  { "body": "Washers in; it still drips at the base." }
 // 201
-{ "id": "c_01j9z…", "body": "Washers in; it still drips at the base.",
+{ "id": "c_01j9z…", "n": 3, "ref": "8qw4tz9k#3",
+  "body": "Washers in; it still drips at the base.",
   "author": "robin", "token": "claude", "created_at": 1789343452, "edited_at": null }
 ```
+
+`n` is the comment's number within its task, counted from 1 in the order they were written, and
+`ref` is the name to mention it by: **`8qw4tz9k#3`** is the task's third comment. Comments are not
+deleted, so a number never moves. `GET /api/tasks/{id}/comments/{n}` reads one.
 
 `author` is the account; `token` is the label of the token that wrote it, empty from a session —
 so a timeline says which of your agents said what. A comment **pokes** the task: somebody writing
@@ -391,7 +397,7 @@ about it has looked at it. It goes the way a description does: inline images bec
 verdict belongs in the timeline, not in a description rewritten after the fact.
 
 `PATCH /api/tasks/{id}/comments/{comment} {body}` replaces a comment's words and sets
-`edited_at`. A token edits only the comments it wrote — `403 token_forbidden` for another's — so
+`edited_at`; `{comment}` is its number or its `id`. A token edits only the comments it wrote — `403 token_forbidden` for another's — so
 what a timeline says each wrote stays true. An edit does not poke. Comments are not deleted.
 
 ## Mentioning another task
@@ -403,8 +409,12 @@ Preparation for @8qw4tz9k
 `@` and a task id, in a title or a description. A prefix works and **is rewritten to the full id
 when the task is saved**, so what comes back is not always what was sent.
 
-What does not resolve — a typo, a deleted task, something outside a token's scope — is left
-exactly as typed and is not a link. Nothing is refused over it.
+**`@8qw4tz9k#3` mentions a comment**, the task's third, and links the two tasks as a task mention
+does. A prefix works there too: `@8qw4#3` is saved as `@8qw4tz9k#3`.
+
+What does not resolve — a typo, a deleted task, a comment number the task does not have,
+something outside a token's scope — is left exactly as typed and is not a link. Nothing is refused
+over it.
 
 `GET /api/tasks/{id}` carries both directions:
 

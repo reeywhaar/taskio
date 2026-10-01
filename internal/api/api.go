@@ -136,6 +136,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/{id}/todo", s.requireAuth(s.setDone(false)))
 	s.handleAgent("POST /api/tasks/{id}/poke", s.requireAuth(s.pokeTask))
 	s.handleAgent("POST /api/tasks/{id}/comments", s.requireAuth(s.addComment))
+	s.handleAgent("GET /api/tasks/{id}/comments/{n}", s.requireAuth(s.getComment))
 	s.handleAgent("PATCH /api/tasks/{id}/comments/{comment}", s.requireAuth(s.editComment))
 	s.handleAgent("DELETE /api/tasks/{id}", s.requireAuth(s.deleteTask))
 

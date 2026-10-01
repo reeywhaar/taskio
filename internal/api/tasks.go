@@ -216,7 +216,7 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 	}
 	rendered := make([]commentBody, 0, len(comments))
 	for _, c := range comments {
-		rendered = append(rendered, renderComment(c, principalOf(r)))
+		rendered = append(rendered, renderComment(c, principalOf(r), task.ID))
 	}
 	body["comments"] = rendered
 	writeJSON(w, http.StatusOK, body)
@@ -225,7 +225,10 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 // commentBody is one entry in a task's timeline. Author is the account; token is the label of the
 // token that wrote it, empty when it was written from a session.
 type commentBody struct {
-	ID        string `json:"id"`
+	ID string `json:"id"`
+	// N is its number within the task, and Ref the whole name to mention it by: 8qw4tz9k#3.
+	N         int    `json:"n"`
+	Ref       string `json:"ref"`
 	Body      string `json:"body"`
 	Author    string `json:"author"`
 	Token     string `json:"token"`
@@ -233,9 +236,9 @@ type commentBody struct {
 	EditedAt  *int64 `json:"edited_at"`
 }
 
-func renderComment(c *store.Comment, p *store.Principal) commentBody {
-	return commentBody{ID: c.ID, Body: c.Body, Author: p.Username, Token: c.TokenLabel,
-		CreatedAt: c.CreatedAt.Unix(), EditedAt: unixPtr(c.EditedAt)}
+func renderComment(c *store.Comment, p *store.Principal, taskID string) commentBody {
+	return commentBody{ID: c.ID, N: c.N, Ref: taskID + "#" + strconv.Itoa(c.N), Body: c.Body,
+		Author: p.Username, Token: c.TokenLabel, CreatedAt: c.CreatedAt.Unix(), EditedAt: unixPtr(c.EditedAt)}
 }
 
 type commentRequest struct {
@@ -259,7 +262,27 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, renderComment(c, principalOf(r)))
+	writeJSON(w, http.StatusCreated, renderComment(c, principalOf(r), task.ID))
+}
+
+// getComment is one comment, by its number within the task: what 8qw4tz9k#3 names.
+func (s *Server) getComment(w http.ResponseWriter, r *http.Request) {
+	task, err := s.task(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	n, err := strconv.Atoi(r.PathValue("n"))
+	if err != nil || n < 1 {
+		refuse(w, http.StatusBadRequest, CodeInvalid, "A comment is named by its number, from 1.")
+		return
+	}
+	c, err := s.store.CommentByNumber(r.Context(), task.Seq, n)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, renderComment(c, principalOf(r), task.ID))
 }
 
 // editComment replaces a comment's words: a token's own, or any from a session.
@@ -278,7 +301,7 @@ func (s *Server) editComment(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, renderComment(c, principalOf(r)))
+	writeJSON(w, http.StatusOK, renderComment(c, principalOf(r), task.ID))
 }
 
 // taskStub is a mention: enough to draw a link with a title on it.

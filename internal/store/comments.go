@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,7 +17,9 @@ import (
 // The account is always the task's own, so it is not stored; the token is, when one wrote it, by
 // id and by the label it had then — a token revoked and forgotten since still names it.
 type Comment struct {
-	ID         string
+	ID string
+	// N is its number within the task, from one: 8qw4tz9k#3 is the task's third.
+	N          int
 	Body       string
 	TokenID    string
 	TokenLabel string
@@ -27,8 +30,8 @@ type Comment struct {
 // Comments lists a task's, oldest first, which is the order a timeline is read in.
 func (s *Store) Comments(ctx context.Context, taskSeq int64) ([]*Comment, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT id, body, token_id, token_label, created_at, edited_at FROM comments
-		  WHERE task_seq = ? ORDER BY created_at, id`, taskSeq)
+		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
+		  WHERE task_seq = ? ORDER BY n`, taskSeq)
 	if err != nil {
 		return nil, fmt.Errorf("comments: %w", err)
 	}
@@ -77,10 +80,15 @@ func (s *Store) AddComment(ctx context.Context, principalID string, reach Reach,
 	if err != nil {
 		return nil, err
 	}
+	// The next number in the same transaction as the insert, which the one writer serialises.
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(MAX(n), 0) + 1 FROM comments WHERE task_seq = ?`, task.Seq).Scan(&c.N); err != nil {
+		return nil, fmt.Errorf("add comment: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO comments (id, task_seq, token_id, token_label, body, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		c.ID, task.Seq, c.TokenID, c.TokenLabel, c.Body, unix(now)); err != nil {
+		`INSERT INTO comments (id, task_seq, n, token_id, token_label, body, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		c.ID, task.Seq, c.N, c.TokenID, c.TokenLabel, c.Body, unix(now)); err != nil {
 		return nil, fmt.Errorf("add comment: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx,
@@ -118,9 +126,14 @@ func (s *Store) EditComment(ctx context.Context, principalID string, reach Reach
 	if err != nil {
 		return nil, err
 	}
+	// By its number or by its id: 3 and c_01j9z… name the same comment.
+	column := "id"
+	if _, err := strconv.Atoi(commentID); err == nil {
+		column = "n"
+	}
 	c, err := scanComment(tx.QueryRowContext(ctx,
-		`SELECT id, body, token_id, token_label, created_at, edited_at FROM comments
-		  WHERE id = ? AND task_seq = ?`, commentID, task.Seq))
+		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
+		  WHERE `+column+` = ? AND task_seq = ?`, commentID, task.Seq))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no comment %s on that task.", commentID)
 	}
@@ -170,11 +183,25 @@ func (s *Store) commentBody(ctx context.Context, principalID string, reach Reach
 	return s.normalizeMentions(ctx, principalID, reach, body), nil
 }
 
+// CommentByNumber is one of a task's comments, by its number within the task.
+func (s *Store) CommentByNumber(ctx context.Context, taskSeq int64, n int) (*Comment, error) {
+	c, err := scanComment(s.reader.QueryRowContext(ctx,
+		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
+		  WHERE task_seq = ? AND n = ?`, taskSeq, n))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, NotFound("That task has no comment #%d.", n)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("comment: %w", err)
+	}
+	return c, nil
+}
+
 func scanComment(row interface{ Scan(...any) error }) (*Comment, error) {
 	c := &Comment{}
 	var at int64
 	var edited sql.NullInt64
-	if err := row.Scan(&c.ID, &c.Body, &c.TokenID, &c.TokenLabel, &at, &edited); err != nil {
+	if err := row.Scan(&c.ID, &c.N, &c.Body, &c.TokenID, &c.TokenLabel, &at, &edited); err != nil {
 		return nil, err
 	}
 	c.CreatedAt = time.Unix(at, 0).UTC()

@@ -35,6 +35,7 @@ var all = []Migration{
 	liveByPoke,
 	comments,
 	commentEdited,
+	commentNumber,
 }
 
 // exec runs a statement block as one migration.

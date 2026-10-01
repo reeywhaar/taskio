@@ -180,3 +180,51 @@ func TestATokenEditsOnlyItsOwnComments(t *testing.T) {
 		t.Errorf("the agent's comment after the account's edit = %v", got)
 	}
 }
+
+// Numbered within the task, from one, and named by that: 8qw4tz9k#2.
+func TestACommentHasANumberWithinItsTask(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	other := c.task(`{"title":"Buy washers"}`)["id"].(string)
+
+	first := c.json(c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"One."}`))
+	c.do("POST", "/api/tasks/"+other+"/comments", `{"body":"Elsewhere."}`)
+	second := c.json(c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"Two."}`))
+	if first["n"] != float64(1) || second["n"] != float64(2) || second["ref"] != id+"#2" {
+		t.Fatalf("numbered %v and %v, want 1 and 2 with ref %s#2", first["n"], second["n"], id)
+	}
+
+	got := c.json(c.do("GET", "/api/tasks/"+id+"/comments/2", ""))
+	if got["body"] != "Two." {
+		t.Errorf("#2 = %v", got)
+	}
+	refusal(t, c.do("GET", "/api/tasks/"+id+"/comments/9", ""), http.StatusNotFound)
+	refusal(t, c.do("GET", "/api/tasks/"+id+"/comments/x", ""), http.StatusBadRequest)
+
+	if resp := c.do("PATCH", "/api/tasks/"+id+"/comments/1", `{"body":"One, fixed."}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("an edit by number = %s", resp.Status)
+	}
+	if got := c.json(c.do("GET", "/api/tasks/"+id+"/comments/1", ""))["body"]; got != "One, fixed." {
+		t.Errorf("#1 after an edit by number = %v", got)
+	}
+}
+
+// @prefix#n names a comment: the prefix is made whole, the number kept, and the tasks linked. A
+// number the task does not have leaves the mention as it was typed.
+func TestACommentIsMentionedByItsNumber(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"The cartridge is 35 mm."}`)
+
+	other := c.task(`{"title":"Buy a cartridge","description":"Size in @` + id[:5] + `#1, not @` + id[:5] + `#7."}`)
+	got := c.json(c.do("GET", "/api/tasks/"+other["id"].(string), ""))
+	want := "Size in @" + id + "#1, not @" + id[:5] + "#7."
+	if got["description"] != want {
+		t.Errorf("description = %q, want %q", got["description"], want)
+	}
+	if mentions := got["mentions"].([]any); len(mentions) != 1 || mentions[0].(map[string]any)["id"] != id {
+		t.Errorf("mentions = %v, want the task the comment is on", mentions)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"taskio/internal/ids"
@@ -20,8 +21,8 @@ var (
 	assetRef = regexp.MustCompile(`/api/assets/(a_[0-9a-z]{26})`)
 
 	// A mention is @ and an id, and the @ must not follow a word character — which is what
-	// keeps misha@example.com out of it.
-	mentionRef = regexp.MustCompile(`(^|[^0-9A-Za-z_@])@([0-9A-Za-z]{4,8})`)
+	// keeps misha@example.com out of it. #n after it names one of that task's comments.
+	mentionRef = regexp.MustCompile(`(^|[^0-9A-Za-z_@])@([0-9A-Za-z]{4,8})(#[0-9]+)?`)
 
 	// An inline image, turned into an asset and rewritten before the text is stored.
 	//
@@ -100,7 +101,7 @@ func (s *Store) inlineAssets(ctx context.Context, principalID, text string) (str
 func (s *Store) normalizeMentions(ctx context.Context, principalID string, reach Reach, text string) string {
 	return mentionRef.ReplaceAllStringFunc(text, func(match string) string {
 		parts := mentionRef.FindStringSubmatch(match)
-		lead, ref := parts[1], parts[2]
+		lead, ref, comment := parts[1], parts[2], parts[3]
 		normal, err := ids.NormalizeTask(ref)
 		if err != nil {
 			return match
@@ -112,7 +113,19 @@ func (s *Store) normalizeMentions(ctx context.Context, principalID string, reach
 		if !s.visible(ctx, principalID, id, reach) {
 			return match
 		}
-		return lead + "@" + id
+		if comment == "" {
+			return lead + "@" + id
+		}
+		// A comment that is not there leaves the whole mention as written, as an unknown task
+		// does, rather than half of it rewritten.
+		n, _ := strconv.Atoi(comment[1:])
+		var found int
+		if err := s.reader.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM comments c JOIN tasks t ON t.seq = c.task_seq
+			  WHERE t.id = ? AND t.principal_id = ? AND c.n = ?`, id, principalID, n).Scan(&found); err != nil || found == 0 {
+			return match
+		}
+		return lead + "@" + id + "#" + strconv.Itoa(n)
 	})
 }
 
