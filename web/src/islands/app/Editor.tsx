@@ -51,7 +51,7 @@ export function Editor({
   limits: { assetMax: number };
   /** The text as it reads. Given, the box has an Edit | Preview toggle. */
   preview?: (source: string) => ReactNode;
-  /** Shift+Enter, for a comment: sends it. */
+  /** Cmd+Enter, or Ctrl+Enter off a Mac: sends a comment, saves a task. */
   onSubmit?: () => void;
   /** Escape, for a comment being edited: drops the edit, and the dialog around it stays. */
   onCancel?: () => void;
@@ -218,7 +218,11 @@ export function Editor({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
             // Not mid-composition: Enter there is choosing a character.
-            if (!onSubmit || e.key !== "Enter" || !e.shiftKey) return;
+            // Cmd or Ctrl, never Shift: an iPhone's keyboard turns shift on after a Return, so
+            // two Returns for a blank line read as Shift+Enter and sent the task half-written.
+            // A soft keyboard has neither Cmd nor Ctrl, and a hardware one has both.
+            if (!onSubmit || e.key !== "Enter" || !(e.metaKey || e.ctrlKey))
+              return;
             if (e.nativeEvent.isComposing) return;
             e.preventDefault();
             onSubmit();
@@ -251,3 +255,12 @@ export function Editor({
 }
 
 export const EditorActions = Button;
+
+/**
+ * The keys that send, as a placeholder says them: Cmd on a Mac, Ctrl elsewhere, and nothing on a
+ * touch screen, whose keyboard has neither — the button is the way there.
+ */
+export function sendKeys(): string {
+  if (window.matchMedia?.("(pointer: coarse)").matches) return "";
+  return /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘+Enter" : "Ctrl+Enter";
+}

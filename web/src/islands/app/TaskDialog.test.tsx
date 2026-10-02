@@ -316,14 +316,14 @@ describe("the read view", () => {
   });
 });
 
-/** Shift+Enter in the description is Save, as it is Comment in a comment's box. */
-describe("Shift+Enter", () => {
+/** Cmd+Enter in the description is Save, as it is Comment in a comment's box. */
+describe("Cmd+Enter", () => {
   it("saves and closes from the description", async () => {
     const onClose = vi.fn();
     await withVerdict(onClose);
     fireEvent.keyDown(description(), { key: "Enter" });
     expect(patch).not.toHaveBeenCalled();
-    fireEvent.keyDown(description(), { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(description(), { key: "Enter", metaKey: true });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(patch.mock.calls[0]![1]).toMatchObject({
       description: "Verdict: not worth it",
@@ -854,7 +854,7 @@ describe("comments", () => {
     expect(item().textContent).toMatch(/· edited/);
   });
 
-  it("saves an edit on Shift+Enter", async () => {
+  it("saves an edit on Cmd+Enter", async () => {
     task = {
       ...detail("todo"),
       comments: [
@@ -878,7 +878,7 @@ describe("comments", () => {
     );
     const field = within(item()).getByRole("textbox");
     fireEvent.change(field, { target: { value: "Ordered washers." } });
-    fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(field, { key: "Enter", metaKey: true });
     await waitFor(() =>
       expect(edit).toHaveBeenCalledWith("8qw4tz9k", "c_1", "Ordered washers."),
     );
@@ -989,13 +989,15 @@ describe("comments", () => {
     ).toBe("true");
   });
 
-  it("posts one on Shift+Enter, and leaves Enter a new line", async () => {
+  it("posts one on Cmd+Enter, and leaves Enter and Shift+Enter new lines", async () => {
     open();
     await screen.findByPlaceholderText(/^Comment\./);
     fireEvent.change(box(), { target: { value: "Still drips." } });
     fireEvent.keyDown(box(), { key: "Enter" });
-    expect(comment).not.toHaveBeenCalled();
+    // What an iPhone sends for the second of two Returns.
     fireEvent.keyDown(box(), { key: "Enter", shiftKey: true });
+    expect(comment).not.toHaveBeenCalled();
+    fireEvent.keyDown(box(), { key: "Enter", metaKey: true });
     await waitFor(() =>
       expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
     );

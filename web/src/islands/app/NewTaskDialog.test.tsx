@@ -17,19 +17,19 @@ beforeEach(() => {
 });
 
 describe("NewTaskDialog", () => {
-  it("adds on Shift+Enter in the description, once it has a title", async () => {
+  it("adds on Cmd+Enter in the description, once it has a title", async () => {
     const onClose = vi.fn();
     mount(
       <NewTaskDialog project="" open tags={[]} title="" onClose={onClose} />,
     );
     const box = screen.getByPlaceholderText(/Markdown\. Paste a file/);
-    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(box, { key: "Enter", metaKey: true });
     expect(postTasks).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByPlaceholderText("What needs doing?"), {
       target: { value: "Renew the passport" },
     });
-    fireEvent.keyDown(box, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(box, { key: "Enter", metaKey: true });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(postTasks).toHaveBeenCalled();
   });

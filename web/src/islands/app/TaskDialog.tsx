@@ -28,7 +28,7 @@ import { Dialog } from "@app/components/Dialog";
 import { CommentIcon, PencilIcon, PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { Group as Caption } from "@app/components/Field";
-import { Editor } from "@app/islands/app/Editor";
+import { Editor, sendKeys } from "@app/islands/app/Editor";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
@@ -490,7 +490,7 @@ export function TaskDialog({
               compact
               value={comment}
               onChange={setComment}
-              prompt="Comment. Markdown; Shift+Enter sends."
+              prompt={`Comment. Markdown${sendKeys() ? `; ${sendKeys()} sends` : ""}.`}
               limits={{ assetMax: 10 << 20 }}
               onSubmit={() => {
                 if (said && !send.isPending) send.mutate();

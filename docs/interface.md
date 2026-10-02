@@ -64,9 +64,12 @@ They are inside the box, along its floor with the paperclip and its buttons, on 
 with the ground's own warmth rather than a grey: under it, beside the well, they read as a line
 of text near the box rather than the box's own, which GitHub gets by making its tabs part of the
 frame. The description's box has the same floor, with only the clip.
-Posting a comment brings the box back to Edit. Shift+Enter posts it, or saves one being edited;
-Enter stays a new line, since a comment is markdown and has paragraphs. In a task's description it
-is the dialog's Save, or Add for a new one, and closes it.
+Posting a comment brings the box back to Edit. Cmd+Enter, or Ctrl+Enter off a Mac, posts it, or saves one
+being edited; Enter stays a new line, since a comment is markdown and has paragraphs. In a task's
+description it is the dialog's Save, or Add for a new one, and closes it. Not Shift: an iPhone's
+keyboard turns shift on after a Return, so two Returns for a blank line read as Shift+Enter and
+saved the task half-written. A soft keyboard has neither Cmd nor Ctrl, so on a phone the button
+is the only way, and the placeholder does not mention keys.
 
 **A mention opens the task it names over this one, read first.** From the lists under the
 description or from a chip inside it: following a reference is reading, and the task underneath

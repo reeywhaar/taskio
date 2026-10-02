@@ -53,7 +53,7 @@ export function TaskForm({
 }: {
   draft: Draft;
   onChange: (next: Draft) => void;
-  /** Shift+Enter in the description: the dialog's own Save or Add, as a comment's box sends. */
+  /** Cmd+Enter in the description: the dialog's own Save or Add, as a comment's box sends. */
   onSubmit?: () => void;
   titlePlaceholder?: string;
 }) {
