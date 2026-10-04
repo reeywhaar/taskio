@@ -974,6 +974,14 @@ centre: the segmented control's track around its backdrop, a menu around its ite
 radius on both reads as the inner corner bulging at the outer's. A control that floats inside a
 larger block, like the copy button on code, is not snug and keeps its own radius.
 
+## A row shows its first picture
+
+The first picture pasted into a description is an 84px square in the row's corner, the whole of
+it fitted inside, since a picture cropped is a different picture. The done mark is drawn over it
+on a ground of its own, in the same corner it always has. Sometimes a
+picture says more than the words. Only pictures pasted into taskio: one from another site on every
+row would tell that site each time the list is opened.
+
 ## A card is clicked, not its title
 
 The whole card opens the task. The title is still a real button, so the keyboard and a screen

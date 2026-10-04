@@ -100,6 +100,8 @@ export function TaskRow({
       ? (task.done_at ?? task.updated_at)
       : task.poked_at;
 
+  const picture = firstPicture(task.description);
+
   const since = Date.now() / 1000 - at;
   const age =
     finished || since < WEEK
@@ -225,7 +227,11 @@ export function TaskRow({
       </span>
 
       {/* The whole width on a phone, the middle column above that. */}
-      <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+      <div
+        className={`row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1 ${
+          picture ? "col-span-1" : "col-span-2"
+        }`}
+      >
         {/* A button, so the keyboard and a screen reader have something to land on and
             announce. Its click reaches the card like any other, which is what opens the
             task — one way in, by mouse and by keyboard. */}
@@ -273,6 +279,18 @@ export function TaskRow({
         ) : null}
       </div>
 
+      {/* The first picture in the description, behind the mark in the row's corner: sometimes
+          it says more than the words. The mark is drawn over it on a ground of its own. */}
+      {picture ? (
+        <img
+          src={picture}
+          alt=""
+          loading="lazy"
+          // The whole of it, fitted inside: a picture cropped is a different picture.
+          className="col-start-2 row-start-1 row-end-3 size-21 self-start justify-self-end rounded-md border border-line bg-fill object-contain sm:col-start-3 sm:row-end-2"
+        />
+      ) : null}
+
       {/* The box stands where the mark stands, and the two are the same size, so pressing
           Select changes what is in that slot and moves nothing. Beside the id it was a seventh
           column appearing on the left, which pushed every row's contents sideways the moment a
@@ -282,7 +300,9 @@ export function TaskRow({
           reports a second one and the row toggles back to where it started. */}
       {still ? null : selectable ? (
         <span
-          className="col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center sm:col-start-3"
+          className={`relative z-10 col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center justify-self-end rounded-md sm:col-start-3 ${
+            picture ? "top-1 right-1 bg-bg/85" : ""
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           <input
@@ -309,7 +329,9 @@ export function TaskRow({
           // for, so under one it is simply there — which is the same rule as the pin above,
           // read from the other end.
           // Quiet either way: putting a task back is no more the point of the row than ticking it.
-          className="col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-line hover:text-fg focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 sm:col-start-3"
+          className={`relative z-10 col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center justify-self-end rounded-md text-lg text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-line hover:text-fg focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 sm:col-start-3 ${
+            picture ? "top-1 right-1 bg-bg/85" : ""
+          }`}
         >
           {finished ? <UndoIcon /> : <CheckIcon />}
         </button>
@@ -320,6 +342,17 @@ export function TaskRow({
 
 /** The row's opening lines, in a component of its own so the boundary around it can catch a
  *  description the parser throws on. */
+/**
+ * The first picture pasted into a description, by its address. Only pasted ones, which taskio
+ * serves itself: an image from elsewhere on every row of a list is a read receipt to its host
+ * each time the list is opened.
+ */
+export function firstPicture(source: string): string | null {
+  return (
+    /!\[[^\]]*\]\((\/api\/assets\/a_[0-9a-z]{26})\)/.exec(source)?.[1] ?? null
+  );
+}
+
 function Excerpt({ source, still }: { source: string; still: boolean }) {
   const pieces = excerpt(source);
   if (pieces.length === 0) return null;

@@ -219,3 +219,29 @@ describe("TaskRow", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 });
+
+/** The first picture pasted into the description, on the row; one from elsewhere is not. */
+describe("a row's picture", () => {
+  const asset = "/api/assets/a_01j9z0000000000000000000ab";
+
+  it("shows the first pasted picture", () => {
+    render(
+      <TaskRow
+        task={task({
+          description: `It drips.\n\n![the tap](${asset})\n\n![second](/api/assets/a_01j9z0000000000000000000cd)`,
+        })}
+      />,
+    );
+    const img = document.querySelector("li img")!;
+    expect(img.getAttribute("src")).toBe(asset);
+  });
+
+  it("shows none for a picture from elsewhere, or for no picture", () => {
+    render(
+      <TaskRow
+        task={task({ description: "![a photo](https://example.com/a.png)" })}
+      />,
+    );
+    expect(document.querySelector("li img")).toBeNull();
+  });
+});
