@@ -379,12 +379,18 @@ export function Tokens() {
               className="text-xs text-faint"
               title={
                 token.last_agent ||
-                (token.last_used_at ? "" : "It has never been used.")
+                (token.last_used_at
+                  ? ""
+                  : token.rotated_at
+                    ? "Nothing has used the new secret yet."
+                    : "It has never been used.")
               }
             >
               {token.last_used_at
                 ? `used ${ago(token.last_used_at)}${token.last_ip ? ` from ${token.last_ip}` : ""}`
-                : "never used"}
+                : token.rotated_at
+                  ? `rotated ${ago(token.rotated_at)}, not used since`
+                  : "never used"}
             </span>
             {token.idle_seconds > 0 ? (
               <span className="text-xs text-faint">

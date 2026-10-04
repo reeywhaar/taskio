@@ -19,8 +19,9 @@ Get one from **Settings → Tokens** in the app, or from the machine running it:
 docker exec taskio token create --user misha --label claude
 ```
 
-It is shown once. A lost token is rotated rather than recovered: a new secret, the same label,
-reach and limits, and the old secret stops at once. Its id changes with the secret.
+It is shown once. A lost token is rotated rather than recovered: the same token with a new
+secret, its label, reach, limits and comments kept, and the old secret stops at once. Its id
+changes with the secret.
 
 ### Nonced tokens
 

@@ -52,6 +52,7 @@ const token = (extra: Partial<Token> = {}): Token =>
     expires_at: null,
     last_used_at: null,
     revoked_at: null,
+    rotated_at: null,
     last_ip: "",
     last_agent: "",
     idle_seconds: 0,

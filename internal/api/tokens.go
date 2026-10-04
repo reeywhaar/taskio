@@ -21,6 +21,8 @@ type tokenBody struct {
 	ExpiresAt  *int64     `json:"expires_at"`
 	LastUsedAt *int64     `json:"last_used_at"`
 	RevokedAt  *int64     `json:"revoked_at"`
+	// RotatedAt is when it was last given a new secret. Null for one never rotated.
+	RotatedAt *int64 `json:"rotated_at"`
 	// Where it was last used from, which is the question a token raises: used by what, from
 	// where. Empty until it has been used once.
 	LastIP    string `json:"last_ip"`
@@ -66,6 +68,7 @@ func renderToken(t *store.Token, projects map[string]*store.Project) tokenBody {
 
 		IdleSeconds: int64(t.IdleTTL / time.Second),
 		RevokedAt:   unixPtr(t.RevokedAt),
+		RotatedAt:   unixPtr(t.RotatedAt),
 	}
 }
 

@@ -56,6 +56,8 @@ type Token struct {
 	ExpiresAt  *time.Time
 	LastUsedAt *time.Time
 	RevokedAt  *time.Time
+	// RotatedAt is when it was last given a new secret, if ever.
+	RotatedAt *time.Time
 	// LastIP and LastAgent are where it was used from, for the one question a token raises:
 	// used by what, from where.
 	LastIP    string
@@ -65,12 +67,15 @@ type Token struct {
 }
 
 // Idle reports whether this token has gone too long unused. Counted from the last use, or from
-// the day it was minted if it has never been used at all.
+// the last rotation or the day it was minted if its secret has never been used.
 func (t *Token) Idle(now time.Time) bool {
 	if t.IdleTTL <= 0 {
 		return false
 	}
 	since := t.CreatedAt
+	if t.RotatedAt != nil {
+		since = *t.RotatedAt
+	}
 	if t.LastUsedAt != nil {
 		since = *t.LastUsedAt
 	}
@@ -237,7 +242,7 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label string, proj
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, label, hint, created_at, expires_at, last_used_at, revoked_at,
-		        last_ip, last_agent, idle_ttl
+		        last_ip, last_agent, idle_ttl, rotated_at
 		   FROM tokens WHERE principal_id = ? ORDER BY created_at DESC`, principalID)
 	if err != nil {
 		return nil, fmt.Errorf("list tokens: %w", err)
@@ -248,9 +253,9 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 	for rows.Next() {
 		tok := &Token{PrincipalID: principalID}
 		var created, idle int64
-		var expires, used, revoked sql.NullInt64
+		var expires, used, revoked, rotated sql.NullInt64
 		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &created,
-			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle); err != nil {
+			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle, &rotated); err != nil {
 			return nil, err
 		}
 		tok.IdleTTL = time.Duration(idle) * time.Second
@@ -258,6 +263,7 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 		tok.ExpiresAt = nullTime(expires)
 		tok.LastUsedAt = nullTime(used)
 		tok.RevokedAt = nullTime(revoked)
+		tok.RotatedAt = nullTime(rotated)
 		out = append(out, tok)
 	}
 	if err := rows.Err(); err != nil {
@@ -415,13 +421,13 @@ func (s *Store) UpdateToken(ctx context.Context, principalID, id string, change 
 func (s *Store) token(ctx context.Context, principalID, id string) (*Token, error) {
 	tok := &Token{PrincipalID: principalID, ID: id}
 	var created, idle int64
-	var expires, used, revoked sql.NullInt64
+	var expires, used, revoked, rotated sql.NullInt64
 	err := s.reader.QueryRowContext(ctx,
 		`SELECT label, hint, created_at, expires_at, last_used_at, revoked_at,
-		        last_ip, last_agent, idle_ttl
+		        last_ip, last_agent, idle_ttl, rotated_at
 		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&tok.Label, &tok.Hint, &created, &expires, &used, &revoked,
-			&tok.LastIP, &tok.LastAgent, &idle)
+			&tok.LastIP, &tok.LastAgent, &idle, &rotated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no such token.")
 	}
@@ -432,6 +438,7 @@ func (s *Store) token(ctx context.Context, principalID, id string) (*Token, erro
 	tok.ExpiresAt = nullTime(expires)
 	tok.LastUsedAt = nullTime(used)
 	tok.RevokedAt = nullTime(revoked)
+	tok.RotatedAt = nullTime(rotated)
 	tok.IdleTTL = time.Duration(idle) * time.Second
 	if tok.Projects, err = loadRows(ctx, s.reader, id); err != nil {
 		return nil, err
@@ -455,13 +462,16 @@ func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
 	return nil
 }
 
-// RotateToken gives a token a new secret and keeps everything else about it: its label, what it
-// reaches, when it ends and how long it may sit unused.
+// RotateToken gives a token a new secret and keeps everything else about it: its place in the
+// list, its label, what it reaches, when it ends and how long it may sit unused.
 //
-// The id is derived from the secret, so the new secret is a new row with a new id, and the old
-// row is revoked in the same transaction: there is no moment with both secrets working, and none
-// with neither. The old row stays, revoked, like any other, so a log line naming it can still be
-// traced. The new one starts its life now, which is what its idle limit counts from.
+// The id is derived from the secret, so it changes with it, and so does everything that names the
+// token by it: what it reaches, and the comments it wrote, which it goes on being able to edit.
+// One transaction: there is no moment with both secrets working, and none with neither. The old
+// id is in the log line that records the rotation.
+//
+// Where it was last used from goes too — that was whatever held the old secret — and the idle
+// clock starts again from now.
 func (s *Store) RotateToken(ctx context.Context, principalID, id string) (*Token, string, error) {
 	raw, err := secret()
 	if err != nil {
@@ -478,12 +488,13 @@ func (s *Store) RotateToken(ctx context.Context, principalID, id string) (*Token
 
 	var (
 		label            string
+		created, idle    int64
 		expires, revoked sql.NullInt64
-		idle             int64
 	)
 	err = tx.QueryRowContext(ctx,
-		`SELECT label, expires_at, idle_ttl, revoked_at FROM tokens WHERE principal_id = ? AND id = ?`,
-		principalID, id).Scan(&label, &expires, &idle, &revoked)
+		`SELECT label, created_at, expires_at, idle_ttl, revoked_at FROM tokens
+		  WHERE principal_id = ? AND id = ?`,
+		principalID, id).Scan(&label, &created, &expires, &idle, &revoked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, "", NotFound("There is no such token.")
 	}
@@ -508,26 +519,28 @@ func (s *Store) RotateToken(ctx context.Context, principalID, id string) (*Token
 		Label:       label,
 		Hint:        raw[:hintLen],
 		Projects:    rows,
-		CreatedAt:   now,
+		CreatedAt:   time.Unix(created, 0).UTC(),
+		ExpiresAt:   nullTime(expires),
+		RotatedAt:   &now,
 		IdleTTL:     time.Duration(idle) * time.Second,
 	}
-	var exp any
-	if expires.Valid {
-		at := time.Unix(expires.Int64, 0).UTC()
-		tok.ExpiresAt = &at
-		exp = expires.Int64
+	// The rows go first and come back under the new id: they hold the old one by a foreign key,
+	// which would refuse the id changing under them.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM token_projects WHERE token_id = ?`, id); err != nil {
+		return nil, "", fmt.Errorf("rotate token: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, created_at, expires_at, idle_ttl)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		tok.ID, principalID, label, tokenKey(value), tok.Hint, unix(now), exp, idle); err != nil {
+		`UPDATE tokens SET id = ?, secret_hash = ?, hint = ?, rotated_at = ?,
+		        last_used_at = NULL, last_ip = '', last_agent = ''
+		  WHERE id = ?`,
+		tok.ID, tokenKey(value), tok.Hint, unix(now), id); err != nil {
 		return nil, "", fmt.Errorf("rotate token: %w", err)
 	}
 	if err := writeRows(ctx, tx, tok.ID, rows); err != nil {
 		return nil, "", fmt.Errorf("rotate token: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx,
-		`UPDATE tokens SET revoked_at = ? WHERE id = ?`, unix(now), id); err != nil {
+		`UPDATE comments SET token_id = ? WHERE token_id = ?`, tok.ID, id); err != nil {
 		return nil, "", fmt.Errorf("rotate token: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -544,7 +557,7 @@ func (s *Store) RotateToken(ctx context.Context, principalID, id string) (*Token
 // a line in the only list of the live ones. Deliberate rather than swept: what a name is still
 // worth is not a question this can answer on somebody's behalf.
 //
-// Nothing else in the database points at a token, so there is nothing to orphan.
+// A comment names the token that wrote it, and carries its label too, so nothing is orphaned.
 func (s *Store) ForgetRevokedTokens(ctx context.Context, principalID string) (int64, error) {
 	res, err := s.writer.ExecContext(ctx,
 		`DELETE FROM tokens WHERE principal_id = ? AND revoked_at IS NOT NULL`, principalID)
@@ -680,14 +693,14 @@ func AsNonceRefusal(err error) (NonceRefusal, bool) {
 func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Token, error) {
 	tok := &Token{}
 	var created int64
-	var expires, used, revoked sql.NullInt64
+	var expires, used, revoked, rotated sql.NullInt64
 	var idle int64
 	err := s.reader.QueryRowContext(ctx,
 		`SELECT id, principal_id, label, hint, created_at, expires_at, last_used_at, revoked_at,
-		        last_ip, last_agent, idle_ttl
+		        last_ip, last_agent, idle_ttl, rotated_at
 		   FROM tokens WHERE secret_hash = ?`, key).
 		Scan(&tok.ID, &tok.PrincipalID, &tok.Label, &tok.Hint, &created,
-			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle)
+			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle, &rotated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -698,6 +711,7 @@ func (s *Store) tokenByKey(ctx context.Context, key []byte, now time.Time) (*Tok
 	tok.ExpiresAt = nullTime(expires)
 	tok.LastUsedAt = nullTime(used)
 	tok.RevokedAt = nullTime(revoked)
+	tok.RotatedAt = nullTime(rotated)
 	tok.IdleTTL = time.Duration(idle) * time.Second
 
 	if !tok.Live(now) {

@@ -502,7 +502,7 @@ func TestATokenLeftAloneStopsWorking(t *testing.T) {
 
 	c := signIn(t, s, st)
 	p, _ := st.PrincipalNamed(ctx, "misha")
-	_, secret, err := st.CreateToken(ctx, p.ID, "idle", homeRow(t, st, p.ID, ""), nil, 7*24*time.Hour)
+	tok, secret, err := st.CreateToken(ctx, p.ID, "idle", homeRow(t, st, p.ID, ""), nil, 7*24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,6 +522,17 @@ func TestATokenLeftAloneStopsWorking(t *testing.T) {
 	now = now.Add(8 * 24 * time.Hour)
 	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("a token left alone for eight days = %s, want 401", resp.Status)
+	}
+
+	// A new secret nobody has had yet: its clock runs from the rotation.
+	_, secret, err = st.RotateToken(ctx, p.ID, tok.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(6 * 24 * time.Hour)
+	caller = &agent{t: t, server: s, secret: secret}
+	if resp := caller.do("GET", "/api/tasks", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("a token rotated six days ago = %s", resp.Status)
 	}
 }
 
@@ -751,6 +762,7 @@ func homeRow(t *testing.T, st *store.Store, principalID, scope string) []store.T
 
 // A new secret, and nothing else changed: the label, what it reaches, when it ends and how long
 // it may sit unused all carry over, and the old secret stops at the same moment the new one starts.
+// The same row, rotated in place, and still the author of what it wrote.
 func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	c := signIn(t, s, st)
@@ -764,6 +776,9 @@ func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
 	minted := c.json(resp)
 	old := &agent{t: t, server: s, secret: minted["secret"].(string)}
 	oldID := minted["token"].(map[string]any)["id"].(string)
+	task := c.task(`{"title":"Sow the beans","tags":["seeds"]}`)["id"].(string)
+	c.do("PATCH", "/api/tasks/"+task, `{"project":"garden"}`)
+	said := old.json(old.do("POST", "/api/tasks/"+task+"/comments", `{"body":"Soaked overnight."}`))["id"].(string)
 
 	resp = c.do("POST", "/api/tokens/"+oldID+"/rotate", "")
 	if resp.StatusCode != http.StatusCreated {
@@ -775,8 +790,9 @@ func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
 	if tok["id"] == oldID || rotated["secret"] == minted["secret"] {
 		t.Fatal("rotating did not change the secret")
 	}
-	if tok["label"] != "agent" || tok["expires_at"] != float64(expires) || tok["idle_seconds"] != float64(604800) {
-		t.Errorf("the rotated token = %v, want its label, end and idle limit kept", tok)
+	if tok["label"] != "agent" || tok["expires_at"] != float64(expires) || tok["idle_seconds"] != float64(604800) ||
+		tok["last_used_at"] != nil {
+		t.Errorf("the rotated token = %v, want its label, end and idle limit kept, and unused", tok)
 	}
 	was, _ := json.Marshal(minted["token"].(map[string]any)["projects"])
 	now, _ := json.Marshal(tok["projects"])
@@ -791,17 +807,24 @@ func TestRotatingATokenKeepsWhatItIs(t *testing.T) {
 		t.Errorf("the old secret = %s, want 401", resp.Status)
 	}
 
-	// The old row stays, revoked, so a log line naming it can still be traced.
-	listed := map[string]any{}
-	for _, row := range c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any) {
-		listed[row.(map[string]any)["id"].(string)] = row.(map[string]any)["revoked_at"]
+	// One row, under the new id, minted when it was minted.
+	listed := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
+	if len(listed) != 1 {
+		t.Fatalf("after the rotation the listing has %d tokens, want the one", len(listed))
 	}
-	if listed[oldID] == nil || listed[tok["id"].(string)] != nil {
-		t.Errorf("after the rotation the listing's revoked_at = %v, want the old one revoked and the new one live", listed)
+	row := listed[0].(map[string]any)
+	if row["id"] != tok["id"] || row["revoked_at"] != nil || row["created_at"] != minted["token"].(map[string]any)["created_at"] ||
+		row["rotated_at"] == nil {
+		t.Errorf("after the rotation the listing = %v", row)
 	}
 
-	// Nothing to rotate in a token already revoked, and a token cannot rotate one at all.
-	refusal(t, c.do("POST", "/api/tokens/"+oldID+"/rotate", ""), http.StatusBadRequest)
+	// What it wrote under the old secret is still its own to edit.
+	if resp := fresh.do("PATCH", "/api/tasks/"+task+"/comments/"+said, `{"body":"Soaked for a night."}`); resp.StatusCode != http.StatusOK {
+		t.Errorf("the rotated token editing its comment = %s", resp.Status)
+	}
+
+	// The old id names nothing now, and a token cannot rotate one at all.
+	refusal(t, c.do("POST", "/api/tokens/"+oldID+"/rotate", ""), http.StatusNotFound)
 	if resp := fresh.do("POST", "/api/tokens/"+tok["id"].(string)+"/rotate", ""); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("a token rotating one = %s, want 401", resp.Status)
 	}

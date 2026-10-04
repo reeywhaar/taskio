@@ -125,6 +125,8 @@ export type Token = {
   expires_at: number | null;
   last_used_at: number | null;
   revoked_at: number | null;
+  /** When it was last given a new secret. Null for one never rotated. */
+  rotated_at: number | null;
   /** Where it was last used from. Empty until it has been used once. */
   last_ip: string;
   last_agent: string;
