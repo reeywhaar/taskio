@@ -132,6 +132,7 @@ export function TaskForm({
         >
           <ColorSelect
             compact
+            custom={false}
             label="Color"
             value={draft.color}
             onChange={(color) => set({ color })}

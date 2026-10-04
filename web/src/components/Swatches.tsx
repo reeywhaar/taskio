@@ -39,32 +39,40 @@ export const COLOURS = [
  *
  * One row, always. Where it shares a line with other fields it is behind ColorSelect instead.
  */
+// Each on a tile of its own, and the chosen one's tile shaded: a ring round a 16px square of
+// color was heavier than the color it marked.
+const tile = (on: boolean) =>
+  `flex rounded-md p-1 ${on ? "bg-line" : "hover:bg-shade"}`;
+
 export function Swatches({
   value,
   onChange,
   none,
+  custom: offerCustom = true,
 }: {
   /** #rrggbb, or empty. */
   value: string;
   onChange: (color: string) => void;
   /** What an empty value is called: "No color", "Default color". */
   none: string;
+  /** Whether the picker for any other color is offered. A task's is not: see ColorSelect. */
+  custom?: boolean;
 }) {
   const [picking, setPicking] = useState(false);
   const custom = value !== "" && !COLOURS.includes(value);
 
   return (
-    <div className="flex w-fit items-center gap-1.5">
+    <div className="flex w-fit items-center gap-0.5">
       <button
         type="button"
         aria-label={none}
         title={none}
         aria-pressed={value === ""}
         onClick={() => onChange("")}
-        className={`size-4 rounded-sm border border-dashed border-muted ring-offset-1 ring-offset-bg ${
-          value === "" ? "ring-[1.5px] ring-fg" : ""
-        }`}
-      />
+        className={tile(value === "")}
+      >
+        <Swatch color="" />
+      </button>
 
       {COLOURS.map((swatch) => {
         const on = value === swatch;
@@ -75,38 +83,45 @@ export function Swatches({
             aria-label={swatch}
             aria-pressed={on}
             onClick={() => onChange(swatch)}
-            className={`size-4 rounded-sm ring-offset-1 ring-offset-bg ${
-              on ? "ring-[1.5px] ring-fg" : ""
-            }`}
-            style={{ background: swatch }}
-          />
+            className={tile(on)}
+          >
+            <Swatch color={swatch} />
+          </button>
         );
       })}
 
       {/* The spot wears whatever is chosen and says what it is for with the dropper, rather
           than wearing a wheel that is a picture of the idea of color. Two swatches of the same
           color would otherwise be ambiguous — the icon is what tells them apart. */}
-      <button
-        type="button"
-        aria-label="Another color"
-        title="Another color"
-        onClick={() => setPicking(true)}
-        className={`flex size-4 items-center justify-center rounded-sm ring-offset-1 ring-offset-bg ${
-          value ? "" : "border border-muted"
-        } ${custom ? "ring-[1.5px] ring-fg" : ""}`}
-        style={value ? { background: value, color: ink(value) } : undefined}
-      >
-        <DropperIcon className="text-[10px]" />
-      </button>
+      {offerCustom ? (
+        <button
+          type="button"
+          aria-label="Another color"
+          title="Another color"
+          onClick={() => setPicking(true)}
+          className={tile(custom)}
+        >
+          <span
+            className={`flex size-4 items-center justify-center rounded-sm ${
+              value ? "" : "border border-muted"
+            }`}
+            style={value ? { background: value, color: ink(value) } : undefined}
+          >
+            <DropperIcon className="text-[10px]" />
+          </span>
+        </button>
+      ) : null}
 
-      <ColorDialog
-        open={picking}
-        value={value || BRAND}
-        onClose={(picked) => {
-          setPicking(false);
-          if (picked) onChange(picked);
-        }}
-      />
+      {offerCustom ? (
+        <ColorDialog
+          open={picking}
+          value={value || BRAND}
+          onClose={(picked) => {
+            setPicking(false);
+            if (picked) onChange(picked);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -125,6 +140,7 @@ export function ColorSelect({
   none,
   label,
   compact = false,
+  custom = true,
 }: {
   value: string;
   onChange: (color: string) => void;
@@ -133,6 +149,10 @@ export function ColorSelect({
   label: string;
   /** Small and flat, for a row of small settings. */
   compact?: boolean;
+  /** Whether any other color can be picked than the eight. A task's cannot: one picked
+   *  colour is used once and never found again without a list of recent ones, and nothing
+   *  here needs one. A group's can, being the tab's. */
+  custom?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -206,13 +226,14 @@ export function ColorSelect({
       {open ? (
         <div
           ref={pop}
-          className={`aloft absolute z-40 rounded-lg bg-bg p-2.5 ${
+          className={`aloft absolute z-40 rounded-lg bg-bg p-1.5 ${
             flush === "right" ? "right-0" : "left-0"
           } ${above ? "bottom-full mb-1.5" : "top-full mt-1.5"}`}
         >
           <Swatches
             value={value}
             none={none}
+            custom={custom}
             onChange={(color) => {
               onChange(color);
               setOpen(false);
@@ -235,9 +256,9 @@ function scroller(from: Element): Element {
 /** What a color field shows of its value: the color, or the dashed nothing. */
 function Swatch({ color }: { color: string }) {
   return color ? (
-    <span className="size-4 rounded-sm" style={{ background: color }} />
+    <span className="block size-4 rounded-sm" style={{ background: color }} />
   ) : (
-    <span className="size-4 rounded-sm border border-dashed border-muted" />
+    <span className="block size-4 rounded-sm border border-dotted border-muted" />
   );
 }
 

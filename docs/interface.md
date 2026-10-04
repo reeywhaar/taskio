@@ -244,11 +244,15 @@ opens the project pills, and the one line about what moving does is in there, wh
 chosen. It is where the task lives rather than one of its fields, and everything in the form is
 inside it. A new task's dialog carries the same label.
 
-Groups wear one too, through the same field and the same row, empty choice included: a dashed
-swatch that is "No color" on a task, which then wears nothing, and "Default color" on a group,
+Groups wear one too, through the same field and the same row, empty choice included: a dotted
+outline that is "No color" on a task, which then wears nothing, and "Default color" on a group,
 which then wears the brand. The row opens under the field, or over it where it would be cut off
 by the end of the dialog, as a group's last field would. The brand is a color
-like any other beside it.
+like any other beside it. The chosen swatch sits on a grey tile; a ring round a 16px square was
+heavier than the color it marked.
+
+A task picks from the eight and nothing else. Any other color only earns its place with a memory
+of the last few used, and a mark nobody reads does not need one.
 
 ## The rail is projects, and the open one's groups
 
