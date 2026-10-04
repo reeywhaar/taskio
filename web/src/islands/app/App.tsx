@@ -23,9 +23,10 @@ import { CrossIcon, SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
 import { Nav } from "@app/islands/app/Nav";
 import { TagCloud } from "@app/islands/app/TagCloud";
-import { rank, TaskRow } from "@app/islands/app/TaskRow";
+import { TaskRow } from "@app/islands/app/TaskRow";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
 import { TaskDialog } from "@app/islands/app/TaskDialog";
+import { useHeldOrder, type Moved } from "@app/islands/app/held";
 import { BulkBar, selectAll } from "@app/islands/app/BulkBar";
 import { Elsewhere } from "@app/islands/app/Elsewhere";
 import { Settings } from "@app/islands/app/Settings";
@@ -238,9 +239,9 @@ function List({
     mutationFn: (task: Task) =>
       patchTasksById(task.id, { pinned: !task.pinned }),
     onMutate: (task) => {
-      follow.current = { id: task.id, from: tasks.indexOf(task) };
-      // The list on screen is put in its new order here, so the row travels on the press
-      // rather than on the answer.
+      // The cache is put in its new order now, so the answer moves nothing; the screen holds
+      // its order a moment longer, so the next row to pin is still where it was.
+      order.press(task.id);
       return optimisticTask(
         client,
         task.id,
@@ -282,7 +283,15 @@ function List({
     onGo({ ...location, filters: { ...filters, tags: next } });
   };
 
-  const tasks = list.data?.tasks ?? [];
+  // Held still for a moment after a pin: see useHeldOrder.
+  const order = useHeldOrder(
+    JSON.stringify(params),
+    list.data?.tasks ?? [],
+    (moved) => {
+      follow.current = moved;
+    },
+  );
+  const tasks = order.tasks;
   // Replaces rather than pushes, like the typing that filled it: clearing a five-letter query
   // should not be a sixth entry to press back through.
   const clearSearch = () =>
@@ -293,42 +302,32 @@ function List({
   const stale = list.isPlaceholderData || list.isLoading;
 
   /*
-   * A pinned task travels, and the view goes with it and says so.
-   *
-   * The row is already where it is going by the time this runs, because the press put it there
-   * rather than the answer — so there is one rearrangement to watch and one place to scroll to,
-   * on the render straight after the click.
+   * The rows a hold let go of flash where they land, because a row that has moved looks like
+   * every other row. Not followed: the list settles a few seconds after the press, and scrolling
+   * then would take somebody away from wherever they have got to since.
    */
-  const follow = useRef<{ id: string; from: number } | null>(null);
+  const follow = useRef<Moved[] | null>(null);
   useLayoutEffect(() => {
-    const going = follow.current;
-    if (!going) return;
+    const moved = follow.current;
+    if (!moved) return;
     follow.current = null;
 
-    const now = tasks.findIndex((task) => task.id === going.id);
-    if (now === -1 || now === going.from) return;
-
-    const row = scroller.current?.querySelector(`[data-task="${going.id}"]`);
-    if (!(row instanceof HTMLElement)) return;
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Legible rather than instant: the point is seeing where it went.
-    row.scrollIntoView({
-      block: "nearest",
-      behavior: still ? "auto" : "smooth",
-    });
-    // And a flash on arrival, because a row that has moved looks like every other row.
-    //
-    // Taken off again as soon as it has played. A class left behind replays every time the row
-    // is reordered — the browser restarts a CSS animation on an element that is taken out of
-    // the DOM and put back, which reordering does — so rows pinned earlier flash along with
-    // the one being pinned now. The timer is for reduced motion, where the animation is turned
-    // off and animationend never comes.
-    row.classList.remove("flash");
-    void row.offsetWidth; // restart it, if the same row is pinned twice
-    row.classList.add("flash");
-    const done = () => row.classList.remove("flash");
-    row.addEventListener("animationend", done, { once: true });
-    window.setTimeout(done, 1200);
+    for (const going of moved) {
+      const now = tasks.findIndex((task) => task.id === going.id);
+      if (now === -1 || now === going.from) continue;
+      const row = scroller.current?.querySelector(`[data-task="${going.id}"]`);
+      if (!(row instanceof HTMLElement)) continue;
+      // Taken off again as soon as it has played. A class left behind replays every time the
+      // row is reordered — the browser restarts a CSS animation on an element that is taken
+      // out of the DOM and put back — so rows pinned earlier would flash along with this one.
+      // The timer is for reduced motion, where animationend never comes.
+      row.classList.remove("flash");
+      void row.offsetWidth; // restart it, if the same row flashed a moment ago
+      row.classList.add("flash");
+      const done = () => row.classList.remove("flash");
+      row.addEventListener("animationend", done, { once: true });
+      window.setTimeout(done, 1200);
+    }
   }, [tasks]);
 
   return (
@@ -456,7 +455,7 @@ function List({
                   apart={
                     filters.view !== "done" &&
                     i > 0 &&
-                    rank(tasks[i - 1]!) !== rank(task)
+                    order.rankOf(tasks[i - 1]!) !== order.rankOf(task)
                   }
                   selectable={selection !== null}
                   selected={selection?.includes(task.id) ?? false}

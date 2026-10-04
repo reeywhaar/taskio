@@ -719,8 +719,8 @@ Both are one bit, and a button that waits a round trip to show it is a button so
 twice. The row is changed in every cached list at once, the request goes out behind it, and a
 refusal puts the old pages back.
 
-The list on screen is put in its new order at the same moment, so the row travels on the press
-rather than on the answer. That is reproducible here without guessing: a page arrives in the
+The cached list is put in its new order at the same moment, so the answer moves nothing. That is
+reproducible here without guessing: a page arrives in the
 server's order, and a stable sort by pinned, priority and the clock leaves rows equal on all
 three where it found them — which is the internal sequence the server breaks ties with.
 
@@ -728,10 +728,13 @@ The answer still arrives and still renders, because the server moves `updated_at
 arrives in the order already on screen, so that render moves nothing: one press, one
 rearrangement.
 
-**The view follows the row and the row says so.** A pinned task can travel a long way, and a
-scroll position that stays put while the rows shift under it leaves somebody looking at a
-different task than the one they were reading. The view goes to where it landed, and it flashes
-once on arrival, because a row that has moved looks like every other row when it gets there.
+**The screen holds its order for three seconds after a pin.** The row shows its pin at once and
+stays where it is; another pin or unpin starts the wait again, and then the list settles. Moving
+it on the press put a different row under the finger for the next press, so pinning three in a
+row meant hunting for each. When it settles, each row that moved flashes once where it landed,
+because a row that has moved looks like every other row. The view does not follow it: it settles
+seconds after the press, and scrolling then would take somebody away from wherever they have got
+to since. A row an unpin takes out of the pinned view stays until the list settles.
 
 ## The last answer stays until the next one arrives
 
