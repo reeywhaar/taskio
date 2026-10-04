@@ -257,6 +257,10 @@ so there is no All. Only the open project's groups are drawn, a step in from it:
 view of one project's tags, and every project's groups at once is a rail about the other
 projects. Opening a project lights none of the last one's tags, since they are not its tags.
 
+Every row is a link to the address it shows, so a new tab, a middle click and Copy link work as on
+any link; a plain press stays in the page. The links are not draggable and carry no long-press
+menu, because dragging a row is the rail's own reordering and the browser would take the gesture.
+
 The URL says `?project=` with the slug, and says nothing for the default project — the server's
 own rule, so a link with no project means one place to whoever follows it.
 

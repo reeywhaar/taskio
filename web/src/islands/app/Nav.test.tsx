@@ -61,7 +61,7 @@ const header = (text: string) =>
   );
 
 const lit = () =>
-  [...rail().querySelectorAll("button")]
+  [...rail().querySelectorAll("a")]
     .filter((b) => b.getAttribute("aria-current") === "page")
     .map((b) => b.textContent);
 
@@ -69,15 +69,15 @@ describe("Nav", () => {
   /** The project row is the whole project, which is what All used to be. */
   it("lights the open project when nothing is filtered", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
+    await waitFor(() => screen.getAllByRole("link", { name: "Errands" }));
     expect(lit()).toEqual(["Main"]);
   });
 
   it("opens a project with nothing of the last one's lit", async () => {
     const onGo = vi.fn();
     mount(<Nav location={at(["home"])} onGo={onGo} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Garden" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Garden" })[0]!);
+    await waitFor(() => screen.getAllByRole("link", { name: "Garden" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Garden" })[0]!);
     expect(onGo).toHaveBeenCalledWith({
       route: { name: "list" },
       filters: { project: "garden", tags: [], view: "todo", q: "" },
@@ -87,10 +87,8 @@ describe("Nav", () => {
   /** Only the open project's groups, a step in from it: a group is a view of one project. */
   it("draws the groups under the open project and no other", async () => {
     mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
-    const rows = [...rail().querySelectorAll("button")].map(
-      (b) => b.textContent,
-    );
+    await waitFor(() => screen.getAllByRole("link", { name: "Errands" }));
+    const rows = [...rail().querySelectorAll("a")].map((b) => b.textContent);
     expect(rows.indexOf("Errands")).toBeGreaterThan(rows.indexOf("Garden"));
     expect(rows.indexOf("Main")).toBeLessThan(rows.indexOf("Garden"));
     expect(lit()).toEqual(["Garden"]);
@@ -99,21 +97,41 @@ describe("Nav", () => {
   /** The tags are the state, so a group is lit by what the list is filtered by. */
   it("lights the group whose tags are the ones lit, whatever order they were lit in", async () => {
     mount(<Nav location={at(["proxio", "work"])} onGo={vi.fn()} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Deep work" }));
+    await waitFor(() => screen.getAllByRole("link", { name: "Deep work" }));
     expect(lit()).toEqual(["Deep work"]);
   });
 
   it("lights nothing when the filter is no group", async () => {
     mount(<Nav location={at(["work"])} onGo={vi.fn()} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Deep work" }));
+    await waitFor(() => screen.getAllByRole("link", { name: "Deep work" }));
     expect(lit()).toEqual([]);
+  });
+
+  /** Links, so a new tab or Copy link works on a row; a plain press stays in the page. */
+  it("makes every row a link to its own address", async () => {
+    const onGo = vi.fn();
+    mount(<Nav location={at(["home"])} onGo={onGo} />);
+    await waitFor(() => screen.getAllByRole("link", { name: "Errands" }));
+    expect(
+      screen.getAllByRole("link", { name: "Garden" })[0]!.getAttribute("href"),
+    ).toBe("/?project=garden");
+    const errands = screen.getAllByRole("link", { name: "Errands" })[0]!;
+    expect(errands.getAttribute("href")).toBe("/?tags=and%28errands%29");
+    expect(
+      screen
+        .getAllByRole("link", { name: "Settings" })[0]!
+        .getAttribute("href"),
+    ).toBe("/settings?tags=and%28home%29");
+    // A new tab is the link's own business, and the page stays where it is.
+    fireEvent.click(errands, { metaKey: true });
+    expect(onGo).not.toHaveBeenCalled();
   });
 
   it("pressing a group asks for its tags and nothing else", async () => {
     const onGo = vi.fn();
     mount(<Nav location={at(["home"])} onGo={onGo} />);
-    await waitFor(() => screen.getAllByRole("button", { name: "Errands" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Errands" })[0]!);
+    await waitFor(() => screen.getAllByRole("link", { name: "Errands" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Errands" })[0]!);
     expect(onGo).toHaveBeenCalledWith({
       route: { name: "list" },
       filters: { project: "", tags: ["errands"], view: "todo", q: "" },
@@ -126,9 +144,9 @@ describe("Nav", () => {
    */
   it("lights the whole row, pencil included", async () => {
     mount(<Nav location={at(["work", "proxio"])} onGo={vi.fn()} />);
-    await screen.findAllByRole("button", { name: "Deep work" });
+    await screen.findAllByRole("link", { name: "Deep work" });
     // The rail's own, not the sheet's copy of it.
-    const name = [...rail().querySelectorAll("button")].find(
+    const name = [...rail().querySelectorAll("a")].find(
       (b) => b.textContent === "Deep work",
     )!;
     const row = name.parentElement!;

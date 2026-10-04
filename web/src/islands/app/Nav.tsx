@@ -13,7 +13,7 @@ import {
   type EditingProject,
 } from "@app/islands/app/ProjectDialog";
 import { markURI } from "@app/mark";
-import { title, type Location } from "@app/islands/app/route";
+import { href, title, type Location } from "@app/islands/app/route";
 
 /**
  * The nav rail is the only thing always in the same place: the projects, the open one's groups,
@@ -180,28 +180,29 @@ export function Nav({
     }
   }, [color]);
 
-  const show = (tags: string[]) => {
-    setOpen(false);
-    onGo({
-      ...location,
-      route: { name: "list" },
-      filters: { ...location.filters, tags },
-    });
-  };
+  /** Where a group's row goes: the list with its tags lit. */
+  const toTags = (tags: string[]): Location => ({
+    ...location,
+    route: { name: "list" },
+    filters: { ...location.filters, tags },
+  });
 
   /** The whole of a project. Its tags are its own, so none of the ones lit here carry over. */
-  const showProject = (project: Project) => {
+  const toProject = (project: Project): Location => ({
+    ...location,
+    route: { name: "list" },
+    filters: {
+      ...location.filters,
+      project: project.default ? "" : project.slug,
+      tags: [],
+    },
+  });
+
+  const go = (to: Location) => {
     setOpen(false);
-    onGo({
-      ...location,
-      route: { name: "list" },
-      filters: {
-        ...location.filters,
-        project: project.default ? "" : project.slug,
-        tags: [],
-      },
-    });
+    onGo(to);
   };
+  const showProject = (project: Project) => go(toProject(project));
 
   const items = (
     <ul className="flex flex-1 flex-col gap-0.5 p-2">
@@ -217,6 +218,7 @@ export function Nav({
               opened={isOpen}
               carried={carryingProject === project.id}
               mark={markForProject(project.id)}
+              to={toProject(project)}
               onClick={() => showProject(project)}
               onEdit={() => {
                 setOpen(false);
@@ -241,7 +243,8 @@ export function Nav({
                       lit={litBy(group.tags)}
                       carried={carrying === group.id}
                       mark={markFor(group.id)}
-                      onClick={() => show(group.tags)}
+                      to={toTags(group.tags)}
+                      onClick={() => go(toTags(group.tags))}
                       onEdit={() => {
                         setOpen(false);
                         setEditing(group);
@@ -292,10 +295,8 @@ export function Nav({
         <Item
           label="Settings"
           lit={location.route.name === "settings"}
-          onClick={() => {
-            setOpen(false);
-            onGo({ ...location, route: { name: "settings" } });
-          }}
+          to={{ ...location, route: { name: "settings" } }}
+          onClick={() => go({ ...location, route: { name: "settings" } })}
           bare
         />
       </li>
@@ -470,6 +471,7 @@ function Item({
   opened = false,
   carried = false,
   mark = null,
+  to,
   onClick,
   onEdit,
   onOver,
@@ -485,6 +487,9 @@ function Item({
   opened?: boolean;
   carried?: boolean;
   mark?: "above" | "below" | null;
+  /** Where it goes, as an address: a link, so a new tab and Copy link work as on any link. */
+  to: Location;
+  /** The same place, reached without leaving the page. */
   onClick: () => void;
   onEdit?: () => void;
   onOver?: (id: string | null) => void;
@@ -508,22 +513,36 @@ function Item({
         carried ? "opacity-40" : ""
       } ${lit ? "bg-shade" : "hover:bg-shade"}`}
     >
-      <button
-        type="button"
+      {/* A link, so a new tab is a modifier away, and a plain press stays in the page. Not
+          draggable and no long-press callout: dragging a row is the rail's own reordering, and
+          the browser's link drag or menu would take the gesture from it. */}
+      <a
+        href={href(to)}
+        draggable={false}
         {...{ [`data-${kind}`]: id }}
         onPointerDown={carry.press}
         onPointerMove={carry.move}
         onPointerUp={carry.release}
         onPointerCancel={carry.cancel}
-        onClick={() => {
+        onClick={(e) => {
           if (carry.spent.current) {
+            e.preventDefault();
             carry.spent.current = false;
             return;
           }
+          if (
+            e.metaKey ||
+            e.ctrlKey ||
+            e.shiftKey ||
+            e.altKey ||
+            e.button !== 0
+          )
+            return;
+          e.preventDefault();
           onClick();
         }}
         aria-current={lit ? "page" : undefined}
-        className={`min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none ${
+        className={`block min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none [-webkit-touch-callout:none] ${
           onOver ? "touch-none" : ""
         } ${
           lit
@@ -534,7 +553,7 @@ function Item({
         }`}
       >
         {label}
-      </button>
+      </a>
       {onEdit ? (
         <button
           type="button"
