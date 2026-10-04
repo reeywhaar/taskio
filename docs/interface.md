@@ -195,9 +195,9 @@ bar's and tomorrow will be a filter saying a tag is shut out rather than merely 
 
 The half state is the brand mixed half and half into the ground the pill already had, not the
 brand at half strength and not half the pill painted in it. A split under the words needs one
-ink legible on both halves, and in dark there is none — the ground is near-black and the brand a
-pale indigo. A blend has one ground and one answer: the page's own ink, which measures 8.6:1 on
-the light blend and 5.1 on the dark, where brand-ink would be 2.0 and 3.0.
+ink legible on both halves, and in light there is none — white is lost on the pale ground and the
+page's ink on the orange. A blend has one ground and one answer: the page's own ink, which
+measures 6.3:1 on the light blend and 5.6 on the dark, where white would be 2.0 on the light.
 
 It reports itself as `aria-pressed="mixed"`, which also keeps it out of the pressed-in shadow a
 fully lit pill wears.
@@ -646,7 +646,8 @@ steps.
 The honest number: white on the orange measures 3.22:1, against a 4.5 bar for text this size.
 That is the trade, made knowingly — the brand is the one thing on a screen of greys that says
 which application this is, and these are short labels on controls that are also shaped,
-positioned and lit. Dark does not have the problem: near-black on the pale indigo is 6.32. The
+positioned and lit. Dark wears the same orange with the same white, so the trade is the same
+in both: it was an indigo once, and the two themes read as two applications. The
 class sets no `background-image`, so a raised thing keeps its sheen and the color shades with
 every other surface, and a flat one — the priority capsule — stays flat, which is right for a
 label that is not a control.
