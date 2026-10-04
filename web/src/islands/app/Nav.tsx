@@ -316,6 +316,27 @@ export function Nav({
           Docs
         </a>
       </li>
+      <li className="px-3 pb-2 text-[0.6875rem] text-faint">
+        by{" "}
+        <a
+          className="hover:text-fg"
+          href="https://vyrtsev.com"
+          target="_blank"
+          rel="noopener"
+        >
+          Misha Vyrtsev
+        </a>{" "}
+        (
+        <a
+          className="hover:text-fg"
+          href="https://github.com/reeywhaar/taskio"
+          target="_blank"
+          rel="noopener"
+        >
+          GitHub
+        </a>
+        )
+      </li>
     </ul>
   );
 
