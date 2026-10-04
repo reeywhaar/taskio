@@ -308,9 +308,8 @@ export function TaskRow({
           // column of marks down a list is a column of marks. A finger has no hover to wait
           // for, so under one it is simply there — which is the same rule as the pin above,
           // read from the other end.
-          className={`col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 hover:bg-line sm:col-start-3 ${
-            finished ? "text-brand" : "text-muted hover:text-fg"
-          }`}
+          // Quiet either way: putting a task back is no more the point of the row than ticking it.
+          className="col-start-2 row-start-1 flex h-6 w-8 shrink-0 items-center justify-center rounded-md text-lg text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-line hover:text-fg focus-visible:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100 sm:col-start-3"
         >
           {finished ? <UndoIcon /> : <CheckIcon />}
         </button>
