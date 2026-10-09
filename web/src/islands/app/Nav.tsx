@@ -479,7 +479,7 @@ function Mark({ color }: { color: string }) {
  *
  * The pencil waits for the pointer, because a rail of names with a control on every line is a
  * rail about editing rather than about where you are. Where there is no pointer to wait for it
- * is simply there.
+ * is there, dimmed, as the task dialog's is.
  *
  * A group or a project row also carries: press and move and it goes somewhere else among its
  * own kind. A group cannot be dropped among the projects, nor a project among one's groups.
@@ -582,7 +582,7 @@ function Item({
           aria-label={`Edit ${label}`}
           // No ground of its own: it is standing on the row's now, and a shade over a shade
           // is a second rectangle inside the one this change was about.
-          className="mr-1 rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
+          className="mr-1 rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-60"
         >
           <PencilIcon />
         </button>
