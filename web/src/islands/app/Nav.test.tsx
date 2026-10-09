@@ -21,6 +21,8 @@ vi.mock("@app/api/actions/groups", () => ({
   patchGroupsById: (id: string, body: object) =>
     Promise.resolve({ id, created_at: 2, ...body }),
   putGroupsOrder: () => Promise.resolve({ groups: [] }),
+  getGroupsTodo: () =>
+    Promise.resolve({ todo: { gr_2: { fresh: 2, week: 0, month: 12 } } }),
 }));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
@@ -58,13 +60,18 @@ const rail = () => screen.getAllByRole("navigation")[0]!;
 /** The phone's bar, found by everything it says at once. */
 const header = (text: string) =>
   screen.findByText(
-    (_, el) => el?.tagName === "SPAN" && el.textContent === text,
+    (_, el) =>
+      el?.tagName === "SPAN" && el.textContent === text && !el.closest("nav"),
   );
+
+/** A row's name, without the counts beside it. */
+const named = (a: Element) =>
+  a.querySelector("span")?.textContent ?? a.textContent;
 
 const lit = () =>
   [...rail().querySelectorAll("a")]
     .filter((b) => b.getAttribute("aria-current") === "page")
-    .map((b) => b.textContent);
+    .map(named);
 
 describe("Nav", () => {
   /** The project row is the whole project, which is what All used to be. */
@@ -89,7 +96,7 @@ describe("Nav", () => {
   it("draws the groups under the open project and no other", async () => {
     mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
     await waitFor(() => screen.getAllByRole("link", { name: "Errands" }));
-    const rows = [...rail().querySelectorAll("a")].map((b) => b.textContent);
+    const rows = [...rail().querySelectorAll("a")].map(named);
     expect(rows.indexOf("Errands")).toBeGreaterThan(rows.indexOf("Garden"));
     expect(rows.indexOf("Main")).toBeLessThan(rows.indexOf("Garden"));
     expect(lit()).toEqual(["Garden"]);
@@ -196,6 +203,23 @@ describe("Nav", () => {
 
     mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
     expect(await header("Garden")).toBeDefined();
+  });
+
+  /** The live in the rail's text color, the stale faded, a zero left out, and past nine just "9+". */
+  it("counts what each group holds still to do", async () => {
+    mount(<Nav location={at([])} onGo={vi.fn()} />);
+    const [errands] = await screen.findAllByRole("link", { name: "Errands" });
+    await waitFor(() => expect(errands!.textContent).toBe("Errands29+"));
+    const counts = errands!.querySelector("[title]")!;
+    expect(counts.getAttribute("title")).toBe("2 fresh, 12 over a month old");
+    expect(
+      [...counts.children].map((n) => [n.textContent, n.className]),
+    ).toEqual([
+      ["2", "text-muted"],
+      ["9+", "text-accent/60"],
+    ]);
+    const [deep] = screen.getAllByRole("link", { name: "Deep work" });
+    expect(deep!.textContent).toBe("Deep work");
   });
 
   /** A phone sends the release's click to the row under the finger, not the one carried. */

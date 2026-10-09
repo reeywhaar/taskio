@@ -47,6 +47,37 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"groups": out})
 }
 
+// todoBody is one group's count: poked under a week ago, under a month, and longer.
+type todoBody struct {
+	Fresh int `json:"fresh"`
+	Week  int `json:"week"`
+	Month int `json:"month"`
+}
+
+// groupTodo counts what each group's list holds still to do, split where a row's age changes
+// color. Apart from the groups, so it can be asked again whenever a task changes.
+func (s *Server) groupTodo(w http.ResponseWriter, r *http.Request) {
+	project, ok := s.projectOf(w, r)
+	if !ok {
+		return
+	}
+	list, err := s.store.Groups(r.Context(), principalOf(r).ID, project.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	counts, err := s.store.GroupTodo(r.Context(), principalOf(r).ID, project.ID, list)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	out := make(map[string]todoBody, len(counts))
+	for id, c := range counts {
+		out[id] = todoBody{Fresh: c.Fresh, Week: c.Week, Month: c.Month}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"todo": out})
+}
+
 type groupRequest struct {
 	Name  string   `json:"name"`
 	Tags  []string `json:"tags"`

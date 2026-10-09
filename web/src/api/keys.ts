@@ -14,6 +14,8 @@ export const qk = {
   tagsOf: (project: string) => ["tags", project] as const,
   groups: ["groups"] as const,
   groupsOf: (project: string) => ["groups", project] as const,
+  /** Under tasks rather than groups: it is a count of tasks, and changes whenever one does. */
+  groupTodo: (project: string) => ["tasks", "groups", project] as const,
   sessions: ["sessions"] as const,
   tokens: ["tokens"] as const,
   account: ["account"] as const,

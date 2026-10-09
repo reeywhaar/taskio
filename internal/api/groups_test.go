@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"testing"
+	"time"
 )
 
 func groupNames(body map[string]any) []string {
@@ -273,5 +274,38 @@ func TestAGroupMovesOnlyToALiveProject(t *testing.T) {
 	}
 	if len(groupNames(c.json(c.do("GET", "/api/groups", "")))) != 1 || len(titles(c.list(""))) != 1 {
 		t.Error("a move to where it is moved something")
+	}
+}
+
+// The rail's count: what each group's list holds still to do, split where a row's age changes
+// color, and nothing finished or outside the group.
+func TestAGroupCountsWhatItHoldsToDo(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	at := now
+	st.SetClock(func() time.Time { return at })
+	c := signIn(t, s, st)
+	home := c.json(c.do("POST", "/api/groups", `{"name":"Home","tags":["home"]}`))["id"].(string)
+	tap := c.json(c.do("POST", "/api/groups", `{"name":"Tap","tags":["home","plumbing"]}`))["id"].(string)
+
+	at = now.Add(-40 * 24 * time.Hour)
+	c.task(`{"title":"Fix the tap","tags":["home","plumbing"]}`)
+	at = now.Add(-10 * 24 * time.Hour)
+	c.task(`{"title":"Paint the fence","tags":["home"]}`)
+	at = now.Add(-time.Hour)
+	c.task(`{"title":"Water the plants","tags":["home"]}`)
+	done := c.task(`{"title":"Sweep","tags":["home"]}`)["id"].(string)
+	c.do("POST", "/api/tasks/"+done+"/done", "")
+	c.task(`{"title":"Read","tags":["reading"]}`)
+	at = now
+
+	got := c.json(c.do("GET", "/api/groups/todo", ""))["todo"].(map[string]any)
+	for id, want := range map[string]string{
+		home: `{"fresh":1,"month":1,"week":1}`,
+		tap:  `{"fresh":0,"month":1,"week":0}`,
+	} {
+		if b, _ := json.Marshal(got[id]); string(b) != want {
+			t.Errorf("group %s counts %s, want %s", id, b, want)
+		}
 	}
 }

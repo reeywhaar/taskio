@@ -264,6 +264,15 @@ projects. Opening a project lights none of the last one's tags, since they are n
 Every row is a link to the address it shows, so a new tab, a middle click and Copy link work as on
 any link; a plain press stays in the page. The links are not draggable and carry no long-press
 menu, because dragging a row is the rail's own reordering and the browser would take the gesture.
+A drop opens nothing: the click a phone sends on release lands on whatever row is under the finger,
+so it is swallowed wherever it lands.
+
+**A group says what it holds still to do**, in up to three numbers: poked under a week ago, in
+the rail's text color even on the lit row, then over a week and over a month, in the warning and the alarm a row's age
+wears, faded so they mark without shouting over the name. A zero is left out, and past nine a
+number is "9+" — the rail has room to say "a lot" and not how much. Counted by the server with
+the list's own filter, so the number and the list cannot disagree; the count sits under the tasks'
+query key, so whatever refreshes the list refreshes it too.
 
 The URL says `?project=` with the slug, and says nothing for the default project — the server's
 own rule, so a link with no project means one place to whoever follows it.

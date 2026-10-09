@@ -99,6 +99,49 @@ func (s *Store) Groups(ctx context.Context, principalID, projectID string) ([]*G
 	return out, tags.Err()
 }
 
+// The two marks a row's age is colored by, which a group's count is split at.
+const (
+	staleWeek  = 7 * 24 * time.Hour
+	staleMonth = 30 * 24 * time.Hour
+)
+
+// Todo is how many of a group's tasks are still to do, by how long since each was last poked:
+// under a week, under a month, and longer.
+type Todo struct {
+	Fresh, Week, Month int
+}
+
+// GroupTodo counts each group's live tasks as its list would show them, keyed by group id.
+func (s *Store) GroupTodo(ctx context.Context, principalID, projectID string, groups []*Group) (map[string]Todo, error) {
+	now := s.Now()
+	week, month := now.Add(-staleWeek).Unix(), now.Add(-staleMonth).Unix()
+	out := make(map[string]Todo, len(groups))
+	for _, g := range groups {
+		leaves := make([]*filter.Node, 0, len(g.Tags))
+		for _, slug := range g.Tags {
+			leaves = append(leaves, &filter.Node{Op: filter.Leaf, Slug: slug})
+		}
+		where, args := scopeClause(principalID, projectID, nil)
+		if f := filter.AndAll(leaves...); f != nil {
+			sql, fargs := filter.Compile(f, "tasks.seq")
+			where += " AND " + sql
+			args = append(args, fargs...)
+		}
+		var t Todo
+		err := s.reader.QueryRowContext(ctx,
+			`SELECT coalesce(sum(poked_at > ?), 0),
+			        coalesce(sum(poked_at <= ? AND poked_at > ?), 0),
+			        coalesce(sum(poked_at <= ?), 0)
+			   FROM tasks WHERE `+where+` AND tasks.done_at IS NULL`,
+			append([]any{week, week, month, month}, args...)...).Scan(&t.Fresh, &t.Week, &t.Month)
+		if err != nil {
+			return nil, fmt.Errorf("count group tasks: %w", err)
+		}
+		out[g.ID] = t
+	}
+	return out, nil
+}
+
 // CreateGroup writes one, with its tags, in one transaction.
 func (s *Store) CreateGroup(ctx context.Context, principalID, projectID, name string, tags []string, color string) (*Group, error) {
 	name, slugs, color, err := validGroup(name, tags, color)

@@ -1,9 +1,13 @@
 import { Fragment, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getGroups, putGroupsOrder } from "@app/api/actions/groups";
+import {
+  getGroups,
+  getGroupsTodo,
+  putGroupsOrder,
+} from "@app/api/actions/groups";
 import { getProjects, putProjectsOrder } from "@app/api/actions/projects";
-import type { Group, Project } from "@app/api/types";
+import type { Group, GroupTodo, Project } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { BurgerIcon, CrossIcon, PencilIcon } from "@app/components/icons/Icon";
 import { useCarry } from "@app/islands/app/carry";
@@ -44,6 +48,10 @@ export function Nav({
   const groups = useQuery({
     queryKey: qk.groupsOf(here),
     queryFn: () => getGroups(here),
+  });
+  const todo = useQuery({
+    queryKey: qk.groupTodo(here),
+    queryFn: () => getGroupsTodo(here),
   });
   const listedProjects = projects.data?.projects ?? [];
   /** The project on screen: named in the URL, or the default when it names none. */
@@ -240,6 +248,7 @@ export function Nav({
                       key={group.id}
                       id={group.id}
                       label={group.name}
+                      todo={todo.data?.todo[group.id]}
                       lit={litBy(group.tags)}
                       carried={carrying === group.id}
                       mark={markFor(group.id)}
@@ -488,6 +497,7 @@ function Item({
   id,
   kind = "group",
   label,
+  todo,
   lit,
   opened = false,
   carried = false,
@@ -503,6 +513,8 @@ function Item({
   id?: string;
   kind?: "group" | "project";
   label: string;
+  /** What a group's list holds still to do. */
+  todo?: GroupTodo;
   lit: boolean;
   /** The project on screen, which reads as the open one even while a group inside it is lit. */
   opened?: boolean;
@@ -563,9 +575,9 @@ function Item({
           onClick();
         }}
         aria-current={lit ? "page" : undefined}
-        className={`block min-w-0 flex-1 truncate rounded-md px-3 py-2 text-left text-sm select-none [-webkit-touch-callout:none] ${
+        className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-left text-sm select-none [-webkit-touch-callout:none] ${
           onOver ? "touch-none" : ""
-        } ${
+        } ${onEdit ? "pointer-fine:group-hover/row:pr-9" : ""} ${
           lit
             ? "font-medium text-brand"
             : opened
@@ -573,7 +585,15 @@ function Item({
               : "text-muted group-hover/row:text-fg"
         }`}
       >
-        {label}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {/* At the row's end, where the pencil comes up on hover and takes their place: the
+            pencil kept its room while hidden, and left the numbers short of the edge. */}
+        {todo ? (
+          <Todo
+            counts={todo}
+            className="pointer-fine:group-hover/row:invisible pointer-fine:group-has-[button:focus-visible]/row:invisible"
+          />
+        ) : null}
       </a>
       {onEdit ? (
         <button
@@ -582,7 +602,7 @@ function Item({
           aria-label={`Edit ${label}`}
           // No ground of its own: it is standing on the row's now, and a shade over a shade
           // is a second rectangle inside the one this change was about.
-          className="mr-1 rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-60"
+          className="rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:mr-1 pointer-coarse:opacity-60 pointer-fine:absolute pointer-fine:top-1/2 pointer-fine:right-1 pointer-fine:-translate-y-1/2"
         >
           <PencilIcon />
         </button>
@@ -600,4 +620,34 @@ function Item({
     </div>
   );
   return bare ? row : <li>{row}</li>;
+}
+
+/** Past nine it says "a lot", which is all a rail has room to say. */
+const capped = (n: number) => (n > 9 ? "9+" : String(n));
+
+/**
+ * A group's tasks still to do. The live ones in the rail's text color, whatever the name wears;
+ * the stale ones in the warning and the alarm a row's age wears, faded, so they mark without
+ * shouting over the name. A zero is left out rather than drawn.
+ */
+function Todo({ counts, className }: { counts: GroupTodo; className: string }) {
+  const parts = [
+    { n: counts.fresh, tone: "text-muted", says: "fresh" },
+    { n: counts.week, tone: "text-warn/60", says: "over a week old" },
+    { n: counts.month, tone: "text-accent/60", says: "over a month old" },
+  ].filter((part) => part.n > 0);
+  if (parts.length === 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      title={parts.map((part) => `${part.n} ${part.says}`).join(", ")}
+      className={`flex shrink-0 gap-1 text-[0.6875rem] font-medium tabular-nums ${className}`}
+    >
+      {parts.map((part) => (
+        <span key={part.says} className={part.tone}>
+          {capped(part.n)}
+        </span>
+      ))}
+    </span>
+  );
 }

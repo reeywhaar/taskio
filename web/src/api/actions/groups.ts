@@ -1,9 +1,15 @@
 import { query, request } from "@app/api/transport";
-import type { Group } from "@app/api/types";
+import type { Group, GroupTodo } from "@app/api/types";
 
 /** A project's groups, by slug; empty is the default project. */
 export const getGroups = (project: string) =>
   request<{ groups: Group[] }>(`/api/groups${query({ project })}`);
+
+/** What each of a project's groups holds still to do, by group id. */
+export const getGroupsTodo = (project: string) =>
+  request<{ todo: Record<string, GroupTodo> }>(
+    `/api/groups/todo${query({ project })}`,
+  );
 
 export const postGroups = (
   project: string,

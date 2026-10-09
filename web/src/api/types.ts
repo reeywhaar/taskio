@@ -87,6 +87,10 @@ export type Group = {
   created_at: number;
 };
 
+/** A group's tasks still to do, by how long since each was poked: under a week, under a
+ *  month, and longer. */
+export type GroupTodo = { fresh: number; week: number; month: number };
+
 export type Me = {
   id: string;
   username: string;
