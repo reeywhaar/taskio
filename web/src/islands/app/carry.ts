@@ -4,6 +4,28 @@ import { useRef, type PointerEvent as Press } from "react";
 const SLOP = 6;
 
 /**
+ * The click a drag's release sets off, wherever it lands. A phone sent it to the row under the
+ * finger rather than the one carried, and that row's own flag knew nothing of the drag, so
+ * dropping a group opened the one it was dropped on.
+ */
+function swallowClick() {
+  // A release that sets off no click must not take the next real one: gone after a moment, or
+  // at the next press.
+  const done = () => {
+    window.removeEventListener("click", stop, { capture: true });
+    window.removeEventListener("pointerdown", done, { capture: true });
+  };
+  window.addEventListener("click", stop, { capture: true, once: true });
+  window.addEventListener("pointerdown", done, { capture: true, once: true });
+  window.setTimeout(done, 400);
+}
+
+function stop(e: MouseEvent) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+/**
  * Press, carry, drop — the gesture the tag cloud and the rail both have.
  *
  * Pointer events rather than mouse or touch ones, so a finger, a pen and a mouse all reach it
@@ -42,6 +64,7 @@ export function useCarry({
 
   const end = (dropped: boolean) => {
     from.current = null;
+    if (moving.current) swallowClick();
     if (moving.current && dropped) onDrop();
     moving.current = false;
   };

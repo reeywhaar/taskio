@@ -20,6 +20,7 @@ vi.mock("@app/api/actions/groups", () => ({
     }),
   patchGroupsById: (id: string, body: object) =>
     Promise.resolve({ id, created_at: 2, ...body }),
+  putGroupsOrder: () => Promise.resolve({ groups: [] }),
 }));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
@@ -195,6 +196,29 @@ describe("Nav", () => {
 
     mount(<Nav location={at([], "garden")} onGo={vi.fn()} />);
     expect(await header("Garden")).toBeDefined();
+  });
+
+  /** A phone sends the release's click to the row under the finger, not the one carried. */
+  it("opens nothing when a group is dropped on another", async () => {
+    Element.prototype.setPointerCapture = vi.fn();
+    const onGo = vi.fn();
+    mount(<Nav location={at([])} onGo={onGo} />);
+    const [carried] = await screen.findAllByRole("link", { name: "Deep work" });
+    const [under] = screen.getAllByRole("link", { name: "Errands" });
+    const was = document.elementFromPoint;
+    document.elementFromPoint = () => under!;
+
+    fireEvent.pointerDown(carried!, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(carried!, { clientX: 0, clientY: 40, pointerId: 1 });
+    fireEvent.pointerUp(carried!, { pointerId: 1 });
+    fireEvent.click(under!);
+    document.elementFromPoint = was;
+
+    expect(onGo).not.toHaveBeenCalled();
+    // And the next press is a press again.
+    fireEvent.pointerDown(under!, { clientX: 0, clientY: 0, pointerId: 2 });
+    fireEvent.click(under!);
+    expect(onGo).toHaveBeenCalledTimes(1);
   });
 
   it("gives projects a pencil, and has no All", async () => {
