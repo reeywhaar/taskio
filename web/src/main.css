@@ -342,6 +342,11 @@ textarea {
  *
  * Only the tags a description can contain.
  */
+/* A pasted link is one word as long as the link, and pushed the dialog out sideways. Broken
+   anywhere, and only where nothing else fits. */
+.prose {
+  overflow-wrap: anywhere;
+}
 /* A rendered block sits in a wrapper that takes no part in layout, so the gap goes on what is
    inside it. */
 .prose > * + :not(.block),
