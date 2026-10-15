@@ -1013,6 +1013,16 @@ describe("comments", () => {
     await waitFor(() => expect(calls).toEqual(["comment", "done"]));
   });
 
+  /** It closes, and a comment left in the box went with it. */
+  it("saves with the comment, the task first", async () => {
+    open();
+    await screen.findByPlaceholderText(/^Comment\./);
+    fireEvent.change(box(), { target: { value: "Ordered the part." } });
+    fireEvent.click(screen.getByRole("button", { name: "Save with comment" }));
+    await waitFor(() => expect(calls).toEqual(["patch", "comment"]));
+    expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Ordered the part.");
+  });
+
   it("deletes with the comment, the comment first", async () => {
     open();
     await screen.findByPlaceholderText(/^Comment\./);

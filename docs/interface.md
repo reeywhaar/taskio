@@ -51,6 +51,8 @@ The box under them has a Comment button, and while it has words in it, Mark done
 "with comment" and post it first — GitHub's Close with comment. Why a task is done is the thing
 most worth writing on it, and the moment it is done is when it is known. A button that changes its
 word while something is typed says what it will do; a chevron menu of the same two would hide it.
+Save says it too, and posts it after the task is written: it closes the dialog, and a comment
+left in the box went with it.
 On a phone the words are a speech bubble instead, since the three buttons with them took two
 lines; the button's label still says it in full.
 

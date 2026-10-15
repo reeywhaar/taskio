@@ -205,8 +205,13 @@ export function TaskDialog({
         : {}),
     });
 
+  // Takes the comment being written along, as Mark done and Delete do: it closes, and a comment
+  // left in the box went with it.
   const save = useMutation({
-    mutationFn: write,
+    mutationFn: async () => {
+      await write();
+      await postComment();
+    },
     onSuccess: () => {
       invalidate();
       onClose();
@@ -411,10 +416,13 @@ export function TaskDialog({
           </Button>
           <Button
             variant="solid"
+            aria-label={said ? "Save with comment" : undefined}
+            title={said ? "Save with comment" : undefined}
             onClick={() => save.mutate()}
             disabled={save.isPending}
           >
             Save
+            <WithComment said={said} />
           </Button>
         </>
       }
