@@ -186,7 +186,8 @@ sends nothing, for as long as that lasts.
 
 The case against: an agent receiving copies only when somebody adds a task cannot tell a broken
 taskio from a quiet one. That is answered by `/healthz`, which says whether this instance is up,
-continuously, to anything that asks. A periodic archive would be a second liveness signal
+continuously, to anything that asks. (It also names the frontend build it serves, which is how an
+open tab learns it is older than the server.) A periodic archive would be a second liveness signal
 carrying one bit in a few hundred megabytes, on a schedule too coarse to alert from. *Is it
 running* is monitoring; *is there a copy of what it holds* is answered by the copy being current.
 

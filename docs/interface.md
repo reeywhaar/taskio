@@ -703,6 +703,18 @@ comes first, because a tab strip cuts from the end.
 It is set by the rail, beside the tab's icon: the location has the project's slug and the tags,
 and the rail has the names they stand for.
 
+## An open tab says when it is older than the server
+
+A tab left open across a deploy keeps running the code it was loaded with, against a server
+that may now mean something else. The server names the app's build — a hash of its shell, which
+changes whenever the bundle does, since every chunk is named by its contents — writes it into the
+shell it serves, and says it again from `/healthz`. The page compares the two when it is looked at
+again, when the live stream reconnects (a deploy restarts the server, so that is when a new build
+turns up), and every quarter of an hour; and when they differ, a brand bar above the search says
+"Update available. Tap to reload". The bundle rather than the binary's version, because a server
+change the page does not care about is no reason to reload, and the version is whatever the
+build was stamped with, which may be nothing.
+
 ## A section waits as a shape, not as its own words with gaps in
 
 "Signed in as" followed by nothing is a sentence that says something untrue for as long as it

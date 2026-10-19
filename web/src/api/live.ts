@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { checkBuild } from "@app/api/build";
 import { qk } from "@app/api/keys";
 
 /**
@@ -26,7 +27,11 @@ export function useLive() {
     source.addEventListener("changed", refresh);
     // A reconnection means the stream was down, and anything that happened while it was down
     // was not delivered. Asking once on the way back is cheaper than tracking what was missed.
-    source.addEventListener("open", refresh);
+    // A deploy restarts the server, so the way back is also when a new build turns up.
+    source.addEventListener("open", () => {
+      refresh();
+      void checkBuild();
+    });
 
     return () => source.close();
   }, [client]);

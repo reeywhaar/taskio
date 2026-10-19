@@ -290,7 +290,8 @@ func elapsed(r *http.Request) time.Duration {
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": app.Version})
+	// build is the frontend's, for an open page to compare with its own and offer a reload.
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": app.Version, "build": s.spa.Build()})
 }
 
 // guard is the CSRF defence: SameSite on the cookie, Sec-Fetch-Site, and a declared content

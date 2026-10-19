@@ -68,6 +68,37 @@ func TestHealthzAnswers(t *testing.T) {
 	}
 }
 
+// An open page compares the build in its shell with the one the server is on, and offers a
+// reload when they differ.
+func TestTheShellCarriesTheBuildHealthzReports(t *testing.T) {
+	shell := func(entry string) fstest.MapFS {
+		return fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte(
+			`<!doctype html><html><head><title>taskio</title></head><body><script src="/assets/` + entry + `"></script></body></html>`)}}
+	}
+	build := func(s *Server) string {
+		var got map[string]any
+		json.NewDecoder(do(t, s, "GET", "/healthz", "", nil).Body).Decode(&got)
+		return got["build"].(string)
+	}
+
+	s, st := newServerStore(t, shell("main-a1.js"))
+	b := build(s)
+	if len(b) != 12 {
+		t.Fatalf("build = %q", b)
+	}
+	body, _ := io.ReadAll(signIn(t, s, st).do("GET", "/", "").Body)
+	if !strings.Contains(string(body), `<head><meta name="taskio-build" content="`+b+`">`) {
+		t.Errorf("the shell = %s, want build %s in its head", body, b)
+	}
+
+	if other := build(newServer(t, shell("main-b2.js"))); other == b {
+		t.Error("another bundle has the same build")
+	}
+	if none := build(newServer(t, nil)); none != "" {
+		t.Errorf("no bundle has build %q", none)
+	}
+}
+
 // Falling through to the SPA would reach a fetch as HTML it cannot parse.
 func TestAnUnknownAPIPathIsJSONAndNotTheShell(t *testing.T) {
 	s := newServer(t, fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte(`<div id="root">`)}})

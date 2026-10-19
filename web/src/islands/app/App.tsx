@@ -16,6 +16,7 @@ import {
 import type { Tag, Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
+import { useBehind } from "@app/api/build";
 import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
 import { Segmented } from "@app/components/Segmented";
@@ -102,6 +103,7 @@ function List({
   onClose: (fallback: Location) => void;
 }) {
   const client = useQueryClient();
+  const behind = useBehind();
   const { filters, route } = location;
   const { view } = filters;
   const [selection, setSelection] = useState<string[] | null>(null);
@@ -340,6 +342,17 @@ function List({
         at the edge of the window where a scrollbar belongs.
       */}
       <div className="mx-auto w-full max-w-3xl shrink-0 px-3 py-3 md:px-6 md:py-4">
+        {/* Above everything it might be wrong about: the page is older than the server, and
+            what it draws may not be what the server now means. */}
+        {behind ? (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mb-3 w-full rounded-md bg-brand px-3 py-2 text-left text-sm text-brand-ink"
+          >
+            Update available. Tap to reload
+          </button>
+        ) : null}
         {/* Search, status, tags, list: it narrows from the widest instrument to the narrowest,
             so reading down the screen is reading the query that produced what is under it. */}
         {/* The icon says what the box is for without spending the placeholder on it, and stays

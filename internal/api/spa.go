@@ -14,6 +14,7 @@ import (
 type SPA struct {
 	files  map[string]*asset
 	shells []shell
+	build  string
 }
 
 type asset struct {
@@ -94,7 +95,33 @@ func NewSPA(fsys fs.FS) (*SPA, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.stamp()
 	return s, nil
+}
+
+// stamp names the app's build and writes the name into its shell, so a page can tell that the
+// server has moved on without it. The shell's own bytes before the stamp: they change whenever
+// the bundle does, since Vite names every chunk by its contents.
+func (s *SPA) stamp() {
+	index := s.files["/index.html"]
+	if index == nil {
+		return
+	}
+	sum := sha256.Sum256(index.body)
+	s.build = hex.EncodeToString(sum[:6])
+	body := strings.Replace(string(index.body), "<head>",
+		`<head><meta name="taskio-build" content="`+s.build+`">`, 1)
+	stamped := sha256.Sum256([]byte(body))
+	index.body = []byte(body)
+	index.etag = `"` + hex.EncodeToString(stamped[:16]) + `"`
+}
+
+// Build is the app bundle being served, empty when there is none.
+func (s *SPA) Build() string {
+	if s == nil {
+		return ""
+	}
+	return s.build
 }
 
 // shellFor is the shell a navigation to p gets, and nil when a file sits at p.
