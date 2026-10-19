@@ -613,3 +613,21 @@ func TestTheLiveListRunsByTheLastPoke(t *testing.T) {
 		t.Errorf("an old cursor = %s, want 400", resp.Status)
 	}
 }
+
+// How long a pin holds is the account's to say: eight hours to begin with, one of a few lengths,
+// or until it is taken off.
+func TestAnAccountSaysHowLongItsPinsHold(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	if got := c.json(c.do("GET", "/api/account", ""))["pin_hours"]; got != float64(8) {
+		t.Errorf("pin_hours = %v, want 8 to begin with", got)
+	}
+	resp := c.do("PATCH", "/api/account", `{"pin_hours":0}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("patch = %s", resp.Status)
+	}
+	if got := c.json(resp)["pin_hours"]; got != float64(0) {
+		t.Errorf("pin_hours = %v after asking for 0", got)
+	}
+	refusal(t, c.do("PATCH", "/api/account", `{"pin_hours":5}`), http.StatusBadRequest)
+}

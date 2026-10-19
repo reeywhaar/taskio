@@ -153,9 +153,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, r
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, poked_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, color, unix(now), unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, pinned_at, color, created_at, updated_at, poked_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, pinnedAt(in.Pinned, now), color, unix(now), unix(now), unix(now))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -281,10 +281,13 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach,
 	moved := false
 	now := s.Now()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?, color = ?, updated_at = ?
+		// A pin's clock starts when it is put on, and a save that leaves it on leaves its clock.
+		`UPDATE tasks SET title = ?, description = ?, priority = ?, pinned = ?,
+		        pinned_at = CASE WHEN ? = 0 THEN NULL WHEN pinned = 1 THEN pinned_at ELSE ? END,
+		        color = ?, updated_at = ?
 		  WHERE seq = ? AND (title <> ? OR description <> ? OR priority <> ? OR pinned <> ?
 		                     OR color <> ?)`,
-		title, description, priority, pinned, color, unix(now),
+		title, description, priority, pinned, pinned, unix(now), color, unix(now),
 		task.Seq, title, description, priority, pinned, color)
 	if err != nil {
 		return nil, fmt.Errorf("update task: %w", err)

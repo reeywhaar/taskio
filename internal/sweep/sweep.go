@@ -14,8 +14,10 @@ import (
 
 // How often each pass runs.
 const (
-	Sessions = 10 * time.Minute
-	Hourly   = time.Hour
+	// Often is for what somebody notices the lateness of: a session that should have ended,
+	// a pin that should have come off.
+	Often  = 10 * time.Minute
+	Hourly = time.Hour
 )
 
 // Run sweeps until ctx is done.
@@ -24,8 +26,8 @@ const (
 // has no owner — lose the goroutine between finishing one pass and queueing the next and the
 // work stops with nothing to notice.
 func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
-	sessions := time.NewTicker(Sessions)
-	defer sessions.Stop()
+	often := time.NewTicker(Often)
+	defer often.Stop()
 	hourly := time.NewTicker(Hourly)
 	defer hourly.Stop()
 
@@ -34,8 +36,8 @@ func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-sessions.C:
-			sweepSessions(ctx, st, log)
+		case <-often.C:
+			sweepOften(ctx, st, log)
 		case <-hourly.C:
 			Once(ctx, st, log)
 		}
@@ -47,7 +49,7 @@ func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
 // Tasks go before assets: their rows take the join rows with them by cascade, so the assets
 // they orphan are collected on the next pass rather than raced for in this one.
 func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
-	sweepSessions(ctx, st, log)
+	sweepOften(ctx, st, log)
 	run(ctx, log, "invites", st.SweepInvites)
 	run(ctx, log, "recovery attempts", st.SweepRecovery)
 	run(ctx, log, "recovery links", st.SweepRecoveryLinks)
@@ -55,8 +57,9 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 	run(ctx, log, "orphaned assets", st.SweepOrphanAssets)
 }
 
-func sweepSessions(ctx context.Context, st *store.Store, log *slog.Logger) {
+func sweepOften(ctx context.Context, st *store.Store, log *slog.Logger) {
 	run(ctx, log, "expired sessions", st.SweepSessions)
+	run(ctx, log, "expired pins", st.UnpinExpired)
 }
 
 func run(ctx context.Context, log *slog.Logger, what string, f func(context.Context) (int64, error)) {

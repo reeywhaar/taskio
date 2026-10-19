@@ -384,6 +384,12 @@ Both order the live list, pinned first and then by priority, and they stay separ
 they answer different questions: a pin is where somebody put a task and a priority is how much
 it matters. Collapsed into one number, unpinning would mean lowering a score.
 
+A pin lapses after the hours the account sets under Settings → Pins, eight to begin with, or
+never: a pin says "this, today", and one left from yesterday is a task still at the top after it
+stopped being the one. The clock runs from when it went on — a save that leaves it on does not
+start it again — and a sweep every ten minutes takes off what is due, without marking the task
+edited.
+
 The pin decides the band and the number decides the order inside it, so a pinned run is itself
 sorted rather than a heap that happens to float. Past both, the last poke: a task somebody has just said
 still stands comes above one nobody has looked at, whenever each was written.

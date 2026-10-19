@@ -2,8 +2,23 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Token } from "@app/api/types";
-import { Tokens } from "@app/islands/app/Settings";
+import { Pins, Tokens } from "@app/islands/app/Settings";
 import { mount } from "@app/test/harness";
+
+const account = {
+  recovery_email: "",
+  relay_configured: false,
+  assets: { used: 0, quota: 1, max: 1 },
+  pin_hours: 8,
+};
+const setAccount = vi.fn((body: { pin_hours: number }) =>
+  Promise.resolve({ ...account, ...body }),
+);
+vi.mock("@app/api/actions/account", () => ({
+  getAccount: () => Promise.resolve(account),
+  patchAccount: (body: { pin_hours: number }) => setAccount(body),
+  deleteAccountRecovery: vi.fn(),
+}));
 
 const revoke = vi.fn();
 const rotate = vi.fn();
@@ -139,5 +154,26 @@ describe("rotating a token", () => {
     await waitFor(() =>
       expect(screen.queryByText("tk_newsecretvalue")).toBeNull(),
     );
+  });
+});
+
+describe("pins", () => {
+  it("says how long a pin holds, and changes it as it is chosen", async () => {
+    mount(<Pins />);
+    const select = (await screen.findByRole("combobox")) as HTMLSelectElement;
+    expect(select.value).toBe("8");
+    expect([...select.options].map((o) => o.textContent)).toEqual([
+      "Never",
+      "2 hours",
+      "4 hours",
+      "8 hours",
+      "12 hours",
+      "24 hours",
+    ]);
+    fireEvent.change(select, { target: { value: "0" } });
+    await waitFor(() =>
+      expect(setAccount).toHaveBeenCalledWith({ pin_hours: 0 }),
+    );
+    await waitFor(() => expect(select.value).toBe("0"));
   });
 });

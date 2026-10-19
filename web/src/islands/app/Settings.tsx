@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ago } from "@app/ago";
-import { deleteAccountRecovery, getAccount } from "@app/api/actions/account";
+import {
+  deleteAccountRecovery,
+  getAccount,
+  patchAccount,
+} from "@app/api/actions/account";
 import { getAuthMe, postAuthLogout } from "@app/api/actions/auth";
 import {
   deleteSessions,
@@ -22,6 +26,9 @@ import { Button } from "@app/components/Button";
 import { Copyable } from "@app/components/Copyable";
 import { Dialog } from "@app/components/Dialog";
 import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
+import { Field } from "@app/components/Field";
+import { Select } from "@app/components/Select";
+import { ApiError } from "@app/api/transport";
 import { PasswordDialog } from "@app/islands/app/PasswordDialog";
 import { RecoveryDialog } from "@app/islands/app/RecoveryDialog";
 import { TokenDialog } from "@app/islands/app/TokenDialog";
@@ -71,6 +78,7 @@ export function Settings() {
 
         <Password />
         <Recovery />
+        <Pins />
         <Storage />
         <Tokens />
         <Sessions />
@@ -222,6 +230,57 @@ function Storage() {
           style={{ width: `${Math.max(2, share * 100)}%` }}
         />
       </div>
+    </Panel>
+  );
+}
+
+/** The lengths a pin may hold for, as the server allows them; 0 is until it is taken off. */
+const PIN_HOURS = [0, 2, 4, 8, 12, 24];
+
+/**
+ * How long a pin holds. A pin says "this, today", and one left from yesterday is a task at the
+ * top of the list after it stopped being the one — but what a day is, is the account's to say.
+ * Saved as it is chosen: there is nothing else in the panel to confirm along with it.
+ */
+export function Pins() {
+  const client = useQueryClient();
+  const account = useQuery({ queryKey: qk.account, queryFn: getAccount });
+  const set = useMutation({
+    mutationFn: (hours: number) => patchAccount({ pin_hours: hours }),
+    onSuccess: (next) => client.setQueryData(qk.account, next),
+  });
+  return (
+    <Panel title="Pins" state={account} dummy={<Dummy className="h-11 w-56" />}>
+      <Field
+        label="Unpin after"
+        hint={
+          <p>
+            Counted from when the pin went on. A task pinned for today drops
+            back into its place tomorrow, rather than staying at the top after
+            it stopped being the one.
+          </p>
+        }
+      >
+        <Select
+          className="w-56"
+          value={account.data?.pin_hours ?? 8}
+          disabled={set.isPending}
+          onChange={(e) => set.mutate(Number(e.target.value))}
+        >
+          {PIN_HOURS.map((hours) => (
+            <option key={hours} value={hours}>
+              {hours === 0 ? "Never" : `${hours} hours`}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {set.isError ? (
+        <p className="mt-2 text-sm text-accent">
+          {set.error instanceof ApiError
+            ? set.error.message
+            : "Something went wrong."}
+        </p>
+      ) : null}
     </Panel>
   );
 }

@@ -324,6 +324,10 @@ and a priority is how much it matters, so lowering a number does not unpin anyth
 Pinning decides the band and priority decides the order inside it, so a pinned list is itself
 sorted rather than a heap that happens to float.
 
+**A pin lapses.** It comes off by itself after the hours the account set in Settings — 8 unless
+changed; 2, 4, 12 or 24; or never — counted from when it went on. So pin what is for now, and set
+a priority for what matters later.
+
 **Pinning is a property, not a status.** A pinned task is still a todo and still comes back from
 `status=todo`; `?pinned=true` narrows to them, and the two compose — `?pinned=true&status=done`
 is the pinned things already finished.

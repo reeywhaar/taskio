@@ -63,9 +63,9 @@ func (s *Store) BulkPinned(ctx context.Context, principalID string, reach Reach,
 		for _, task := range tasks {
 			seq := task.Seq
 			if _, err := tx.ExecContext(ctx,
-				`UPDATE tasks SET pinned = ?, updated_at = ?
+				`UPDATE tasks SET pinned = ?, pinned_at = ?, updated_at = ?
 				  WHERE seq = ? AND pinned <> ?`,
-				pinned, unix(now), seq, pinned); err != nil {
+				pinned, pinnedAt(pinned, now), unix(now), seq, pinned); err != nil {
 				return err
 			}
 		}

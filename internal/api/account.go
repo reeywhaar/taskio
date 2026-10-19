@@ -31,9 +31,15 @@ func (s *Server) getAccount(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
+	pins, err := s.store.PinHoursOf(r.Context(), p.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"recovery_email":   email,
 		"relay_configured": relay.Configured(),
+		"pin_hours":        pins,
 		// The numbers come from the instance's own settings rather than a constant compiled
 		// into the bundle: an interface quoting a limit the server does not enforce is worse
 		// than one saying nothing.
@@ -43,6 +49,25 @@ func (s *Server) getAccount(w http.ResponseWriter, r *http.Request) {
 			"max":   limits.AssetMaxBytes,
 		},
 	})
+}
+
+type patchAccountRequest struct {
+	PinHours *int `json:"pin_hours"`
+}
+
+// patchAccount changes the account's own preferences. One so far: how long a pin holds.
+func (s *Server) patchAccount(w http.ResponseWriter, r *http.Request) {
+	var req patchAccountRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.PinHours != nil {
+		if err := s.store.SetPinHours(r.Context(), principalOf(r).ID, *req.PinHours); err != nil {
+			s.fail(w, r, err)
+			return
+		}
+	}
+	s.getAccount(w, r)
 }
 
 type changePasswordRequest struct {

@@ -187,6 +187,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handle("DELETE /api/tokens/{id}", s.requireSession(s.revokeToken))
 
 	s.handle("GET /api/account", s.requireSession(s.getAccount))
+	s.handle("PATCH /api/account", s.requireSession(s.patchAccount))
 	s.handle("POST /api/account/password", s.requireSession(s.changePassword))
 	s.handle("POST /api/account/recovery", s.requireSession(s.startRecovery))
 	s.handle("POST /api/account/recovery/confirm", s.requireSession(s.confirmRecovery))

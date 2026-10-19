@@ -26,6 +26,40 @@ const (
 	AssetGrace = 24 * time.Hour
 )
 
+// PinHours are the lengths an account's pins may hold for, in hours, and 0 for until each is
+// taken off. A pin says "this, today", and one left from yesterday is a task still at the top
+// of the list after it stopped being the one — but what a day is, is the account's to say.
+var PinHours = []int{0, 2, 4, 8, 12, 24}
+
+// pinnedAt is what a pin's clock reads when it is put on or taken off.
+func pinnedAt(pinned bool, now time.Time) any {
+	if !pinned {
+		return nil
+	}
+	return unix(now)
+}
+
+// UnpinExpired takes off every pin that has held for as long as its account's pins hold.
+//
+// Not an edit: updated_at and the poke stay as they were, since nobody touched the task.
+func (s *Store) UnpinExpired(ctx context.Context) (int64, error) {
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tasks SET pinned = 0, pinned_at = NULL
+		  WHERE pinned = 1 AND EXISTS (
+		        SELECT 1 FROM principals
+		         WHERE principals.id = tasks.principal_id AND principals.pin_hours > 0
+		           AND tasks.pinned_at <= ? - principals.pin_hours * 3600)`,
+		unix(s.Now()))
+	if err != nil {
+		return 0, fmt.Errorf("unpin expired: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		s.changedAll()
+	}
+	return n, nil
+}
+
 // SweepDoneTasks deletes what was finished long enough ago.
 //
 // Their tags, assets and mentions go by cascade, which is what leaves the orphans for the next

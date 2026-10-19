@@ -216,3 +216,76 @@ func TestTheSweepCollectsADeletedTaskTheSameWay(t *testing.T) {
 		t.Errorf("the one thrown away just now went with it: %v", err)
 	}
 }
+
+// A pin holds for the account's hours from when it was put on: a save that leaves it on does not
+// start it again, and taking it off and on does. Eight to begin with.
+func TestAPinLapsesAfterItsAccountsHours(t *testing.T) {
+	st := openStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 16, 4, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	p, err := st.CreatePrincipal(ctx, "robin", "a good password", RoleUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin := func(id string, on bool) {
+		t.Helper()
+		if _, err := st.UpdateTask(ctx, p.ID, nil, id, TaskPatch{Pinned: &on}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pinned := func(id string) bool {
+		t.Helper()
+		got, err := st.Task(ctx, p.ID, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.Pinned
+	}
+
+	early, err := st.CreateTask(ctx, p.ID, home(t, st, p.ID), nil, TaskNew{Title: "Fix the tap", Pinned: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := st.CreateTask(ctx, p.ID, home(t, st, p.ID), nil, TaskNew{Title: "Water the plants", Pinned: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now = now.Add(4 * time.Hour)
+	title := "Fix the kitchen tap"
+	if _, err := st.UpdateTask(ctx, p.ID, nil, early.ID, TaskPatch{Title: &title}); err != nil {
+		t.Fatal(err)
+	}
+	pin(again.ID, false)
+	pin(again.ID, true)
+
+	now = now.Add(4 * time.Hour)
+	if n, err := st.UnpinExpired(ctx); err != nil || n != 1 {
+		t.Fatalf("unpinned %d (%v), want the one pinned eight hours ago", n, err)
+	}
+	if pinned(early.ID) || !pinned(again.ID) {
+		t.Error("want the eight-hour-old pin off and the four-hour-old one on")
+	}
+
+	// Until it is taken off: nothing lapses, however old.
+	if err := st.SetPinHours(ctx, p.ID, 0); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(72 * time.Hour)
+	if n, _ := st.UnpinExpired(ctx); n != 0 || !pinned(again.ID) {
+		t.Errorf("unpinned %d with pins held until taken off", n)
+	}
+
+	// Shorter, and the pins already on count from when they went on.
+	if err := st.SetPinHours(ctx, p.ID, 2); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := st.UnpinExpired(ctx); n != 1 || pinned(again.ID) {
+		t.Errorf("unpinned %d after shortening to two hours, want the old pin off", n)
+	}
+
+	if err := st.SetPinHours(ctx, p.ID, 5); err == nil {
+		t.Error("five hours was taken, which is not one of the lengths offered")
+	}
+}

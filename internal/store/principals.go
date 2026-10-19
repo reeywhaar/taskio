@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -276,6 +277,34 @@ func ValidatePassword(password string) error {
 	case len(password) > passwordMaxBytes:
 		return Invalid("That password is longer than %d bytes, which is as much as the hash reads.", passwordMaxBytes)
 	}
+	return nil
+}
+
+// PinHoursOf is how long an account's pins hold, in hours: 0 is until each is taken off.
+func (s *Store) PinHoursOf(ctx context.Context, principalID string) (int, error) {
+	var hours int
+	err := s.reader.QueryRowContext(ctx,
+		`SELECT pin_hours FROM principals WHERE id = ?`, principalID).Scan(&hours)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	if err != nil {
+		return 0, fmt.Errorf("pin hours: %w", err)
+	}
+	return hours, nil
+}
+
+// SetPinHours says how long the account's pins hold, one of PinHours. The pins already on
+// count from when they were put on, so a shorter length can take some off at the next sweep.
+func (s *Store) SetPinHours(ctx context.Context, principalID string, hours int) error {
+	if !slices.Contains(PinHours, hours) {
+		return Invalid("A pin holds for 2, 4, 8, 12 or 24 hours, or 0 for until it is taken off.")
+	}
+	if _, err := s.writer.ExecContext(ctx,
+		`UPDATE principals SET pin_hours = ? WHERE id = ?`, hours, principalID); err != nil {
+		return fmt.Errorf("set pin hours: %w", err)
+	}
+	s.changed(principalID)
 	return nil
 }
 
