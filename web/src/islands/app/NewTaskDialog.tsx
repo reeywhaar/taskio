@@ -28,6 +28,7 @@ export function NewTaskDialog({
   project,
   tags,
   title = "",
+  from,
   onClose,
   onCreated,
 }: {
@@ -38,12 +39,16 @@ export function NewTaskDialog({
   tags: string[];
   /** What it opens with in the title, where somebody has already typed it somewhere else. */
   title?: string;
+  /** Every field to open with, for a copy of a task: nothing is written until Add. */
+  from?: Draft;
   onClose: () => void;
   /** Only when a task was actually written, which is not the same as the dialog closing. */
   onCreated?: () => void;
 }) {
   const client = useQueryClient();
-  const [draft, setDraft] = useState<Draft>(emptyDraft(tags, title, project));
+  const [draft, setDraft] = useState<Draft>(
+    from ?? emptyDraft(tags, title, project),
+  );
   const [error, setError] = useState("");
   // The same two faces as a task's dialog. Nothing arrives from elsewhere to swap the words
   // under a reader, so the draft is what it shows.
@@ -56,10 +61,10 @@ export function NewTaskDialog({
   // typed for as long as it takes to close.
   useEffect(() => {
     if (!open) return;
-    setDraft(emptyDraft(tags, title, project));
+    setDraft(from ?? emptyDraft(tags, title, project));
     setError("");
     setMode("edit");
-  }, [open, tags, title, project]);
+  }, [open, tags, title, project, from]);
 
   const create = useMutation({
     mutationFn: () =>

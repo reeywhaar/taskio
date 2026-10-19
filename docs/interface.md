@@ -326,6 +326,13 @@ is never so much as asks to move. It takes its tags along: they are the new proj
 on. The bulk bar moves a selection the same way, and choosing the project it is already in does
 nothing.
 
+**Copy** in the footer opens the new-task dialog filled with this one: title, words, tags,
+priority, color and project, and a last line, "Copied from @id" — a mention, so once added the
+two are linked both ways. Nothing is written until Add, and the project it goes to is that
+dialog's own label, so a copy for a related project is a press on it. It copies what is on
+screen, saved or not, and leaves this task as it is. The comments stay behind, as this one's
+history, and so does the pin.
+
 ## Groups and projects are dragged like tags
 
 The rail's rows carry the same press-and-move gesture as the pills, one axis over: the carried

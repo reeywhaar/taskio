@@ -12,6 +12,7 @@ const patch = vi.fn();
 const remove = vi.fn();
 const comment = vi.fn();
 const edit = vi.fn();
+const create = vi.fn();
 /** The order things reached the server in, which is the point of several of these. */
 let calls: string[] = [];
 let task: TaskDetail;
@@ -45,6 +46,10 @@ vi.mock("@app/api/actions/tasks", () => ({
   deleteTasksById: (id: string) => {
     calls.push("delete");
     return remove(id);
+  },
+  postTasks: (project: string, body: unknown) => {
+    calls.push("create");
+    return create(project, body);
   },
 }));
 vi.mock("@app/api/actions/tags", () => ({
@@ -980,5 +985,66 @@ describe("comments", () => {
     await waitFor(() =>
       expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
     );
+  });
+});
+
+describe("copying a task", () => {
+  /** The new-task dialog, filled in; nothing is written until Add, and the comments stay. */
+  it("opens a new task filled with this one, and writes it only on Add", async () => {
+    task = {
+      ...detail("todo"),
+      description: "It drips.",
+      tags: ["plumbing"],
+      priority: 2,
+      color: "#2563eb",
+      pinned: true,
+    };
+    create.mockResolvedValue({ ...task, id: "c0py1234" });
+    open();
+    await screen.findByDisplayValue("It drips.");
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    const dialog = (
+      await screen.findByRole("heading", { name: "New task" })
+    ).closest("dialog")!;
+    expect(
+      (within(dialog).getByDisplayValue("Fix the tap") as HTMLInputElement)
+        .value,
+    ).toBe("Fix the tap");
+    expect(
+      within(dialog).getByPlaceholderText(/Markdown\. Paste a file/),
+    ).toHaveProperty("value", "It drips.\n\nCopied from @8qw4tz9k.");
+    expect(create).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith("main", {
+        title: "Fix the tap",
+        description: "It drips.\n\nCopied from @8qw4tz9k.",
+        tags: ["plumbing"],
+        priority: 2,
+        color: "#2563eb",
+      }),
+    );
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("copies what is in the fields, unsaved, and leaves this one as it is", async () => {
+    open();
+    const title = (await screen.findByDisplayValue(
+      "Fix the tap",
+    )) as HTMLInputElement;
+    fireEvent.change(title, { target: { value: "Fix the kitchen tap" } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    const dialog = (
+      await screen.findByRole("heading", { name: "New task" })
+    ).closest("dialog")!;
+    expect(
+      within(dialog).getByDisplayValue("Fix the kitchen tap"),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByPlaceholderText(/Markdown\. Paste a file/),
+    ).toHaveProperty("value", "Copied from @8qw4tz9k.");
+    expect(calls).toEqual([]);
   });
 });

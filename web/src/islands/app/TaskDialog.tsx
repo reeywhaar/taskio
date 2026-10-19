@@ -31,6 +31,7 @@ import { Group as Caption } from "@app/components/Field";
 import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
+import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
 import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
 
@@ -275,6 +276,21 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  /**
+   * A new task from this one: the new-task dialog, filled with what is on screen and a last
+   * line saying where it came from — a mention, so the two are linked both ways once it is
+   * added. Nothing is written until it is; the project it goes to is that dialog's label. The
+   * comments stay here, as this one's history, and so does the pin.
+   */
+  const [copying, setCopying] = useState<Draft | null>(null);
+  const startCopy = () =>
+    setCopying({
+      ...draft,
+      description: draft.description.trim()
+        ? `${draft.description.trimEnd()}\n\nCopied from @${id}.`
+        : `Copied from @${id}.`,
+    });
+
   const remove = useMutation({
     mutationFn: async () => {
       await flush();
@@ -372,6 +388,7 @@ export function TaskDialog({
               Delete
             </Button>
           )}
+          <Button onClick={startCopy}>Copy</Button>
 
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere: "Finish" read as finishing
@@ -467,6 +484,13 @@ export function TaskDialog({
         </div>
       ) : null}
 
+      <NewTaskDialog
+        open={copying !== null}
+        project={copying?.project ?? project}
+        tags={copying?.tags ?? []}
+        from={copying ?? undefined}
+        onClose={() => setCopying(null)}
+      />
       <CommentDialog
         writing={writing}
         onSend={sendComment}
