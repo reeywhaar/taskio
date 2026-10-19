@@ -28,7 +28,7 @@ import { Dialog } from "@app/components/Dialog";
 import { CommentIcon, PencilIcon, PinIcon } from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { Group as Caption } from "@app/components/Field";
-import { Editor, sendKeys } from "@app/islands/app/Editor";
+import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
@@ -205,13 +205,8 @@ export function TaskDialog({
         : {}),
     });
 
-  // Takes the comment being written along, as Mark done and Delete do: it closes, and a comment
-  // left in the box went with it.
   const save = useMutation({
-    mutationFn: async () => {
-      await write();
-      await postComment();
-    },
+    mutationFn: write,
     onSuccess: () => {
       invalidate();
       onClose();
@@ -233,27 +228,12 @@ export function TaskDialog({
     if (task.data && differs(draft, task.data)) await write();
   };
 
-  /**
-   * The comment being written, which rides along with Mark done and Delete when there is one:
-   * why a task is done belongs on its timeline, said at the moment it was done.
-   */
-  const [comment, setComment] = useState("");
-  const said = comment.trim() !== "";
-  const postComment = async () => {
-    if (!said) return;
-    await postTasksByIdComments(id, comment);
-    setComment("");
-  };
-  const send = useMutation({
-    mutationFn: postComment,
-    onSuccess: () => invalidate(),
-    onError: (err) =>
-      setError(err instanceof ApiError ? err.message : "Something went wrong."),
-  });
-
-  /** Waits for the task to come back, so an editor closing shows the new words and not the old. */
-  const editComment = async (which: string, body: string) => {
-    await patchTasksByIdCommentsById(id, which, body);
+  /** The comment being written or edited, in a dialog of its own over this one. */
+  const [writing, setWriting] = useState<Writing>(null);
+  /** Waits for the task to come back, so the dialog closing shows the new words and not the old. */
+  const sendComment = async (body: string) => {
+    if (writing?.id) await patchTasksByIdCommentsById(id, writing.id, body);
+    else await postTasksByIdComments(id, body);
     await client.invalidateQueries({ queryKey: qk.task(id) });
     invalidate();
   };
@@ -263,7 +243,6 @@ export function TaskDialog({
   const toggleDone = useMutation({
     mutationFn: async () => {
       await flush();
-      await postComment();
       await (status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id));
     },
     onSuccess: () => {
@@ -299,7 +278,6 @@ export function TaskDialog({
   const remove = useMutation({
     mutationFn: async () => {
       await flush();
-      await postComment();
       await deleteTasksById(id);
     },
     onSuccess: () => {
@@ -320,13 +298,11 @@ export function TaskDialog({
       actions={
         task.data ? (
           mode === "edit" ? (
-            // Only where there is something to read: a preview of nothing is a control that
-            // does nothing.
-            draft.description.trim() ? (
-              <Button size="compact" onClick={read}>
-                View
-              </Button>
-            ) : null
+            // Even with no description: the read face is the title, the facts and the comments
+            // too, and hiding the way to it left the task with no way back to reading.
+            <Button size="compact" onClick={read}>
+              View
+            </Button>
           ) : (
             <>
               {newer ? (
@@ -392,37 +368,21 @@ export function TaskDialog({
           {/* Not shown on a task already in the bin: there is nothing further to do to it
               from here, and a Delete that does nothing is worse than no Delete. */}
           {status === "deleted" ? null : (
-            <Button
-              variant="danger"
-              aria-label={said ? "Delete with comment" : undefined}
-              title={said ? "Delete with comment" : undefined}
-              onClick={() => remove.mutate()}
-            >
+            <Button variant="danger" onClick={() => remove.mutate()}>
               Delete
-              <WithComment said={said} />
             </Button>
           )}
 
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere: "Finish" read as finishing
               the editing. */}
-          <Button
-            aria-label={said ? `${finish} with comment` : undefined}
-            title={said ? `${finish} with comment` : undefined}
-            onClick={() => toggleDone.mutate()}
-          >
-            {finish}
-            <WithComment said={said} />
-          </Button>
+          <Button onClick={() => toggleDone.mutate()}>{finish}</Button>
           <Button
             variant="solid"
-            aria-label={said ? "Save with comment" : undefined}
-            title={said ? "Save with comment" : undefined}
             onClick={() => save.mutate()}
             disabled={save.isPending}
           >
             Save
-            <WithComment said={said} />
           </Button>
         </>
       }
@@ -480,7 +440,7 @@ export function TaskDialog({
 
           <Links detail={task.data} onOpen={openPeek} />
 
-          {/* One section, the box under the list it adds to, and set apart from the fields
+          {/* One section, the button under the list it adds to, and set apart from the fields
               above: it was as near the tags as a field is, and as far from its own comments. */}
           <section className="mt-4 flex flex-col gap-3">
             <h3 className="text-xs font-medium tracking-wide text-muted uppercase">
@@ -491,40 +451,28 @@ export function TaskDialog({
               onLink={onComment}
               list={task.data.comments}
               onMention={openPeek}
-              onEdit={editComment}
-              onError={setError}
+              onEdit={(c) => setWriting({ id: c.id, n: c.n, body: c.body })}
             />
-            <Editor
-              compact
-              value={comment}
-              onChange={setComment}
-              prompt={`Comment. Markdown${sendKeys() ? `; ${sendKeys()} sends` : ""}.`}
-              limits={{ assetMax: 10 << 20 }}
-              onSubmit={() => {
-                if (said && !send.isPending) send.mutate();
-              }}
-              preview={(source) => (
-                <Preview
-                  source={source}
-                  onChange={setComment}
-                  onMention={openPeek}
-                />
-              )}
-              actions={
-                <Button
-                  size="compact"
-                  disabled={!said || send.isPending}
-                  onClick={() => send.mutate()}
-                >
-                  Comment
-                </Button>
-              }
-            />
+            <Button
+              size="compact"
+              className="self-start"
+              onClick={() => setWriting({ body: "" })}
+            >
+              <CommentIcon />
+              Add comment
+            </Button>
           </section>
 
           {error ? <p className="text-sm text-accent">{error}</p> : null}
         </div>
       ) : null}
+
+      <CommentDialog
+        writing={writing}
+        onSend={sendComment}
+        onClose={() => setWriting(null)}
+        onMention={openPeek}
+      />
 
       {/* Over this one, and inside it, so it is this dialog's child: its close comes back
           here, and the page behind both stays where it was. */}
@@ -546,29 +494,24 @@ export function TaskDialog({
  * What has been said about the task, oldest first, in the order a timeline is read.
  *
  * Each says who: the account, and the token before it when one wrote it — so a timeline written
- * to by agents says which of them said what. The pencil after its time turns one into its box,
- * in place.
+ * to by agents says which of them said what. The pencil after its time opens it in the comment
+ * dialog.
  */
 function Timeline({
   list,
   focus,
   onMention,
   onEdit,
-  onError,
   onLink,
 }: {
   list: Comment[];
   /** The comment it was opened onto, scrolled to and marked for a moment. */
   focus?: number;
   onMention: (id: string, comment?: number) => void;
-  onEdit: (comment: string, body: string) => Promise<void>;
-  onError: (message: string) => void;
+  onEdit: (comment: Comment) => void;
   /** A comment's number pressed: the address to say so, where there is one to change. */
   onLink?: (n: number) => void;
 }) {
-  const [editing, setEditing] = useState<{ id: string; body: string } | null>(
-    null,
-  );
   const items = useRef<HTMLOListElement>(null);
   const [lit, setLit] = useState(focus);
   const arrived = list.length > 0;
@@ -587,14 +530,6 @@ function Timeline({
     const out = window.setTimeout(() => setLit(undefined), 1600);
     return () => window.clearTimeout(out);
   }, [lit]);
-  const save = useMutation({
-    mutationFn: (next: { id: string; body: string }) =>
-      onEdit(next.id, next.body),
-    onSuccess: () => setEditing(null),
-    onError: (err) =>
-      onError(err instanceof ApiError ? err.message : "Something went wrong."),
-  });
-
   if (list.length === 0) return null;
   return (
     <ol ref={items} className="flex flex-col gap-3">
@@ -626,72 +561,20 @@ function Timeline({
                 ) : null}
               </span>
             </span>
-            {editing?.id === c.id ? null : (
-              <button
-                type="button"
-                aria-label="Edit comment"
-                title="Edit"
-                className="text-faint opacity-60 hover:text-fg hover:opacity-100"
-                onClick={() => setEditing({ id: c.id, body: c.body })}
-              >
-                <PencilIcon />
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label="Edit comment"
+              title="Edit"
+              className="text-faint opacity-60 hover:text-fg hover:opacity-100"
+              onClick={() => onEdit(c)}
+            >
+              <PencilIcon />
+            </button>
           </p>
-          {editing?.id === c.id ? (
-            <Editor
-              compact
-              value={editing.body}
-              onChange={(body) => setEditing({ id: c.id, body })}
-              limits={{ assetMax: 10 << 20 }}
-              onSubmit={() => {
-                if (changed(editing, c) && !save.isPending)
-                  save.mutate(editing);
-              }}
-              onCancel={() => setEditing(null)}
-              preview={(source) => (
-                <Preview
-                  source={source}
-                  onChange={(body) => setEditing({ id: c.id, body })}
-                  onMention={onMention}
-                />
-              )}
-              actions={
-                <>
-                  <Button size="compact" onClick={() => setEditing(null)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    size="compact"
-                    disabled={!changed(editing, c) || save.isPending}
-                    onClick={() => save.mutate(editing)}
-                  >
-                    Save
-                  </Button>
-                </>
-              }
-            />
-          ) : (
-            <Preview source={c.body} onMention={onMention} />
-          )}
+          <Preview source={c.body} onMention={onMention} />
         </li>
       ))}
     </ol>
-  );
-}
-
-/**
- * What a footer button adds while a comment is typed: the words where there is room, and a
- * bubble on a phone, where "Mark done with comment" beside "Delete with comment" and Save took
- * two lines. The button's label says it in full either way.
- */
-function WithComment({ said }: { said: boolean }) {
-  if (!said) return null;
-  return (
-    <>
-      <span className="hidden sm:inline">with comment</span>
-      <CommentIcon className="sm:hidden" />
-    </>
   );
 }
 
@@ -784,11 +667,6 @@ function CommentRef({
       #{n}
     </a>
   );
-}
-
-/** Whether an edit says something new, and something at all. */
-function changed(editing: { body: string }, c: Comment): boolean {
-  return editing.body.trim() !== "" && editing.body !== c.body;
 }
 
 /**

@@ -565,10 +565,12 @@ describe("reading the task", () => {
     expect(description().value).toBe("Verdict: not worth it");
   });
 
-  it("offers no preview of nothing", async () => {
+  /** The read face is the title, the facts and the comments as well as the description. */
+  it("offers View with no description too", async () => {
     open();
     await screen.findByPlaceholderText(/Markdown\. Paste a file/);
-    expect(screen.queryByRole("button", { name: "View" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByText("No description.")).toBeDefined();
   });
 
   /** An edit from elsewhere should not swap a page of prose mid-sentence. */
@@ -711,6 +713,27 @@ describe("the linked tasks", () => {
 const box = () =>
   screen.getByPlaceholderText(/^Comment\./) as HTMLTextAreaElement;
 
+/** A task with one comment on it. */
+const one = () => ({
+  ...detail("todo"),
+  comments: [
+    {
+      id: "c_1",
+      n: 1,
+      ref: "8qw4tz9k#1",
+      body: "Ordred washers.",
+      author: "robin",
+      token: "",
+      created_at: 1,
+      edited_at: null,
+    },
+  ],
+});
+const item = async () => {
+  const heading = await screen.findByRole("heading", { name: "Comments" });
+  return heading.parentElement!.querySelector("li")!;
+};
+
 describe("comments", () => {
   it("lists them oldest first, saying who wrote each", async () => {
     task = {
@@ -813,186 +836,142 @@ describe("comments", () => {
     expect(second.className).toContain("bg-shade");
   });
 
-  it("edits one in place, and shows the new words once saved", async () => {
-    task = {
-      ...detail("todo"),
-      comments: [
-        {
-          id: "c_1",
-          n: 1,
-          ref: "8qw4tz9k#1",
-          body: "Ordred washers.",
-          author: "robin",
-          token: "",
-          created_at: 1,
-          edited_at: null,
-        },
-      ],
-    };
+  it("edits one in a dialog of its own, and shows the new words once saved", async () => {
+    task = one();
     open();
-    const heading = await screen.findByRole("heading", { name: "Comments" });
-    const item = () => heading.parentElement!.querySelector("li")!;
     fireEvent.click(
-      within(item()).getByRole("button", { name: "Edit comment" }),
+      within(await item()).getByRole("button", { name: "Edit comment" }),
     );
+    expect(
+      await screen.findByRole("heading", { name: "Edit comment #1" }),
+    ).toBeDefined();
+    expect(box().value).toBe("Ordred washers.");
 
-    const save = within(item()).getByRole("button", { name: "Save" });
+    const save = () =>
+      within(box().closest("dialog")!).getByRole("button", { name: "Save" });
     // Nothing changed is nothing to save.
-    expect(save.hasAttribute("disabled")).toBe(true);
-    fireEvent.change(within(item()).getByRole("textbox"), {
-      target: { value: "Ordered washers." },
-    });
-    fireEvent.click(save);
+    expect(save().hasAttribute("disabled")).toBe(true);
+    fireEvent.change(box(), { target: { value: "Ordered washers." } });
+    fireEvent.click(save());
 
     await waitFor(() =>
       expect(edit).toHaveBeenCalledWith("8qw4tz9k", "c_1", "Ordered washers."),
     );
     await waitFor(() =>
-      expect(within(item()).queryByRole("textbox")).toBeNull(),
+      expect(
+        screen.queryByRole("heading", { name: "Edit comment #1" }),
+      ).toBeNull(),
     );
-    expect(item().textContent).toMatch(/Ordered washers\./);
-    expect(item().textContent).toMatch(/· edited/);
+    expect((await item()).textContent).toMatch(/Ordered washers\./);
+    expect((await item()).textContent).toMatch(/· edited/);
   });
 
   it("saves an edit on Cmd+Enter", async () => {
-    task = {
-      ...detail("todo"),
-      comments: [
-        {
-          id: "c_1",
-          n: 1,
-          ref: "8qw4tz9k#1",
-          body: "Ordred washers.",
-          author: "robin",
-          token: "",
-          created_at: 1,
-          edited_at: null,
-        },
-      ],
-    };
+    task = one();
     open();
-    const heading = await screen.findByRole("heading", { name: "Comments" });
-    const item = () => heading.parentElement!.querySelector("li")!;
     fireEvent.click(
-      within(item()).getByRole("button", { name: "Edit comment" }),
+      within(await item()).getByRole("button", { name: "Edit comment" }),
     );
-    const field = within(item()).getByRole("textbox");
-    fireEvent.change(field, { target: { value: "Ordered washers." } });
-    fireEvent.keyDown(field, { key: "Enter", metaKey: true });
+    fireEvent.change(await waitFor(box), {
+      target: { value: "Ordered washers." },
+    });
+    fireEvent.keyDown(box(), { key: "Enter", metaKey: true });
     await waitFor(() =>
       expect(edit).toHaveBeenCalledWith("8qw4tz9k", "c_1", "Ordered washers."),
     );
   });
 
-  it("drops an edit on Escape, and keeps the dialog open", async () => {
-    task = {
-      ...detail("todo"),
-      comments: [
-        {
-          id: "c_1",
-          n: 1,
-          ref: "8qw4tz9k#1",
-          body: "Ordered washers.",
-          author: "robin",
-          token: "",
-          created_at: 1,
-          edited_at: null,
-        },
-      ],
-    };
+  /** Words typed and not sent are asked about, and the task under them stays open either way. */
+  it("asks before dropping a changed edit", async () => {
+    task = one();
     const onClose = vi.fn();
-    mount(
-      <TaskDialog
-        initialMode="edit"
-        id="8qw4tz9k"
-        project=""
-        onClose={onClose}
-      />,
-    );
-    const heading = await screen.findByRole("heading", { name: "Comments" });
-    const item = () => heading.parentElement!.querySelector("li")!;
+    mount(<TaskDialog id="8qw4tz9k" project="" onClose={onClose} />);
     fireEvent.click(
-      within(item()).getByRole("button", { name: "Edit comment" }),
+      within(await item()).getByRole("button", { name: "Edit comment" }),
     );
-    const field = within(item()).getByRole("textbox");
-    fireEvent.change(field, { target: { value: "Something else." } });
-
-    // Not the dialog's to close: the keydown is cancelled before it becomes a close request.
-    expect(fireEvent.keyDown(field, { key: "Escape" })).toBe(false);
-    expect(within(item()).queryByRole("textbox")).toBeNull();
-    expect(item().textContent).toMatch(/Ordered washers\./);
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it("cancels an edit, leaving the words as they were", async () => {
-    task = {
-      ...detail("todo"),
-      comments: [
-        {
-          id: "c_1",
-          n: 1,
-          ref: "8qw4tz9k#1",
-          body: "Ordered washers.",
-          author: "robin",
-          token: "",
-          created_at: 1,
-          edited_at: null,
-        },
-      ],
-    };
-    open();
-    const heading = await screen.findByRole("heading", { name: "Comments" });
-    const item = () => heading.parentElement!.querySelector("li")!;
-    fireEvent.click(
-      within(item()).getByRole("button", { name: "Edit comment" }),
-    );
-    fireEvent.change(within(item()).getByRole("textbox"), {
-      target: { value: "Something else." },
+    fireEvent.change(await waitFor(box), {
+      target: { value: "Ordered washers." },
     });
-    fireEvent.click(within(item()).getByRole("button", { name: "Cancel" }));
 
-    expect(within(item()).queryByRole("textbox")).toBeNull();
-    expect(item().textContent).toMatch(/Ordered washers\./);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(
+      within(
+        (
+          await screen.findByRole("heading", { name: "Discard the edit?" })
+        ).closest("dialog")!,
+      ).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Discard the edit?" }),
+      ).toBeNull(),
+    );
+    expect(box().value).toBe("Ordered washers.");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Cancel" })[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit comment #1" }),
+      ).toBeNull(),
+    );
     expect(edit).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect((await item()).textContent).toMatch(/Ordred washers\./);
   });
 
-  it("posts one and empties the box", async () => {
+  it("closes an edit nothing was changed in without asking", async () => {
+    task = one();
     open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    const send = screen.getByRole("button", { name: "Comment" });
-    expect(send.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(
+      within(await item()).getByRole("button", { name: "Edit comment" }),
+    );
+    await waitFor(box);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit comment #1" }),
+      ).toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+  });
 
+  it("posts one from Add comment", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Add comment" }));
+    const send = await screen.findByRole("button", { name: "Comment" });
+    expect(send.hasAttribute("disabled")).toBe(true);
     fireEvent.change(box(), { target: { value: "Still drips." } });
     fireEvent.click(send);
     await waitFor(() =>
       expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
     );
-    await waitFor(() => expect(box().value).toBe(""));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Comment" })).toBeNull(),
+    );
   });
 
-  it("previews one, and is back to editing once it is posted", async () => {
+  /** From the title bar, as the task's own faces are: the box is the whole dialog. */
+  it("previews one, and goes back to it", async () => {
     open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    fireEvent.change(box(), { target: { value: "Needs **washers**." } });
-    fireEvent.click(screen.getByRole("button", { name: "preview" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add comment" }));
+    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
+    fireEvent.change(await waitFor(box), {
+      target: { value: "Needs **washers**." },
+    });
+    const dialog = box().closest("dialog")!;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Preview" }));
+    expect(dialog.querySelector("strong")?.textContent).toBe("washers");
+    expect(screen.queryByPlaceholderText(/^Comment\./)).toBeNull();
 
-    const group = screen.getByRole("group", { name: "Comment" });
-    const composer = group.parentElement!.parentElement!;
-    expect(composer.querySelector("strong")?.textContent).toBe("washers");
-    expect(box().classList.contains("hidden")).toBe(true);
-
-    fireEvent.click(screen.getByRole("button", { name: "Comment" }));
-    await waitFor(() => expect(box().value).toBe(""));
-    expect(box().classList.contains("hidden")).toBe(false);
-    expect(
-      screen.getByRole("button", { name: "edit" }).getAttribute("aria-pressed"),
-    ).toBe("true");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
+    expect(box().value).toBe("Needs **washers**.");
   });
 
   it("posts one on Cmd+Enter, and leaves Enter and Shift+Enter new lines", async () => {
     open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    fireEvent.change(box(), { target: { value: "Still drips." } });
+    fireEvent.click(await screen.findByRole("button", { name: "Add comment" }));
+    fireEvent.change(await waitFor(box), { target: { value: "Still drips." } });
     fireEvent.keyDown(box(), { key: "Enter" });
     // What an iPhone sends for the second of two Returns.
     fireEvent.keyDown(box(), { key: "Enter", shiftKey: true });
@@ -1001,35 +980,5 @@ describe("comments", () => {
     await waitFor(() =>
       expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Still drips."),
     );
-  });
-
-  it("marks done with the comment, the comment first", async () => {
-    open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    fireEvent.change(box(), { target: { value: "Fixed: new washers." } });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mark done with comment" }),
-    );
-    await waitFor(() => expect(calls).toEqual(["comment", "done"]));
-  });
-
-  /** It closes, and a comment left in the box went with it. */
-  it("saves with the comment, the task first", async () => {
-    open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    fireEvent.change(box(), { target: { value: "Ordered the part." } });
-    fireEvent.click(screen.getByRole("button", { name: "Save with comment" }));
-    await waitFor(() => expect(calls).toEqual(["patch", "comment"]));
-    expect(comment).toHaveBeenCalledWith("8qw4tz9k", "Ordered the part.");
-  });
-
-  it("deletes with the comment, the comment first", async () => {
-    open();
-    await screen.findByPlaceholderText(/^Comment\./);
-    fireEvent.change(box(), { target: { value: "Not worth it." } });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete with comment" }),
-    );
-    await waitFor(() => expect(calls).toEqual(["comment", "delete"]));
   });
 });

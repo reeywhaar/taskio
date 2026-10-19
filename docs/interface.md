@@ -16,7 +16,8 @@ name is in the body rather than the title bar, which on a phone cut it to a lett
 the project, id and age; the bar says "Task" in both faces. The preview was a second
 tab once, which made it the same size and shape as the box it replaced, and then a second dialog
 over the first, which was a second thing to close for what is the same task in the same place.
-View appears only once there is something to read. A task opens read, since it is looked at far
+View is there with no description too, since the read face is the title, the facts and the
+comments as well. A task opens read, since it is looked at far
 more often than changed and Edit is one press away; a new task opens written. Read, it shows the
 priority and tags too, where the fields have them, so switching faces moves nothing, and the color
 as a square before the name, the mark the row wears rather than a field of its own.
@@ -42,32 +43,29 @@ chip that opens that task over this one, onto that comment, marked for a moment;
 opens onto it from a link. A number, not an id of its own, because comments are never deleted, so
 the third is the third for good, and the name says which task it is on.
 
-A dimmed pencil after a comment's time turns it into its box in place, with Save and Cancel under
-it; Escape there is Cancel, not the dialog's close. An edited one says "edited" beside its time. From the app any comment can be edited, since
+**A comment is written in a dialog of its own**, over the task's: Add comment under the list
+opens it empty, and the dimmed pencil after a comment's time opens it on that comment. It was a box
+at the foot of the task and an edit in place, and either one was a draft inside a dialog whose
+buttons closed it — Save, or a press outside, took the words with it. Here the ways out are
+sending it and saying no to it, and closing on words typed and not sent asks first. Mark done and
+Delete no longer carry a comment along: say why, then press it.
+
+An edited comment says "edited" beside its time. From the app any comment can be edited, since
 they are all the account's; a token edits only its own, so what the timeline says a token wrote
 stays what it wrote. Comments are not deleted.
-
-The box under them has a Comment button, and while it has words in it, Mark done and Delete say
-"with comment" and post it first — GitHub's Close with comment. Why a task is done is the thing
-most worth writing on it, and the moment it is done is when it is known. A button that changes its
-word while something is typed says what it will do; a chevron menu of the same two would hide it.
-Save says it too, and posts it after the task is written: it closes the dialog, and a comment
-left in the box went with it.
-On a phone the words are a speech bubble instead, since the three buttons with them took two
-lines; the button's label still says it in full.
 
 Mark done, Mark as todo and Restore close the dialog, as Delete does: the status is what somebody
 opened the task to change. The pin and the poke are properties, and leave it open.
 
-The box itself has Edit and Preview, because it has no dialog face of its own to turn: two words
-in small caps rather than a segmented control, which was a slab over a three-line box. The one not
-showing is a pseudo-link, dashed because it switches what is here rather than going anywhere.
-They are inside the box, along its floor with the paperclip and its buttons, on a floor tinted
-with the ground's own warmth rather than a grey: under it, beside the well, they read as a line
-of text near the box rather than the box's own, which GitHub gets by making its tabs part of the
-frame. The description's box has the same floor, with only the clip.
-Posting a comment brings the box back to Edit. Cmd+Enter, or Ctrl+Enter off a Mac, posts it, or saves one
-being edited; Enter stays a new line, since a comment is markdown and has paragraphs. In a task's
+The comment's dialog turns between Edit and Preview from its title bar, as the task's turns
+between Edit and View: the box is the whole of that dialog, so its faces are the dialog's. The
+switch used to sit on the box's floor, in small caps, when the box was one part of the task's
+dialog and had no title bar of its own. Preview is offered once there is something to read, and
+holds the dialog at about the box's height so turning to it does not fold the card to one line.
+The dialog is the task's width: it opens over that one, and a narrower card left a frame of it
+showing round the edge. The box keeps its floor, tinted with the ground's own warmth, with the
+paperclip on it; the description's box has the same floor.
+Cmd+Enter, or Ctrl+Enter off a Mac, posts a comment, or saves one being edited; Enter stays a new line, since a comment is markdown and has paragraphs. In a task's
 description it is the dialog's Save, or Add for a new one, and closes it. Not Shift: an iPhone's
 keyboard turns shift on after a Return, so two Returns for a blank line read as Shift+Enter and
 saved the task half-written. A soft keyboard has neither Cmd nor Ctrl, so on a phone the button
