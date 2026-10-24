@@ -390,7 +390,8 @@ period.
 | Request body | 1 MB — base64 is a third larger than the image, so about 750 KB of image inline |
 
 `POST /api/assets` is the other way: the raw bytes as the body, with a `Content-Type`. It
-answers `{id, url, content_type, size}` and the `url` goes in the description. Use it when the
+answers `{id, url, content_type, size}`, with `width` and `height` for an image it could read,
+and the `url` goes in the description. Use it when the
 same image goes on several tasks, or when a task is edited repeatedly — inline would re-send
 every picture on every save.
 
@@ -398,6 +399,11 @@ PNG, JPEG, GIF, WebP and AVIF. **SVG is refused**: it is an image format that ru
 declared type and the bytes must agree.
 
 `GET /api/assets/{id}` serves one, and only to the account that owns it.
+
+`width` and `height` are the size an image is meant to be shown at: its pixels over the density
+its file says. A screenshot from a Retina screen says 144 dpi and is half its pixels each way; a
+browser would show it at all of them. `GET /api/tasks/{id}` carries the same for every picture in
+the description and comments, as `images`, keyed by asset id.
 
 ## Comments
 

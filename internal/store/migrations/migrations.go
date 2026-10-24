@@ -38,6 +38,7 @@ var all = []Migration{
 	commentNumber,
 	tokenRotated,
 	pinLapse,
+	assetSize,
 }
 
 // exec runs a statement block as one migration.

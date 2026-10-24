@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { rememberSizes } from "@app/api/images";
 import {
   excerpt,
   render,
@@ -236,5 +237,22 @@ describe("render, when marked throws", () => {
       "See [the notes][n].\n\n[n]: https://example.com/notes\n",
     );
     expect(html).toContain('href="https://example.com/notes"');
+  });
+});
+
+describe("a pasted picture", () => {
+  const id = "a_01m5mrpjp24wzspz3vpz4nwmbb";
+  /** The server read the file's density; a browser would not have. */
+  it("is drawn at the size the server says", () => {
+    rememberSizes({ [id]: { width: 531, height: 463 } });
+    const img = page(`![shot](/api/assets/${id})`);
+    expect(img).toContain('width="531"');
+    expect(img).toContain('height="463"');
+  });
+
+  it("is left to the browser when the size is not known", () => {
+    const img = page("![shot](/api/assets/a_0000000000000000000000000z)");
+    expect(img).toContain("<img");
+    expect(img).not.toContain("width=");
   });
 });

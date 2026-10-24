@@ -1,3 +1,5 @@
+import type { ImageSize } from "@app/api/images";
+
 /** What the API returns. Field names are the server's, unchanged. */
 
 /** deleted is a kind of done: it leaves the todo list and turns up among the finished. */
@@ -39,6 +41,9 @@ export type TaskDetail = Task & {
   mentioned_by: TaskStub[];
   /** Oldest first. */
   comments: Comment[];
+  /** The size each picture in the description and comments is meant to be drawn at, by asset
+   *  id. */
+  images?: Record<string, ImageSize>;
 };
 
 /** One entry in a task's timeline. */
@@ -146,4 +151,8 @@ export type Asset = {
   /** Whether a description should embed it or link to it. The server decides, because it is
    *  the one that settled on the type. */
   image: boolean;
+  /** The size it is meant to be drawn at: its pixels over the density its file says. Absent for
+   *  what is not an image the server could read. */
+  width?: number;
+  height?: number;
 };

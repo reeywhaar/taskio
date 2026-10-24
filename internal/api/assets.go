@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"taskio/internal/imagesize"
 	"taskio/internal/store"
 )
 
@@ -27,7 +28,7 @@ func (s *Server) putAsset(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	out := map[string]any{
 		"id":           asset.ID,
 		"url":          asset.URL(),
 		"content_type": asset.ContentType,
@@ -35,7 +36,24 @@ func (s *Server) putAsset(w http.ResponseWriter, r *http.Request) {
 		// So a client knows whether to embed it or link to it, rather than guessing from the
 		// type it happened to send.
 		"image": store.IsImage(asset.ContentType),
-	})
+	}
+	if asset.Image.Width > 0 {
+		drawn := drawnSize(asset.Image)
+		out["width"], out["height"] = drawn.Width, drawn.Height
+	}
+	writeJSON(w, http.StatusCreated, out)
+}
+
+// imageBody is the size an image is meant to be drawn at, in CSS pixels: its pixels over the
+// density its file says, so a Retina screenshot is the size it was on screen.
+type imageBody struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+func drawnSize(size imagesize.Size) imageBody {
+	w, h := size.Drawn()
+	return imageBody{Width: w, Height: h}
 }
 
 // getAsset serves one, scoped to its owner.

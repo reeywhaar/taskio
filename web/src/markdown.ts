@@ -1,5 +1,7 @@
 import DOMPurify from "dompurify";
-import { marked, type Token } from "marked";
+import { marked, Renderer, type Token } from "marked";
+
+import { sizeOf } from "@app/api/images";
 
 /**
  * One renderer, configured once.
@@ -19,6 +21,23 @@ marked.setOptions({ gfm: true, breaks: true });
  */
 marked.use({
   renderer: {
+    /**
+     * A pasted picture at the size it is meant to be drawn at, which the server read from its
+     * file: a Retina screenshot at the size it was on screen rather than a pixel for a pixel.
+     * Given as width and height rather than a style, so the space is held before it loads and
+     * the stylesheet's max-width still narrows it.
+     */
+    image(token) {
+      const html = Renderer.prototype.image.call(this, token);
+      const id = /^\/api\/assets\/(a_[0-9a-z]{26})$/.exec(token.href)?.[1];
+      const size = id ? sizeOf(id) : undefined;
+      return size
+        ? html.replace(
+            "<img ",
+            `<img width="${size.width}" height="${size.height}" `,
+          )
+        : html;
+    },
     // The box below stands in for it.
     checkbox: () => "",
     listitem(token) {

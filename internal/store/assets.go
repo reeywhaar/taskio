@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"taskio/internal/ids"
+	"taskio/internal/imagesize"
 )
 
 // AssetTypes is what may be uploaded, and how each one is served.
@@ -77,6 +78,8 @@ type Asset struct {
 	Size        int64
 	SHA256      []byte
 	CreatedAt   time.Time
+	// Image is its pixels and density, zero for what is not an image or could not be read.
+	Image imagesize.Size
 }
 
 // URL is where the asset is served, and what goes into a description.
@@ -117,7 +120,12 @@ func (s *Store) PutAsset(ctx context.Context, principalID, declared string, body
 	}
 
 	now := s.Now()
+	size, _ := imagesize.Of(body)
+	if size.Scale == 0 {
+		size.Scale = 1
+	}
 	asset := &Asset{
+		Image:       size,
 		ID:          ids.New(ids.Asset, now.UnixMilli()),
 		PrincipalID: principalID,
 		ContentType: kind,
@@ -133,9 +141,10 @@ func (s *Store) PutAsset(ctx context.Context, principalID, declared string, body
 	defer tx.Rollback()
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO assets (id, principal_id, sha256, content_type, size, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		asset.ID, principalID, asset.SHA256, kind, asset.Size, unix(now)); err != nil {
+		`INSERT INTO assets (id, principal_id, sha256, content_type, size, created_at, width, height, scale)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		asset.ID, principalID, asset.SHA256, kind, asset.Size, unix(now),
+		size.Width, size.Height, size.Scale); err != nil {
 		return nil, fmt.Errorf("put asset: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx,
@@ -155,9 +164,10 @@ func (s *Store) Asset(ctx context.Context, principalID, id string) (*Asset, erro
 	a := &Asset{}
 	var created int64
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT id, principal_id, content_type, size, sha256, created_at
+		`SELECT id, principal_id, content_type, size, sha256, created_at, width, height, scale
 		   FROM assets WHERE id = ? AND principal_id = ?`, id, principalID).
-		Scan(&a.ID, &a.PrincipalID, &a.ContentType, &a.Size, &a.SHA256, &created)
+		Scan(&a.ID, &a.PrincipalID, &a.ContentType, &a.Size, &a.SHA256, &created,
+			&a.Image.Width, &a.Image.Height, &a.Image.Scale)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no such image.")
 	}
@@ -193,9 +203,9 @@ func (s *Store) assetByContent(ctx context.Context, principalID string, sum []by
 	a := &Asset{PrincipalID: principalID, SHA256: sum}
 	var created int64
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT id, content_type, size, created_at FROM assets
+		`SELECT id, content_type, size, created_at, width, height, scale FROM assets
 		  WHERE principal_id = ? AND sha256 = ?`, principalID, sum).
-		Scan(&a.ID, &a.ContentType, &a.Size, &created)
+		Scan(&a.ID, &a.ContentType, &a.Size, &created, &a.Image.Width, &a.Image.Height, &a.Image.Scale)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -204,6 +214,51 @@ func (s *Store) assetByContent(ctx context.Context, principalID string, sum []by
 	}
 	a.CreatedAt = time.Unix(created, 0).UTC()
 	return a, nil
+}
+
+// AssetSizes is how big each of an account's images is, by id, for the ones it could read. Ids
+// it does not hold, or that are not images, are left out rather than refused: they come from
+// text, and text can name anything.
+func (s *Store) AssetSizes(ctx context.Context, principalID string, ids []string) (map[string]imagesize.Size, error) {
+	out := map[string]imagesize.Size{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	args := []any{principalID}
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	rows, err := s.reader.QueryContext(ctx,
+		`SELECT id, width, height, scale FROM assets
+		  WHERE principal_id = ? AND width > 0 AND id IN (?`+strings.Repeat(", ?", len(ids)-1)+`)`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("asset sizes: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var size imagesize.Size
+		if err := rows.Scan(&id, &size.Width, &size.Height, &size.Scale); err != nil {
+			return nil, err
+		}
+		out[id] = size
+	}
+	return out, rows.Err()
+}
+
+// AssetIDs are the assets a text names, each once, in order.
+func AssetIDs(texts ...string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, text := range texts {
+		for _, m := range assetRef.FindAllStringSubmatch(text, -1) {
+			if !seen[m[1]] {
+				seen[m[1]] = true
+				out = append(out, m[1])
+			}
+		}
+	}
+	return out
 }
 
 // assetType checks what was declared against what the bytes are.

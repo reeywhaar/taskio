@@ -306,3 +306,34 @@ func TestAWriteStopsAtItsDeadline(t *testing.T) {
 		t.Fatal("a write waited past its deadline")
 	}
 }
+
+// retina is a PNG the way a Retina screenshot is: its pixels, and pHYs saying 144 dpi.
+func retina(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	b := buf.Bytes()
+	at := 8 + 8 + 13 + 4
+	phys := []byte{0, 0, 0, 9, 'p', 'H', 'Y', 's', 0, 0, 0x16, 0x25, 0, 0, 0x16, 0x25, 1, 0, 0, 0, 0}
+	return append(append(append([]byte{}, b[:at]...), phys...), b[at:]...)
+}
+
+// A browser draws an image a pixel for a pixel, so a Retina screenshot came out twice the size it
+// was taken at. The size it is meant to be drawn at comes back on upload and with the task.
+func TestAnImageSaysTheSizeItIsMeantToBeDrawnAt(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	got := c.json(c.upload("image/png", retina(t, 1062, 926)))
+	if got["width"] != float64(531) || got["height"] != float64(463) {
+		t.Fatalf("upload = %v, want 531x463", got)
+	}
+
+	id := c.task(`{"title":"Fix the tap","description":"![shot](` + got["url"].(string) + `)"}`)["id"].(string)
+	c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"Not this one: /api/assets/a_0000000000000000000000000z"}`)
+	images := c.json(c.do("GET", "/api/tasks/"+id, ""))["images"].(map[string]any)
+	if len(images) != 1 || fmt.Sprint(images[got["id"].(string)]) != "map[height:463 width:531]" {
+		t.Errorf("images = %v, want the one it holds at 531x463", images)
+	}
+}

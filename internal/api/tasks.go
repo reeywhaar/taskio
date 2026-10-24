@@ -215,10 +215,24 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rendered := make([]commentBody, 0, len(comments))
+	texts := []string{task.Description}
 	for _, c := range comments {
 		rendered = append(rendered, renderComment(c, principalOf(r), task.ID))
+		texts = append(texts, c.Body)
 	}
 	body["comments"] = rendered
+	// The size each picture in the words is meant to be drawn at, so it is drawn at that size
+	// from the first frame rather than a pixel for a pixel.
+	sizes, err := s.store.AssetSizes(r.Context(), principalOf(r).ID, store.AssetIDs(texts...))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	images := make(map[string]imageBody, len(sizes))
+	for id, size := range sizes {
+		images[id] = drawnSize(size)
+	}
+	body["images"] = images
 	writeJSON(w, http.StatusOK, body)
 }
 

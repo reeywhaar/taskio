@@ -1023,6 +1023,18 @@ on a ground of its own, in the same corner it always has. Sometimes a
 picture says more than the words. Only pictures pasted into taskio: one from another site on every
 row would tell that site each time the list is opened.
 
+## A picture is drawn at the size it was taken
+
+A screenshot from a Retina screen has twice the pixels of what was on screen, and says so in its
+file — 144 dpi, where 72 is a pixel for a pixel. A browser draws an <img> a pixel for a pixel
+whatever the file says, so it came out twice the size it was taken at. The server reads the
+density when the file arrives — a PNG's pHYs or eXIf, a JPEG's JFIF or EXIF — and stores the
+pixels and the scale with the asset. The task's answer carries the size each picture in its words
+is meant to be drawn at, the upload's carries it for one just pasted, and the renderer writes it
+on the <img> as width and height: right from the first frame, its space held before it loads,
+and still no wider than the column. Anything under one and a half times 72 is drawn as it is,
+since Windows writes 96 meaning the same as 72.
+
 ## A card is clicked, not its title
 
 The whole card opens the task. The title is still a real button, so the keyboard and a screen

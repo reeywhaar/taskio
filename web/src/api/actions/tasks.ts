@@ -1,3 +1,4 @@
+import { rememberSizes } from "@app/api/images";
 import { query, request } from "@app/api/transport";
 import type { Comment, Task, TaskDetail, TaskPage } from "@app/api/types";
 
@@ -16,8 +17,12 @@ export type ListParams = {
 export const getTasks = (params: ListParams) =>
   request<TaskPage>(`/api/tasks${query(params)}`);
 
+/** With the size each picture in it is meant to be drawn at, remembered before it renders. */
 export const getTasksById = (id: string) =>
-  request<TaskDetail>(`/api/tasks/${id}`);
+  request<TaskDetail>(`/api/tasks/${id}`).then((task) => {
+    rememberSizes(task.images);
+    return task;
+  });
 
 export const postTasks = (
   project: string,
