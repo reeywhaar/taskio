@@ -32,6 +32,7 @@ import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
+import { finishInComment, finishInTask } from "@app/uploads";
 import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
 
@@ -192,6 +193,7 @@ export function TaskDialog({
     client.invalidateQueries({ queryKey: qk.tags });
   };
 
+  // A picture still uploading lands in the saved text once it is there, dialog or no dialog.
   const write = () =>
     patchTasksById(id, {
       title: draft.title,
@@ -204,6 +206,9 @@ export function TaskDialog({
       ...(task.data && draft.project !== task.data.project
         ? { project: draft.project }
         : {}),
+    }).then((saved) => {
+      finishInTask(id, draft.description);
+      return saved;
     });
 
   const save = useMutation({
@@ -233,8 +238,11 @@ export function TaskDialog({
   const [writing, setWriting] = useState<Writing>(null);
   /** Waits for the task to come back, so the dialog closing shows the new words and not the old. */
   const sendComment = async (body: string) => {
-    if (writing?.id) await patchTasksByIdCommentsById(id, writing.id, body);
-    else await postTasksByIdComments(id, body);
+    const sent = writing?.id
+      ? await patchTasksByIdCommentsById(id, writing.id, body)
+      : await postTasksByIdComments(id, body);
+    // A picture still uploading lands in the comment once it is there.
+    finishInComment(id, sent.id, body);
     await client.invalidateQueries({ queryKey: qk.task(id) });
     invalidate();
   };

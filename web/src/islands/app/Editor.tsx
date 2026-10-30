@@ -8,6 +8,7 @@ import {
 
 import { postAssets } from "@app/api/actions/assets";
 import { ApiError } from "@app/api/transport";
+import { track } from "@app/uploads";
 import { PaperclipIcon } from "@app/components/icons/Icon";
 
 function filesOf(list: FileList | null): File[] {
@@ -96,10 +97,14 @@ export function Editor({
         file.type.startsWith("image/"),
       );
       insert(placeholder);
+      // The server says whether to embed it: the type it settled on is the one that counts.
+      const uploaded = postAssets(file).then((asset) =>
+        markdownFor(file.name, asset.url, asset.image),
+      );
+      // Held beyond this box, so a save sent before it lands still gets it.
+      track(placeholder, uploaded);
       try {
-        const asset = await postAssets(file);
-        // The server says whether to embed it: the type it settled on is the one that counts.
-        replace(placeholder, markdownFor(file.name, asset.url, asset.image));
+        replace(placeholder, await uploaded);
       } catch (err) {
         replace(placeholder, "");
         setError(

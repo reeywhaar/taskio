@@ -9,6 +9,14 @@ Markdown is the storage format. A rich-text surface would have to round-trip it 
 way in, serialise on the way out — and every round trip is a chance to lose a construct nobody
 tested. So it is a textarea, and what you type is what is stored.
 
+**An upload finishes after the dialog closes.** A file pasted, dropped or attached with the clip
+puts a placeholder where it goes, swapped for the file's address when the upload lands. Saved
+before then — a title, a pasted screenshot, Add straight away — the placeholder was what got saved
+and the picture was lost with the dialog.
+So uploads are held outside the box, and a task, an edit or a comment saved with one still on its
+way has it written into the saved copy when it lands, or the placeholder taken out if it fails.
+Until then it reads "Uploading shot.png…" rather than a broken image.
+
 **Reading is the dialog's other face.** View and Edit sit at the right of the title bar,
 beside the close, and switch the dialog between the fields and the task as it reads — its name
 as a heading at the head of the body, with its words and its mentions, and the same footer. The

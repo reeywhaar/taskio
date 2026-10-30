@@ -256,3 +256,12 @@ describe("a pasted picture", () => {
     expect(img).not.toContain("width=");
   });
 });
+
+/** Saved before its upload landed: it says so, rather than a broken image. */
+it("says a picture still uploading is on its way", () => {
+  const html = page("![shot <1>](uploading-aaaaaa)");
+  expect(html).toContain(
+    '<span class="uploading">Uploading shot &lt;1&gt;…</span>',
+  );
+  expect(html).not.toContain("<img");
+});

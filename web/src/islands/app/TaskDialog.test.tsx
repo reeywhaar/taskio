@@ -107,7 +107,12 @@ beforeEach(() => {
   todo.mockReset().mockResolvedValue(undefined);
   patch.mockReset().mockResolvedValue(undefined);
   remove.mockReset().mockResolvedValue(undefined);
-  comment.mockReset().mockResolvedValue(undefined);
+  // Answered with the comment, as the server does.
+  comment
+    .mockReset()
+    .mockImplementation((_id: string, body: string) =>
+      Promise.resolve({ id: "c_new", body }),
+    );
   // Edited on the server, so the refetch after it has the new words.
   edit
     .mockReset()
@@ -118,7 +123,7 @@ beforeEach(() => {
           c.id === which ? { ...c, body, edited_at: 1789343500 } : c,
         ),
       };
-      return Promise.resolve();
+      return Promise.resolve({ id: which, body });
     });
   calls = [];
   task = detail("todo");

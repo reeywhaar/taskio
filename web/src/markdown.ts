@@ -28,6 +28,9 @@ marked.use({
      * the stylesheet's max-width still narrows it.
      */
     image(token) {
+      // A paste still on its way: its placeholder says so rather than drawing a broken image.
+      if (token.href.startsWith("uploading-"))
+        return `<span class="uploading">Uploading ${escapeText(token.text)}…</span>`;
       const html = Renderer.prototype.image.call(this, token);
       const id = /^\/api\/assets\/(a_[0-9a-z]{26})$/.exec(token.href)?.[1];
       const size = id ? sizeOf(id) : undefined;
@@ -56,6 +59,13 @@ marked.use({
     },
   },
 });
+
+function escapeText(text: string): string {
+  return text.replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
+  );
+}
 
 /** Every `- [ ]` and `- [x]` in a description, in the order they are rendered in. */
 const marker = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\])/gm;

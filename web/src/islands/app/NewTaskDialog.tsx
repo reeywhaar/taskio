@@ -10,6 +10,7 @@ import { Preview } from "@app/islands/app/Preview";
 import { ProjectLabel } from "@app/islands/app/ProjectPicker";
 import { TaskDialog, TitleRead, type Mode } from "@app/islands/app/TaskDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
+import { finishInTask } from "@app/uploads";
 
 /**
  * Writing a task down.
@@ -78,7 +79,9 @@ export function NewTaskDialog({
     // Written and gone. Opening the task that was just written puts a second modal where the
     // first one was, and two wide dialogs with the same fields in the same place read as one
     // dialog that would not close.
-    onSuccess: () => {
+    onSuccess: (made) => {
+      // A picture still uploading lands in the task once it is there, dialog or no dialog.
+      finishInTask(made.id, draft.description);
       client.invalidateQueries({ queryKey: qk.tasks });
       client.invalidateQueries({ queryKey: qk.tags });
       onCreated?.();

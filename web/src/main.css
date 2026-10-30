@@ -416,6 +416,10 @@ textarea {
   padding-left: 0.75em;
   color: var(--color-muted);
 }
+/* A pasted picture still uploading, where it will be. */
+.prose .uploading {
+  color: var(--color-muted);
+}
 .prose img {
   border-radius: 0.375rem;
   max-width: 100%;
