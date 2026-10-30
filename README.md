@@ -127,3 +127,7 @@ docs/              deploy, API, conventions — api.md renders to /docs
 [docs/conventions.md](docs/conventions.md) is the short version: comments are notes rather than
 prose, they explain what is there rather than what is absent, and decisions that need arguing go
 in `docs/` where they can be read once instead of in a comment nobody scrolls to.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
