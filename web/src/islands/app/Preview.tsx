@@ -17,7 +17,7 @@ import { render, toggleCheck, Unrendered } from "@app/markdown";
  * place, read instead of written, and Edit in the title bar turns it back.
  *
  * Three things in it answer a press. A box ticks, which is an edit to the text it was rendered
- * from. A mention opens that task, read the same way, over this one. And a code block copies.
+ * from — the box itself, so the words beside it can be selected like any others. A mention opens that task, read the same way, over this one. And a code block copies.
  */
 export function Preview({
   source,
@@ -59,7 +59,9 @@ export function Preview({
       onMention(chip.getAttribute("data-task") ?? "", comment);
       return;
     }
-    tick(e.target);
+    // The box and nothing else. A press anywhere on the item ticked it, and a drag to select
+    // its words ends in a click: the tick redrew the item, and the selection went with it.
+    if (e.target.closest(".box")) tick(e.target);
   };
 
   // A box is ticked from the keyboard as a checkbox is. Only on the box's own row: Enter on a

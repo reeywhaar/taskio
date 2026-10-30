@@ -441,7 +441,6 @@ textarea {
   display: flex;
   align-items: flex-start;
   gap: 0.5em;
-  cursor: pointer;
 }
 
 .prose li.check > .check-body {
@@ -454,7 +453,9 @@ textarea {
   margin-top: 0.25em;
 }
 
+/* The one thing on the item that ticks it: the words beside it are words, to be selected. */
 .prose li.check .box {
+  cursor: pointer;
   flex: none;
   margin-top: 0.15em;
   width: 1em;

@@ -34,8 +34,17 @@ describe("Preview", () => {
   it("ticks a box as an edit to the text", () => {
     const onChange = vi.fn();
     preview("- [ ] one\n- [ ] two", onChange);
-    fireEvent.click(document.querySelectorAll("li[data-check]")[1]!);
+    fireEvent.click(document.querySelectorAll("li[data-check] .box")[1]!);
     expect(onChange).toHaveBeenCalledWith("- [ ] one\n- [x] two");
+  });
+
+  /** A drag to select the words ends in a click, and a tick redrew them out from under it. */
+  it("leaves the words beside a box to be selected, and its links to be followed", () => {
+    const onChange = vi.fn();
+    preview("- [ ] see [the issue](https://example.com/1) first", onChange);
+    fireEvent.click(document.querySelector("li[data-check] .check-body")!);
+    fireEvent.click(document.querySelector("li[data-check] a")!);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("ticks from the keyboard on the box's own row", () => {

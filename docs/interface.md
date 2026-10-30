@@ -24,7 +24,9 @@ as a square before the name, the mark the row wears rather than a field of its o
 
 The words it shows are held while it is open. An edit arriving from elsewhere replaces the draft
 under the reader, which would be a page swapping mid-sentence, so the newer text waits behind an
-Update beside Edit. A tick in it is an edit like any other, sent by Save.
+Update beside Edit. A tick in it is an edit like any other, sent by Save. Only the box ticks: a
+press anywhere on the item did, and a drag to select its words ends in a click, so the tick redrew
+the item and took the selection with it.
 
 **Linked tasks are listed once.** Under the description: Mentioned both ways, for a task that mentions this
 one and is mentioned by it, then Mentions and Mentioned by for what goes only one way. A pair of

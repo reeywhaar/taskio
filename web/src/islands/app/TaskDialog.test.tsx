@@ -598,7 +598,7 @@ describe("reading the task", () => {
     task = { ...detail("todo"), description: "- [ ] one" };
     open();
     fireEvent.click(await screen.findByRole("button", { name: "View" }));
-    fireEvent.click(document.querySelector("li[data-check]")!);
+    fireEvent.click(document.querySelector("li[data-check] .box")!);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(patch.mock.calls[0]![1]).toMatchObject({
