@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getTags } from "@app/api/actions/tags";
@@ -6,7 +7,7 @@ import { Group as Caption } from "@app/components/Field";
 import { NumberField } from "@app/components/NumberField";
 import { ColorSelect } from "@app/components/Swatches";
 import { TextField } from "@app/components/TextField";
-import { Editor } from "@app/islands/app/Editor";
+import { Editor, type EditorHandle } from "@app/islands/app/Editor";
 import { TagCloud } from "@app/islands/app/TagCloud";
 
 /** What a task is made of, and what either dialog is editing. */
@@ -62,6 +63,7 @@ export function TaskForm({
     queryFn: () => getTags(draft.project),
   });
   const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
+  const editor = useRef<EditorHandle>(null);
 
   return (
     <>
@@ -71,9 +73,18 @@ export function TaskForm({
         data-autofocus={titlePlaceholder ? true : undefined}
         value={draft.title}
         onChange={(e) => set({ title: e.target.value })}
+        // A title holds no picture, and the focus is in it the moment a new task opens: a
+        // screenshot pasted there straight away goes to the description, at its end.
+        onPaste={(e) => {
+          const files = Array.from(e.clipboardData.files);
+          if (files.length === 0) return;
+          e.preventDefault();
+          editor.current?.attach(files);
+        }}
       />
 
       <Editor
+        handle={editor}
         value={draft.description}
         onChange={(description) => set({ description })}
         limits={{ assetMax: 10 << 20 }}

@@ -1,9 +1,11 @@
 import {
+  useImperativeHandle,
   useRef,
   useState,
   type ClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
+  type Ref,
 } from "react";
 
 import { postAssets } from "@app/api/actions/assets";
@@ -34,6 +36,7 @@ export function Editor({
   prompt = "Markdown. Paste a file, or @ a task.",
   onSubmit,
   autoFocus = false,
+  handle,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -46,6 +49,8 @@ export function Editor({
   onSubmit?: () => void;
   /** Taken by the dialog it opens in, where the box is the whole of what the dialog is for. */
   autoFocus?: boolean;
+  /** For a field beside it to hand it files: a paste into a task's title lands here. */
+  handle?: Ref<EditorHandle>;
 }) {
   const [error, setError] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -115,6 +120,19 @@ export function Editor({
       }
     }
   };
+
+  useImperativeHandle(handle, () => ({
+    attach: (files) => {
+      const el = ref.current;
+      if (!el) return;
+      // At the end, a paragraph of its own: the words already here were not written around it.
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      if (el.value.trim() && !el.value.endsWith("\n\n"))
+        insert(el.value.endsWith("\n") ? "\n" : "\n\n");
+      void upload(files);
+    },
+  }));
 
   // A floor of its own tint, so the browser's resize grip reads as the corner of the words above
   // it rather than something standing on the controls.
@@ -189,6 +207,9 @@ export function Editor({
     </div>
   );
 }
+
+/** What a field beside the box can ask of it. */
+export type EditorHandle = { attach: (files: File[]) => void };
 
 /**
  * The keys that send, as a placeholder says them: Cmd on a Mac, Ctrl elsewhere, and nothing on a

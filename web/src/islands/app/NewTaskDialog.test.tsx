@@ -8,6 +8,10 @@ const postTasks = vi.fn();
 vi.mock("@app/api/actions/tasks", () => ({
   postTasks: (project: string, body: unknown) => postTasks(project, body),
 }));
+vi.mock("@app/api/actions/assets", () => ({
+  postAssets: () =>
+    Promise.resolve({ id: "a_one", url: "/api/assets/a_one", image: true }),
+}));
 vi.mock("@app/api/actions/tags", () => ({
   getTags: () => Promise.resolve({ tags: [] }),
 }));
@@ -83,5 +87,26 @@ describe("NewTaskDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalled();
     expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  /** The focus is in the title the moment it opens, and a screenshot pasted at once goes there. */
+  it("puts a file pasted into the title at the end of the description", async () => {
+    mount(
+      <NewTaskDialog project="" open tags={[]} title="" onClose={vi.fn()} />,
+    );
+    const box = screen.getByPlaceholderText(
+      /Markdown\. Paste a file/,
+    ) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "It drips." } });
+    const title = screen.getByPlaceholderText("What needs doing?");
+    fireEvent.paste(title, {
+      clipboardData: {
+        files: [new File(["png"], "shot.png", { type: "image/png" })],
+      },
+    });
+    await waitFor(() =>
+      expect(box.value).toBe("It drips.\n\n![shot.png](/api/assets/a_one)"),
+    );
+    expect((title as HTMLInputElement).value).toBe("");
   });
 });

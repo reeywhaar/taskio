@@ -9,8 +9,9 @@ import {
  *
  * A file pasted, dropped or attached puts a placeholder in the text and swaps it for the file's
  * address when the upload finishes. Saved before then, the placeholder was what got saved, and
- * the swap had nothing left to happen in: the dialog was gone. So each upload is held here by its placeholder, and whatever
- * saves text that still holds one asks to have it finished in the saved copy instead.
+ * the swap had nothing left to happen in: the dialog was gone. So each upload is held here by its
+ * placeholder, and whatever saves text that still holds one asks to have it finished in the
+ * saved copy instead.
  *
  * Kept for the page's life rather than dropped when done: a save can be sent before an upload
  * finishes and answered after, and the placeholder in it still needs its answer.

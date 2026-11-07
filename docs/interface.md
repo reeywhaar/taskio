@@ -17,6 +17,10 @@ So uploads are held outside the box, and a task, an edit or a comment saved with
 way has it written into the saved copy when it lands, or the placeholder taken out if it fails.
 Until then it reads "Uploading shot.png…" rather than a broken image.
 
+A file pasted into a task's title goes to the end of the description, a paragraph of its own. The
+focus is in the title the moment a new task opens, and pressing New task and then Cmd+V is the
+whole of what somebody with a screenshot does; a title holds no picture.
+
 **Reading is the dialog's other face.** View and Edit sit at the right of the title bar,
 beside the close, and switch the dialog between the fields and the task as it reads — its name
 as a heading at the head of the body, with its words and its mentions, and the same footer. The
