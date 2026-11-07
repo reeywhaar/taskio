@@ -138,6 +138,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handleAgent("POST /api/tasks/{id}/comments", s.requireAuth(s.addComment))
 	s.handleAgent("GET /api/tasks/{id}/comments/{n}", s.requireAuth(s.getComment))
 	s.handleAgent("PATCH /api/tasks/{id}/comments/{comment}", s.requireAuth(s.editComment))
+	s.handleAgent("DELETE /api/tasks/{id}/comments/{comment}", s.requireAuth(s.deleteComment))
 	s.handleAgent("DELETE /api/tasks/{id}", s.requireAuth(s.deleteTask))
 
 	s.handleAgent("POST /api/tasks/bulk/done", s.requireAuth(s.bulkDone(true)))

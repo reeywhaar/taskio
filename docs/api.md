@@ -93,8 +93,8 @@ Case is ignored on input, and `i`/`l` read as `1` and `o` as `0`. Output is alwa
 month. Every response carries the full one.
 
 **A comment's id is its task's id, `#`, and its number: `8qw4tz9k#3`** is the third comment on
-`8qw4tz9k`, counted from 1 in the order they were written. Comments are never deleted, so the
-number never moves. Wherever you meet one — in a task, in a message, from a person — that is what
+`8qw4tz9k`, counted from 1 in the order they were written. A number is never given to another
+comment, even after the one holding it is deleted, so it never moves. Wherever you meet one — in a task, in a message, from a person — that is what
 it means, and it reads at:
 
 ```sh
@@ -223,6 +223,7 @@ POST   /api/tasks/{id}/poke
 POST   /api/tasks/{id}/comments  {body}
 GET    /api/tasks/{id}/comments/{n}
 PATCH  /api/tasks/{id}/comments/{comment}  {body}
+DELETE /api/tasks/{id}/comments/{comment}
 DELETE /api/tasks/{id}
 
 POST   /api/tasks/bulk/done      {ids}
@@ -431,7 +432,10 @@ verdict belongs in the timeline, not in a description rewritten after the fact.
 
 `PATCH /api/tasks/{id}/comments/{comment} {body}` replaces a comment's words and sets
 `edited_at`; `{comment}` is its number or its `id`. A token edits only the comments it wrote — `403 token_forbidden` for another's — so
-what a timeline says each wrote stays true. An edit does not poke. Comments are not deleted.
+what a timeline says each wrote stays true. An edit does not poke.
+
+`DELETE /api/tasks/{id}/comments/{comment}` takes one off the timeline: its words are gone, its
+number is not reused, and a mention of it no longer resolves. A token deletes only its own.
 
 ## Mentioning another task
 

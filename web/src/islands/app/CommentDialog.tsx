@@ -21,12 +21,15 @@ export type Writing = { id?: string; n?: number; body: string } | null;
 export function CommentDialog({
   writing,
   onSend,
+  onDelete,
   onClose,
   onMention,
 }: {
   writing: Writing;
   /** Writes it; a refusal is said here and the words stay. */
   onSend: (body: string) => Promise<void>;
+  /** Takes the comment being edited off the timeline. Left out, there is no Delete. */
+  onDelete?: () => Promise<void>;
   onClose: () => void;
   onMention: (id: string, comment?: number) => void;
 }) {
@@ -54,6 +57,13 @@ export function CommentDialog({
   const submit = () => {
     if (changed && !send.isPending) send.mutate();
   };
+
+  const remove = useMutation({
+    mutationFn: () => onDelete!(),
+    onSuccess: onClose,
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Something went wrong."),
+  });
 
   const confirm = useConfirm();
   const close = async () => {
@@ -93,6 +103,24 @@ export function CommentDialog({
       }
       footer={
         <>
+          {editing && onDelete ? (
+            <Button
+              variant="danger"
+              disabled={remove.isPending}
+              onClick={async () => {
+                const yes = await confirm({
+                  title: `Delete comment #${writing?.n}?`,
+                  message:
+                    "Its words go from the timeline, and its number is not given to another.",
+                  confirm: "Delete",
+                  danger: true,
+                });
+                if (yes) remove.mutate();
+              }}
+            >
+              Delete
+            </Button>
+          ) : null}
           <span className="flex-1" />
           <Button onClick={close}>Cancel</Button>
           <Button

@@ -54,8 +54,9 @@ to a person or an agent, it says which comment. The number at the head of its li
 link to `/t/8qw4tz9k#c3`: pressed, it copies the id, puts that address in the bar and marks the
 comment; opened in a new tab it is a link like any other. `@8qw4tz9k#3` in any text is a
 chip that opens that task over this one, onto that comment, marked for a moment; `/t/8qw4tz9k#c3`
-opens onto it from a link. A number, not an id of its own, because comments are never deleted, so
-the third is the third for good, and the name says which task it is on.
+opens onto it from a link. A number, not an id of its own, because a number is never given to
+another comment, even after a deleted one, so the third is the third for good, and the name says
+which task it is on.
 
 **Each comment is a card**, raised as a row in the list is, with its number, author and time on
 its first line. They were runs of text under a line of small grey type, and a long one with a list
@@ -70,7 +71,12 @@ Delete no longer carry a comment along: say why, then press it.
 
 An edited comment says "edited" beside its time. From the app any comment can be edited, since
 they are all the account's; a token edits only its own, so what the timeline says a token wrote
-stays what it wrote. Comments are not deleted.
+stays what it wrote.
+
+**Delete** is at the bottom left of the dialog a comment is edited in, and asks first. The words
+go, and a picture only they held is left for the sweep; the row stays, empty, so its number is
+never handed to the next comment and a mention of #5 cannot come to mean a different one. The
+timeline then skips from #4 to #6, which is true.
 
 Mark done, Mark as todo and Restore close the dialog, as Delete does: the status is what somebody
 opened the task to change. The pin and the poke are properties, and leave it open.

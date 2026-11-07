@@ -13,6 +13,7 @@ const remove = vi.fn();
 const comment = vi.fn();
 const edit = vi.fn();
 const create = vi.fn();
+const unsay = vi.fn();
 /** The order things reached the server in, which is the point of several of these. */
 let calls: string[] = [];
 let task: TaskDetail;
@@ -46,6 +47,11 @@ vi.mock("@app/api/actions/tasks", () => ({
   deleteTasksById: (id: string) => {
     calls.push("delete");
     return remove(id);
+  },
+  deleteTasksByIdCommentsById: (id: string, which: string) => {
+    calls.push("unsay");
+    task = { ...task, comments: task.comments.filter((c) => c.id !== which) };
+    return unsay(id, which);
   },
   postTasks: (project: string, body: unknown) => {
     calls.push("create");
@@ -874,6 +880,39 @@ describe("comments", () => {
     );
     expect((await item()).textContent).toMatch(/Ordered washers\./);
     expect((await item()).textContent).toMatch(/· edited/);
+  });
+
+  /** From the dialog it is edited in, bottom left, asked first. */
+  it("deletes one, once asked", async () => {
+    task = one();
+    unsay.mockResolvedValue(undefined);
+    open();
+    fireEvent.click(
+      within(await item()).getByRole("button", { name: "Edit comment" }),
+    );
+    const dialog = (
+      await screen.findByRole("heading", { name: "Edit comment #1" })
+    ).closest("dialog")!;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    const asked = (
+      await screen.findByRole("heading", { name: "Delete comment #1?" })
+    ).closest("dialog")!;
+    expect(unsay).not.toHaveBeenCalled();
+    fireEvent.click(within(asked).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(unsay).toHaveBeenCalledWith("8qw4tz9k", "c_1"));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit comment #1" }),
+      ).toBeNull(),
+    );
+  });
+
+  it("offers no Delete for a comment not yet written", async () => {
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Add comment" }));
+    const dialog = (await waitFor(box)).closest("dialog")!;
+    expect(within(dialog).queryByRole("button", { name: "Delete" })).toBeNull();
   });
 
   it("saves an edit on Cmd+Enter", async () => {

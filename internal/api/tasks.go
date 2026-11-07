@@ -318,6 +318,20 @@ func (s *Server) editComment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, renderComment(c, principalOf(r), task.ID))
 }
 
+// deleteComment takes one off the timeline. Its number is not handed to another.
+func (s *Server) deleteComment(w http.ResponseWriter, r *http.Request) {
+	task, err := s.task(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if err := s.store.DeleteComment(r.Context(), principalOf(r).ID, reachOf(r), task.ID, r.PathValue("comment"), tokenOf(r)); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // taskStub is a mention: enough to draw a link with a title on it.
 type taskStub struct {
 	ID    string `json:"id"`

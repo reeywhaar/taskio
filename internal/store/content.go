@@ -122,7 +122,7 @@ func (s *Store) normalizeMentions(ctx context.Context, principalID string, reach
 		var found int
 		if err := s.reader.QueryRowContext(ctx,
 			`SELECT COUNT(*) FROM comments c JOIN tasks t ON t.seq = c.task_seq
-			  WHERE t.id = ? AND t.principal_id = ? AND c.n = ?`, id, principalID, n).Scan(&found); err != nil || found == 0 {
+			  WHERE t.id = ? AND t.principal_id = ? AND c.n = ? AND c.deleted_at IS NULL`, id, principalID, n).Scan(&found); err != nil || found == 0 {
 			return match
 		}
 		return lead + "@" + id + "#" + strconv.Itoa(n)

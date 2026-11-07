@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   deleteTasksById,
+  deleteTasksByIdCommentsById,
   getTasksById,
   patchTasksById,
   patchTasksByIdCommentsById,
@@ -502,6 +503,15 @@ export function TaskDialog({
       <CommentDialog
         writing={writing}
         onSend={sendComment}
+        onDelete={
+          writing?.id
+            ? async () => {
+                await deleteTasksByIdCommentsById(id, writing.id!);
+                await client.invalidateQueries({ queryKey: qk.task(id) });
+                invalidate();
+              }
+            : undefined
+        }
         onClose={() => setWriting(null)}
         onMention={openPeek}
       />

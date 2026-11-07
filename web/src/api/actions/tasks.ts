@@ -77,6 +77,10 @@ export const patchTasksByIdCommentsById = (
     body: { body },
   });
 
+/** Off the timeline; its number is not given to another. */
+export const deleteTasksByIdCommentsById = (id: string, comment: string) =>
+  request<void>(`/api/tasks/${id}/comments/${comment}`, { method: "DELETE" });
+
 export const deleteTasksById = (id: string) =>
   request<void>(`/api/tasks/${id}`, { method: "DELETE" });
 

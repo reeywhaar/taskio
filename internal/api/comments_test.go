@@ -228,3 +228,48 @@ func TestACommentIsMentionedByItsNumber(t *testing.T) {
 		t.Errorf("mentions = %v, want the task the comment is on", mentions)
 	}
 }
+
+// A deleted comment leaves the timeline, and its number is never handed to another: a mention
+// of #2 must not come to mean a comment written after it.
+func TestDeletingACommentLeavesItsNumberUnused(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	id := c.task(`{"title":"Fix the tap"}`)["id"].(string)
+	a := mintToken(t, s, c, "claude", "")
+	c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"First."}`)
+	its := a.json(a.do("POST", "/api/tasks/"+id+"/comments", `{"body":"The agent's."}`))["id"].(string)
+	mine := c.json(c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"Third."}`))["id"].(string)
+
+	// A token deletes only its own.
+	if body := refusal(t, a.do("DELETE", "/api/tasks/"+id+"/comments/"+mine, ""), http.StatusForbidden); body.Code != CodeForbidden {
+		t.Errorf("a token deleting the session's got %+v", body)
+	}
+	if resp := a.do("DELETE", "/api/tasks/"+id+"/comments/"+its, ""); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("a token deleting its own = %s", resp.Status)
+	}
+	// By number too, from the account.
+	if resp := c.do("DELETE", "/api/tasks/"+id+"/comments/3", ""); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("deleting #3 = %s", resp.Status)
+	}
+	refusal(t, c.do("DELETE", "/api/tasks/"+id+"/comments/3", ""), http.StatusNotFound)
+	refusal(t, c.do("GET", "/api/tasks/"+id+"/comments/2", ""), http.StatusNotFound)
+
+	next := c.json(c.do("POST", "/api/tasks/"+id+"/comments", `{"body":"Fourth."}`))
+	if next["n"] != float64(4) {
+		t.Errorf("the next comment is #%v, want 4: a deleted one's number is not reused", next["n"])
+	}
+	left := []string{}
+	for _, row := range c.json(c.do("GET", "/api/tasks/"+id, ""))["comments"].([]any) {
+		left = append(left, row.(map[string]any)["body"].(string))
+	}
+	if strings.Join(left, "|") != "First.|Fourth." {
+		t.Errorf("the timeline = %v", left)
+	}
+
+	// A mention of a deleted comment is left as written, as one that never was; a live one is
+	// written out whole.
+	other := c.task(`{"title":"Order the part","description":"See @` + id[:4] + `#2 and @` + id[:4] + `#1."}`)
+	if want := "See @" + id[:4] + "#2 and @" + id + "#1."; other["description"] != want {
+		t.Errorf("description = %v, want %v", other["description"], want)
+	}
+}

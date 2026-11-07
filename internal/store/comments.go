@@ -31,7 +31,7 @@ type Comment struct {
 func (s *Store) Comments(ctx context.Context, taskSeq int64) ([]*Comment, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
-		  WHERE task_seq = ? ORDER BY n`, taskSeq)
+		  WHERE task_seq = ? AND deleted_at IS NULL ORDER BY n`, taskSeq)
 	if err != nil {
 		return nil, fmt.Errorf("comments: %w", err)
 	}
@@ -133,7 +133,7 @@ func (s *Store) EditComment(ctx context.Context, principalID string, reach Reach
 	}
 	c, err := scanComment(tx.QueryRowContext(ctx,
 		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
-		  WHERE `+column+` = ? AND task_seq = ?`, commentID, task.Seq))
+		  WHERE `+column+` = ? AND task_seq = ? AND deleted_at IS NULL`, commentID, task.Seq))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no comment %s on that task.", commentID)
 	}
@@ -165,6 +165,61 @@ func (s *Store) EditComment(ctx context.Context, principalID string, reach Reach
 	return c, nil
 }
 
+// DeleteComment takes a comment off its task's timeline.
+//
+// The row stays with its words emptied and the time it went, so its number is never handed to
+// another — the next is numbered past every one ever written — and a mention of it stops
+// resolving rather than coming to mean something else. Emptied rather than kept: whoever deleted
+// it meant the words to go, and a picture only it held is then left for the sweep.
+//
+// A token deletes only what it wrote, as it edits only what it wrote; the account deletes any.
+func (s *Store) DeleteComment(ctx context.Context, principalID string, reach Reach, taskID, commentID string, by *Token) error {
+	tx, err := s.writer.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	task, err := loadTask(ctx, tx, principalID, taskID)
+	if err != nil {
+		return err
+	}
+	column := "id"
+	if _, err := strconv.Atoi(commentID); err == nil {
+		column = "n"
+	}
+	c, err := scanComment(tx.QueryRowContext(ctx,
+		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
+		  WHERE `+column+` = ? AND task_seq = ? AND deleted_at IS NULL`, commentID, task.Seq))
+	if errors.Is(err, sql.ErrNoRows) {
+		return NotFound("There is no comment %s on that task.", commentID)
+	}
+	if err != nil {
+		return fmt.Errorf("delete comment: %w", err)
+	}
+	if by != nil && c.TokenID != by.ID {
+		return NotYours("That comment was not written by this token, and a token deletes only its own.")
+	}
+
+	now := s.Now()
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE comments SET body = '', deleted_at = ? WHERE id = ?`, unix(now), c.ID); err != nil {
+		return fmt.Errorf("delete comment: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE tasks SET updated_at = ? WHERE seq = ?`, unix(now), task.Seq); err != nil {
+		return fmt.Errorf("delete comment: %w", err)
+	}
+	if err := syncContent(ctx, tx, task.Seq, principalID, reach, task.Title, task.Description); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("delete comment: %w", err)
+	}
+	s.changed(principalID)
+	return nil
+}
+
 // commentBody readies words for a comment the way a description's are readied: inline images
 // stored as assets, @prefixes turned into whole ids.
 //
@@ -187,7 +242,7 @@ func (s *Store) commentBody(ctx context.Context, principalID string, reach Reach
 func (s *Store) CommentByNumber(ctx context.Context, taskSeq int64, n int) (*Comment, error) {
 	c, err := scanComment(s.reader.QueryRowContext(ctx,
 		`SELECT id, n, body, token_id, token_label, created_at, edited_at FROM comments
-		  WHERE task_seq = ? AND n = ?`, taskSeq, n))
+		  WHERE task_seq = ? AND n = ? AND deleted_at IS NULL`, taskSeq, n))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("That task has no comment #%d.", n)
 	}
