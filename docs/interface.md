@@ -57,6 +57,10 @@ chip that opens that task over this one, onto that comment, marked for a moment;
 opens onto it from a link. A number, not an id of its own, because comments are never deleted, so
 the third is the third for good, and the name says which task it is on.
 
+**Each comment is a card**, raised as a row in the list is, with its number, author and time on
+its first line. They were runs of text under a line of small grey type, and a long one with a list
+in it ran into the next: where one stopped and the other began was that line to find.
+
 **A comment is written in a dialog of its own**, over the task's: Add comment under the list
 opens it empty, and the dimmed pencil after a comment's time opens it on that comment. It was a box
 at the foot of the task and an edit in place, and either one was a draft inside a dialog whose

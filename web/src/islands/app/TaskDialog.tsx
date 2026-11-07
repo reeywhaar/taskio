@@ -569,9 +569,10 @@ function Timeline({
         <li
           key={c.id}
           data-comment={c.n}
-          // Hung out by its padding, so marking it moves nothing.
-          className={`-mx-2 -my-1 flex flex-col gap-1 rounded-md px-2 py-1 transition-colors duration-700 ${
-            lit === c.n ? "bg-shade" : ""
+          // A card each, raised as a row is: a long one with a list in it ran into the next, and
+          // where one stopped and the other began was a line of small grey text to find.
+          className={`raised flex flex-col gap-1.5 rounded-lg px-3.5 py-3 transition-colors duration-700 ${
+            lit === c.n ? "bg-shade" : "bg-bg"
           }`}
         >
           <p className="flex items-center gap-1.5 text-xs text-muted">
