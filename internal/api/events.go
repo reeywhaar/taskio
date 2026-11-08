@@ -29,6 +29,11 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Scoped to the account: nobody is told that somebody else is working. Watched before the
+	// headers go: a client that has them may write at once, and a change in between was lost.
+	changes, stop := s.store.Watch(principalOf(r).ID)
+	defer stop()
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	// Nginx buffers a proxied response by default, which holds every event until the stream
@@ -36,10 +41,6 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
-
-	// Scoped to the account: nobody is told that somebody else is working.
-	changes, stop := s.store.Watch(principalOf(r).ID)
-	defer stop()
 
 	beat := time.NewTicker(ping)
 	defer beat.Stop()
