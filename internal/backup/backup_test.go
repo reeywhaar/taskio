@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -213,4 +215,32 @@ func mainOf(t *testing.T, st *store.Store, principalID string) string {
 		t.Fatal(err)
 	}
 	return p.ID
+}
+
+// A pass the process died in leaves its snapshot behind; the next start removes it, backups on
+// or off, and leaves the database alone.
+func TestLeftoversAreRemovedOnStart(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	left := filepath.Join(dir, "backup-123")
+	if err := os.MkdirAll(left, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(left, store.FileName), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	Run(context.Background(), st, "", dir, slog.New(slog.DiscardHandler))
+
+	if _, err := os.Stat(left); !os.IsNotExist(err) {
+		t.Errorf("the leftover is still there: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, store.FileName)); err != nil {
+		t.Errorf("the database went with it: %v", err)
+	}
 }

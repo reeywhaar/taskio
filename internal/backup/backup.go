@@ -40,6 +40,7 @@ const uploadTimeout = 10 * time.Minute
 // Nothing else makes a copy happen: no timer, no heartbeat, no floor. An instance nobody has
 // touched since Tuesday sends nothing, and liveness is /healthz's job.
 func Run(ctx context.Context, st *store.Store, url, dataDir string, log *slog.Logger) {
+	clearLeftovers(dataDir, log)
 	if url == "" {
 		return
 	}
@@ -69,8 +70,25 @@ func Run(ctx context.Context, st *store.Store, url, dataDir string, log *slog.Lo
 	}
 }
 
+// clearLeftovers removes the scratch of a pass the process died in. Its deferred removal never
+// ran, and nothing else would: each one is a whole snapshot left on the volume. Before the url
+// check, so turning backups off does not keep what they left behind.
+func clearLeftovers(dataDir string, log *slog.Logger) {
+	left, _ := filepath.Glob(filepath.Join(dataDir, scratch+"*"))
+	for _, dir := range left {
+		if err := os.RemoveAll(dir); err != nil {
+			log.Error("a backup's leftovers could not be removed", "dir", dir, "err", err)
+		} else {
+			log.Info("removed a backup's leftovers", "dir", dir)
+		}
+	}
+}
+
+// scratch prefixes the directory a pass snapshots into.
+const scratch = "backup-"
+
 func send(ctx context.Context, st *store.Store, url, dataDir string, log *slog.Logger) error {
-	dir, err := os.MkdirTemp(dataDir, "backup-")
+	dir, err := os.MkdirTemp(dataDir, scratch)
 	if err != nil {
 		return err
 	}

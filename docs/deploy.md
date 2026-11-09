@@ -154,7 +154,9 @@ than shipping a broken image as `latest`. That dependency is the whole gate.
 ## Backups
 
 Set `TASKIO_BACKUP_URL` to a backup agent and taskio posts it a gzipped `VACUUM INTO` snapshot
-of the database. Leave it unset and taskio takes no backups at all.
+of the database. Leave it unset and taskio takes no backups at all. The snapshot is written to a
+`backup-*` folder in the data directory and removed once sent; one left by a process killed
+mid-pass is removed on the next start.
 
 ```
 taskio ──POST archive──▶ agent ──▶ wherever the agent was told
