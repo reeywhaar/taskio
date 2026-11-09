@@ -2,7 +2,9 @@ package api
 
 import (
 	"errors"
+	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"taskio/internal/session"
@@ -187,34 +189,52 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 	})
 }
 
-// clientOf is who the request came from: what a proxy in front says it accepted, or the peer.
+// clientOf is who the request came from: what the proxies in front say they accepted, or the peer.
 //
 // It is what the rate limiters bucket on and what a token records, so behind a proxy both were
 // wrong in the same way — every caller sharing the proxy's address shares one bucket, and every
 // token records the proxy.
 //
-// The last hop of X-Forwarded-For rather than the first: that is the one the nearest proxy
-// appended, and everything before it is whatever the caller sent.
+// X-Forwarded-For is read only from a trusted peer, right to left: each proxy appends who it
+// accepted, so the first hop that is not a trusted proxy is the caller, and everything left of it
+// is whatever the caller sent. From any other peer it is the caller's own claim, and a fresh one
+// per request is a fresh rate-limit bucket. X-Real-IP is never read, since a proxy that does not
+// set it passes the caller's along.
 func (s *Server) clientOf(r *http.Request) string {
-	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
-		return ip
-	}
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		if ip := strings.TrimSpace(parts[len(parts)-1]); ip != "" {
-			return ip
-		}
-	}
-	return peerOf(r)
-}
-
-// peerOf is the address the connection itself came from.
-func peerOf(r *http.Request) string {
-	host, _, ok := strings.Cut(r.RemoteAddr, ":")
+	peer, ok := peerOf(r)
 	if !ok {
 		return r.RemoteAddr
 	}
-	return host
+	trusted := s.cfg.TrustedProxies
+	if !trusted.Trusts(peer) {
+		return peer.String()
+	}
+	client := peer
+	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+	for i := len(hops) - 1; i >= 0; i-- {
+		hop, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
+		if err != nil {
+			break
+		}
+		client = hop.Unmap()
+		if !trusted.Trusts(client) {
+			break
+		}
+	}
+	return client.String()
+}
+
+// peerOf is the address the connection itself came from.
+func peerOf(r *http.Request) (netip.Addr, bool) {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
 }
 
 // requireAdmin is requireSession and one more question.

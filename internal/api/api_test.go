@@ -34,7 +34,8 @@ func newServerStore(t *testing.T, files fstest.MapFS) (*Server, *store.Store) {
 	t.Cleanup(func() { st.Close() })
 
 	u, _ := url.Parse("https://taskio.example.com")
-	cfg := &config.Config{PublicURL: u, Secure: true}
+	proxies, _ := config.ParseProxies("private")
+	cfg := &config.Config{PublicURL: u, Secure: true, TrustedProxies: proxies}
 	return New(cfg, slog.New(slog.DiscardHandler), st, spa, NewDocs(nil, nil, u.String())), st
 }
 

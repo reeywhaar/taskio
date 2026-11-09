@@ -14,8 +14,9 @@ ghcr.io/reeywhaar/taskio:latest
 | `TASKIO_DATA_DIR` | `/data` | Where `taskio.db` lives. Fixed in the image; a variable for local runs |
 | `TASKIO_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `TASKIO_BACKUP_URL` | — | A backup agent to post archives to. Unset, taskio takes none |
+| `TASKIO_TRUSTED_PROXIES` | `private` | Whose `X-Forwarded-For` is believed. See [Behind a proxy](#behind-a-proxy) |
 
-**There is no config file.** Four variables do not want one, and the two things an operator
+**There is no config file.** Five variables do not want one, and the two things an operator
 actually adjusts — the mail relay and the asset limits — live in the database, where they are a
 form field and a test send rather than a redeploy. The environment is for what must be true
 before the process starts; neither of those is.
@@ -30,13 +31,33 @@ for that, and for tests.
 
 ## Behind a proxy
 
-`X-Real-IP`, then the last hop of `X-Forwarded-For`, is the caller. Two things read that address:
-the rate limiters, which bucket on it, and a token, which records where it was last used. Without
-the headers both see the proxy — every caller shares one bucket and every token says the same
-address.
+Two things read the caller's address: the rate limiters, which bucket on it, and a token, which
+records where it was last used. Behind a proxy the connection comes from the proxy, so the caller
+is read from `X-Forwarded-For` — but only when the connection comes from a trusted proxy, since
+from anybody else the header is the caller's own claim, and believing it would let them pick a
+fresh rate-limit bucket on every request.
 
-The last hop rather than the first, because that is the one the nearest proxy appended; anything
-before it is whatever the caller sent.
+`TASKIO_TRUSTED_PROXIES` names the trusted proxies: addresses, ranges, `private`, or `none`,
+separated by commas or spaces.
+
+| setup | value |
+| --- | --- |
+| Proxy on the same host or Docker network | `private`, the default |
+| Proxy on another machine | its address, e.g. `198.51.100.3` |
+| A CDN in front of that proxy | `private` plus the CDN's published ranges |
+| No proxy, or the port is reachable without it | `none` |
+
+`private` is 10/8, 172.16/12, 192.168/16, fc00::/7 and loopback. It assumes every caller with
+such an address is yours; where that is not so, name the proxy itself instead.
+
+The header is read right to left. Each proxy appends who it accepted, so the first hop that is
+not a trusted proxy is the caller, and anything before it is whatever the caller sent. Your proxy
+must set the header: Caddy does by default, nginx needs
+`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`. `X-Real-IP` is never read: a
+proxy that does not set it passes the caller's along.
+
+Rootless Docker and Podman can deliver every connection from one private address, so a caller
+reaching the port directly looks like the proxy. Keep that port unpublished, or set `none`.
 
 ## `TASKIO_PUBLIC_URL`
 

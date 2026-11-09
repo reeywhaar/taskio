@@ -577,6 +577,7 @@ func TestAForwardedAddressIsTheCaller(t *testing.T) {
 	r := httptest.NewRequest("GET", "/api/tasks", nil)
 	r.ContentLength = 0
 	r.Header.Set("Authorization", "Bearer "+secret)
+	r.RemoteAddr = "172.18.0.5:41000"
 	r.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.2")
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, r)
@@ -585,9 +586,9 @@ func TestAForwardedAddressIsTheCaller(t *testing.T) {
 	}
 
 	list := c.json(c.do("GET", "/api/tokens", ""))["tokens"].([]any)
-	// The last hop is the one the nearest proxy appended; the peer is 192.0.2.1 in httptest.
-	if got := list[0].(map[string]any)["last_ip"]; got != "10.0.0.2" {
-		t.Errorf("last_ip = %v, want 10.0.0.2", got)
+	// Right to left, past the proxies: 10.0.0.2 is private, so one of them.
+	if got := list[0].(map[string]any)["last_ip"]; got != "203.0.113.9" {
+		t.Errorf("last_ip = %v, want 203.0.113.9", got)
 	}
 }
 
