@@ -31,6 +31,10 @@ func TestAnArchiveGoesOutOnlyWhenSomethingChanged(t *testing.T) {
 	var body atomic.Value
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
+		// Sized up front: an agent may refuse a chunked body.
+		if r.ContentLength != int64(len(b)) || len(r.TransferEncoding) > 0 {
+			t.Errorf("sent %d bytes as %d, %v", len(b), r.ContentLength, r.TransferEncoding)
+		}
 		body.Store(b)
 		received.Add(1)
 	}))
@@ -162,7 +166,11 @@ func TestArchiveMembersAreNotDirectories(t *testing.T) {
 	if err := st.SnapshotTo(context.Background(), snapshot); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := pack(snapshot)
+	archive := dir + "/snap.tar.gz"
+	if err := pack(snapshot, archive); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(archive)
 	if err != nil {
 		t.Fatal(err)
 	}

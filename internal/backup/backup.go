@@ -8,7 +8,6 @@ package backup
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
@@ -98,7 +97,17 @@ func send(ctx context.Context, st *store.Store, url, dataDir string, log *slog.L
 	if err := st.SnapshotTo(ctx, snapshot); err != nil {
 		return err
 	}
-	archive, err := pack(snapshot)
+	archive := filepath.Join(dir, "archive.tar.gz")
+	if err := pack(snapshot, archive); err != nil {
+		return err
+	}
+	// Sent from the file, so the pass holds a buffer rather than the database, twice.
+	f, err := os.Open(archive)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	info, err := f.Stat()
 	if err != nil {
 		return err
 	}
@@ -106,10 +115,12 @@ func send(ctx context.Context, st *store.Store, url, dataDir string, log *slog.L
 	ctx, cancel := context.WithTimeout(ctx, uploadTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(archive))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, f)
 	if err != nil {
 		return err
 	}
+	// A file is not a body net/http can size on its own, and an agent may refuse a chunked one.
+	req.ContentLength = info.Size()
 	req.Header.Set("Content-Type", "application/gzip")
 	req.Header.Set("User-Agent", app.Name+"/"+app.Version)
 
@@ -125,7 +136,7 @@ func send(ctx context.Context, st *store.Store, url, dataDir string, log *slog.L
 	return nil
 }
 
-// pack writes the snapshot as a gzipped tar.
+// pack writes the snapshot to dst as a gzipped tar, streamed rather than read whole.
 //
 // Level 1: most of the bytes are already-compressed images, so levels above it spend CPU
 // proportional to the file for a percent or two — and the one thing that must not happen is a
@@ -133,33 +144,43 @@ func send(ctx context.Context, st *store.Store, url, dataDir string, log *slog.L
 //
 // Members are mode 0600 and there are no directory entries, so extracting cannot re-chmod a
 // data directory that already exists.
-func pack(path string) ([]byte, error) {
-	body, err := os.ReadFile(path)
+func pack(src, dst string) error {
+	in, err := os.Open(src)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var out bytes.Buffer
-	gz, err := gzip.NewWriterLevel(&out, gzip.BestSpeed)
+	defer in.Close()
+	info, err := in.Stat()
 	if err != nil {
-		return nil, err
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	gz, err := gzip.NewWriterLevel(out, gzip.BestSpeed)
+	if err != nil {
+		return err
 	}
 	tw := tar.NewWriter(gz)
 	if err := tw.WriteHeader(&tar.Header{
 		Name:    store.FileName,
 		Mode:    0o600,
-		Size:    int64(len(body)),
+		Size:    info.Size(),
 		ModTime: time.Now().UTC(),
 	}); err != nil {
-		return nil, err
+		return err
 	}
-	if _, err := tw.Write(body); err != nil {
-		return nil, err
+	if _, err := io.Copy(tw, in); err != nil {
+		return err
 	}
 	if err := tw.Close(); err != nil {
-		return nil, err
+		return err
 	}
 	if err := gz.Close(); err != nil {
-		return nil, err
+		return err
 	}
-	return out.Bytes(), nil
+	return out.Close()
 }
