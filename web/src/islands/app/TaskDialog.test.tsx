@@ -448,6 +448,21 @@ describe("pinning from the dialog", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("draws the pin as pressed before the server answers", async () => {
+    patch.mockReturnValue(new Promise(() => {}));
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Pin" }));
+    const pin = await screen.findByRole("button", { name: "Unpin" });
+    expect(pin.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("unpins a pinned task", async () => {
     task = { ...detail("todo"), pinned: true };
     mount(

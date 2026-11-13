@@ -276,14 +276,30 @@ export function TaskDialog({
 
   // A property rather than a status, so it stays open: the task is still the one being edited.
   const togglePinned = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (next: boolean) => {
       await flush();
-      await patchTasksById(id, { pinned: !task.data?.pinned });
+      return patchTasksById(id, { pinned: next });
     },
-    onSuccess: () => invalidate(),
+    // The answer is the task, so the pin is drawn from it at once rather than after a refetch.
+    onSuccess: (updated) => {
+      if (updated)
+        client.setQueryData<TaskDetail>(
+          qk.task(id),
+          (old) => old && { ...old, ...updated },
+        );
+      invalidate();
+    },
     onError: (err) =>
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
+  /**
+   * The pin as pressed, while the press is on its way: drawn from the server's copy it changed
+   * a beat after the press, once the save, the write and the refetch were done, and the beat
+   * read as the press not taking.
+   */
+  const pinned = togglePinned.isPending
+    ? togglePinned.variables
+    : task.data?.pinned;
 
   // Says the task still stands, and the row's age starts again. Stays open, like the pin.
   const poke = useMutation({
@@ -395,14 +411,14 @@ export function TaskDialog({
             {/* The row's own control, beside the id: the same icon for the same thing. */}
             <button
               type="button"
-              aria-label={task.data.pinned ? "Unpin" : "Pin"}
-              title={task.data.pinned ? "Unpin" : "Pin"}
-              aria-pressed={task.data.pinned}
+              aria-label={pinned ? "Unpin" : "Pin"}
+              title={pinned ? "Unpin" : "Pin"}
+              aria-pressed={pinned}
               disabled={togglePinned.isPending}
-              onClick={() => togglePinned.mutate()}
+              onClick={() => togglePinned.mutate(!pinned)}
               // Pinned, the same capsule as on the row.
               className={
-                task.data.pinned
+                pinned
                   ? "wash inline-flex size-5 shrink-0 items-center justify-center self-center rounded-md text-xs"
                   : "flex items-center self-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
               }
