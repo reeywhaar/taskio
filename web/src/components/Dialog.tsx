@@ -171,14 +171,25 @@ export function Dialog({
               the phone with none: below the breakpoint this fills the screen, so there is no
               backdrop to press beside it, and there is no Escape on a phone. Not every dialog
               has a Cancel in its footer, and the one that is hardest to leave is the editor,
-              which has three buttons and none of them is "not this". */}
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
-            <div className="flex min-w-0 items-center gap-2">
+              which has three buttons and none of them is "not this".
+
+              The aside is a row of its own on a phone. It does not shrink — an id, a pin, an age —
+              and on one line with the rest it ran under the buttons at the right. The group around
+              the title is display:contents there, so the aside can wrap without being drawn
+              twice. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-4 py-2.5 sm:flex-nowrap sm:gap-3 sm:px-5">
+            <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-2">
               {lead}
-              <h2 className="truncate text-base font-semibold">{title}</h2>
-              {aside}
+              <h2 className="min-w-0 truncate text-base font-semibold">
+                {title}
+              </h2>
+              {aside ? (
+                <div className="order-last flex basis-full items-center gap-2 sm:order-none sm:basis-auto">
+                  {aside}
+                </div>
+              ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
               {actions}
               <button
                 type="button"

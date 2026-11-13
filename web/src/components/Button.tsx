@@ -18,7 +18,8 @@ type Variant = "solid" | "quiet" | "link" | "danger";
  * How tall, which is a question about what the button is standing next to.
  *
  * field is beside an input and matches it, so both shrink together on a phone: 44px where there
- * is room, 40 where there is not.
+ * is room, 40 where there is not. The floor on its width shrinks with it, 80px to 64: four
+ * buttons in a task's footer were 7px too wide for a 390px screen and wrapped.
  *
  * bar is a row of controls with no field in it, where 44px reads as a stack of slabs — and
  * where a finger is still a finger, so the height comes back below a pointer that is not one.
@@ -29,7 +30,7 @@ type Size = "field" | "bar" | "compact";
 
 // compact is the bulk bar's: eight controls, and at bar size they wrapped to a second line.
 const shapes: Record<Size, string> = {
-  field: "min-h-10 min-w-20 px-3 py-1.5 text-sm sm:min-h-11",
+  field: "min-h-10 min-w-16 px-3 py-1.5 text-sm sm:min-h-11 sm:min-w-20",
   bar: "min-h-9 px-3 py-1.5 text-sm pointer-coarse:min-h-10",
   compact: "min-h-7 px-2 py-1 text-xs pointer-coarse:min-h-9",
 };

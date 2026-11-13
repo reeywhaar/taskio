@@ -357,10 +357,11 @@ dialog's own label, so a copy for a related project is a press on it. It copies 
 screen, saved or not, and leaves this task as it is. The comments stay behind, as this one's
 history, and so does the pin.
 
-**Snooze…** takes a todo off the list for so many days or weeks, until noon on that day where the
+**The moon** beside the pin, Snooze…, takes a todo off the list for so many days or weeks, until noon on that day where the
 person is: a count and a unit, and the day it comes back said under them. Days rather than a
-calendar, because "in three days" is what somebody means. A snoozed task's dialog says until
-when, and the same button offers Wake now. Either is a status, so the dialog closes, as it does
+calendar, because "in three days" is what somebody means. On a snoozed task the moon is filled,
+like a set pin, the dialog says until when, and the same button offers Wake now. It was a button
+in the footer, which that pushed onto two rows on a phone. Either is a status, so the dialog closes, as it does
 on Mark done. It comes back by itself, as if just poked, so it does not return already stale.
 
 ## Groups and projects are dragged like tags

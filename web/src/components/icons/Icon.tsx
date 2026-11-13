@@ -148,3 +148,10 @@ export const PinIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M9 3h6l-1 6 4 3v2H6v-2l4-3-1-6ZM12 14v7" />
   </Icon>
 );
+
+/** Asleep: a snoozed task, or the way to snooze one. */
+export const MoonIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </Icon>
+);

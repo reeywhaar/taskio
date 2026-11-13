@@ -26,7 +26,12 @@ import { qk } from "@app/api/keys";
 import { ago, MONTH, WEEK } from "@app/ago";
 import { Button } from "@app/components/Button";
 import { Dialog } from "@app/components/Dialog";
-import { CommentIcon, PencilIcon, PinIcon } from "@app/components/icons/Icon";
+import {
+  CommentIcon,
+  MoonIcon,
+  PencilIcon,
+  PinIcon,
+} from "@app/components/icons/Icon";
 import { Dummy } from "@app/components/Dummy";
 import { Group as Caption } from "@app/components/Field";
 import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
@@ -404,6 +409,28 @@ export function TaskDialog({
             >
               <PinIcon />
             </button>
+            {/* Beside the pin rather than in the footer, which it pushed onto two rows on a
+                phone: the same kind of thing, where the task sits, and drawn the same way. */}
+            {isOpen({ status }) ? (
+              <button
+                type="button"
+                aria-label="Snooze…"
+                title={
+                  task.data.snoozed_until
+                    ? `Snoozed until ${dayOf(new Date(task.data.snoozed_until * 1000))}`
+                    : "Snooze…"
+                }
+                aria-pressed={status === "snoozed"}
+                onClick={() => setSnoozing(true)}
+                className={
+                  status === "snoozed"
+                    ? "wash inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs"
+                    : "flex items-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
+                }
+              >
+                <MoonIcon />
+              </button>
+            ) : null}
             <Age
               task={task.data}
               pending={poke.isPending}
@@ -422,9 +449,6 @@ export function TaskDialog({
             </Button>
           )}
           <Button onClick={startCopy}>Copy</Button>
-          {isOpen({ status }) ? (
-            <Button onClick={() => setSnoozing(true)}>Snooze…</Button>
-          ) : null}
 
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere: "Finish" read as finishing
