@@ -33,6 +33,8 @@ import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
+import { dayOf, SnoozeDialog } from "@app/islands/app/SnoozeDialog";
+import { isOpen } from "@app/api/status";
 import { finishInComment, finishInTask } from "@app/uploads";
 import { ProjectLabel, projectNamed } from "@app/islands/app/ProjectPicker";
 import { TaskId } from "@app/islands/app/TaskId";
@@ -185,6 +187,7 @@ export function TaskDialog({
   const status = task.data?.status ?? "todo";
   const finish = {
     todo: "Mark done",
+    snoozed: "Mark done",
     done: "Mark as todo",
     deleted: "Restore",
   }[status];
@@ -248,12 +251,15 @@ export function TaskDialog({
     invalidate();
   };
 
-  // Only a todo goes forward; done and deleted both come back. A status is what somebody came to
-  // change, so it closes, as Delete does; the pin and the poke are properties, and stay.
+  // A todo goes forward, snoozed or not; done and deleted both come back. A status is what
+  // somebody came to change, so it closes, as Delete does; the pin and the poke are properties,
+  // and stay.
   const toggleDone = useMutation({
     mutationFn: async () => {
       await flush();
-      await (status === "todo" ? postTasksByIdDone(id) : postTasksByIdTodo(id));
+      await (isOpen({ status })
+        ? postTasksByIdDone(id)
+        : postTasksByIdTodo(id));
     },
     onSuccess: () => {
       invalidate();
@@ -299,6 +305,24 @@ export function TaskDialog({
         ? `${draft.description.trimEnd()}\n\nCopied from @${id}.`
         : `Copied from @${id}.`,
     });
+
+  /**
+   * Off the list until then, or back on it now: either way a status, so it closes, as Mark done
+   * does. 0 wakes it.
+   */
+  const [snoozing, setSnoozing] = useState(false);
+  const snoozeUntil = async (until: number) => {
+    try {
+      await flush();
+      await patchTasksById(id, { snoozed_until: until });
+      setSnoozing(false);
+      invalidate();
+      onClose();
+    } catch (err) {
+      setSnoozing(false);
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    }
+  };
 
   const remove = useMutation({
     mutationFn: async () => {
@@ -398,6 +422,9 @@ export function TaskDialog({
             </Button>
           )}
           <Button onClick={startCopy}>Copy</Button>
+          {isOpen({ status }) ? (
+            <Button onClick={() => setSnoozing(true)}>Snooze…</Button>
+          ) : null}
 
           <span className="flex-1" />
           {/* What it does, rather than what it is called elsewhere: "Finish" read as finishing
@@ -499,6 +526,13 @@ export function TaskDialog({
         tags={copying?.tags ?? []}
         from={copying ?? undefined}
         onClose={() => setCopying(null)}
+      />
+      <SnoozeDialog
+        open={snoozing}
+        until={task.data?.snoozed_until ?? null}
+        onSnooze={snoozeUntil}
+        onWake={() => snoozeUntil(0)}
+        onClose={() => setSnoozing(false)}
       />
       <CommentDialog
         writing={writing}
@@ -819,6 +853,13 @@ function Age({
     return (
       <span className="text-xs whitespace-nowrap text-faint">
         finished {ago(task.done_at ?? task.updated_at)}
+      </span>
+    );
+  // Away, so not stale: its age starts when it comes back.
+  if (task.status === "snoozed" && task.snoozed_until)
+    return (
+      <span className="text-xs whitespace-nowrap text-faint">
+        snoozed until {dayOf(new Date(task.snoozed_until * 1000))}
       </span>
     );
 

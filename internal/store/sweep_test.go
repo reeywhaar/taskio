@@ -289,3 +289,34 @@ func TestAPinLapsesAfterItsAccountsHours(t *testing.T) {
 		t.Error("five hours was taken, which is not one of the lengths offered")
 	}
 }
+
+// The wake pass clears only what has come back, and leaves a snooze still running alone.
+func TestWakingClearsOnlyWhatIsDue(t *testing.T) {
+	st := openStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 11, 13, 9, 0, 0, 0, time.UTC)
+	st.SetClock(func() time.Time { return now })
+	p, err := st.CreatePrincipal(ctx, "robin", "a good password", RoleUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	soon, later := now.Add(time.Hour), now.Add(48*time.Hour)
+	a, _ := st.CreateTask(ctx, p.ID, home(t, st, p.ID), nil, TaskNew{Title: "Soon", SnoozedUntil: &soon})
+	b, _ := st.CreateTask(ctx, p.ID, home(t, st, p.ID), nil, TaskNew{Title: "Later", SnoozedUntil: &later})
+
+	changes := st.Changes()
+	now = now.Add(2 * time.Hour)
+	n, err := st.WakeSnoozed(ctx)
+	if err != nil || n != 1 {
+		t.Fatalf("woke %d, %v", n, err)
+	}
+	if st.Changes() == changes {
+		t.Error("waking told nobody")
+	}
+	if got, _ := st.Task(ctx, p.ID, a.ID); got.SnoozedUntil != nil || got.Status(now) != StatusTodo {
+		t.Errorf("soon is %s until %v", got.Status(now), got.SnoozedUntil)
+	}
+	if got, _ := st.Task(ctx, p.ID, b.ID); got.SnoozedUntil == nil || got.Status(now) != StatusSnoozed {
+		t.Errorf("later is %s", got.Status(now))
+	}
+}

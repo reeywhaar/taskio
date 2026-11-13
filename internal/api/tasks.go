@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"taskio/internal/filter"
 	"taskio/internal/store"
@@ -27,17 +28,20 @@ type taskBody struct {
 	PokedAt   int64  `json:"poked_at"`
 	DoneAt    *int64 `json:"done_at"`
 	DeletedAt *int64 `json:"deleted_at"`
+	// SnoozedUntil is when a snoozed task comes back, and null for one on the list.
+	SnoozedUntil *int64 `json:"snoozed_until"`
 }
 
-// renderTask draws one; slugs names the account's projects by id, for its project.
-func renderTask(t *store.Task, slugs map[string]string) taskBody {
+// renderTask draws one; slugs names the account's projects by id, for its project. now is
+// what decides whether a snoozed one is still away.
+func renderTask(t *store.Task, slugs map[string]string, now time.Time) taskBody {
 	body := taskBody{
 		ID:          t.ID,
 		Project:     slugs[t.ProjectID],
 		Title:       t.Title,
 		Description: t.Description,
 		Tags:        t.Tags,
-		Status:      t.Status(),
+		Status:      t.Status(now),
 		Priority:    t.Priority,
 		Pinned:      t.Pinned,
 		Color:       t.Color,
@@ -56,7 +60,53 @@ func renderTask(t *store.Task, slugs map[string]string) taskBody {
 		at := t.DeletedAt.Unix()
 		body.DeletedAt = &at
 	}
+	// Only while it is away: one whose moment has passed is on the list, whether or not the
+	// sweep has cleared it yet.
+	if t.SnoozedUntil != nil && t.SnoozedUntil.After(now) {
+		at := t.SnoozedUntil.Unix()
+		body.SnoozedUntil = &at
+	}
 	return body
+}
+
+// moment is a snooze's end as a request writes it: unix seconds, or a day as YYYY-MM-DD, which
+// is noon UTC on it. A day because that is what a person asks for and what a model can write
+// without arithmetic; noon because it is that same day in every zone from -11 to +11. Zero or
+// "" wakes it.
+type moment struct{ time.Time }
+
+func (m *moment) UnmarshalJSON(raw []byte) error {
+	var day string
+	if json.Unmarshal(raw, &day) == nil {
+		if day == "" {
+			m.Time = time.Time{}
+			return nil
+		}
+		at, err := time.Parse(time.DateOnly, day)
+		if err != nil {
+			return store.Invalid("snoozed_until is unix seconds or a day as YYYY-MM-DD.")
+		}
+		m.Time = at.Add(12 * time.Hour)
+		return nil
+	}
+	var secs int64
+	if err := json.Unmarshal(raw, &secs); err != nil {
+		return store.Invalid("snoozed_until is unix seconds or a day as YYYY-MM-DD.")
+	}
+	if secs == 0 {
+		m.Time = time.Time{}
+		return nil
+	}
+	m.Time = time.Unix(secs, 0).UTC()
+	return nil
+}
+
+// at is the moment for the store: nil when the request did not name one.
+func (m *moment) at() *time.Time {
+	if m == nil {
+		return nil
+	}
+	return &m.Time
 }
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -122,17 +172,17 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := map[string]any{"tasks": renderTasks(page.Tasks, slugs), "total": page.Total}
+	out := map[string]any{"tasks": renderTasks(page.Tasks, slugs, s.store.Now()), "total": page.Total}
 	if page.Next != nil {
 		out["next_cursor"] = page.Next.String()
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-func renderTasks(list []*store.Task, slugs map[string]string) []taskBody {
+func renderTasks(list []*store.Task, slugs map[string]string, now time.Time) []taskBody {
 	out := make([]taskBody, 0, len(list))
 	for _, t := range list {
-		out = append(out, renderTask(t, slugs))
+		out = append(out, renderTask(t, slugs, now))
 	}
 	return out
 }
@@ -144,7 +194,7 @@ func (s *Server) renderOne(w http.ResponseWriter, r *http.Request, status int, t
 		s.fail(w, r, err)
 		return
 	}
-	writeJSON(w, status, renderTask(t, slugs))
+	writeJSON(w, status, renderTask(t, slugs, s.store.Now()))
 }
 
 type createTaskRequest struct {
@@ -154,6 +204,8 @@ type createTaskRequest struct {
 	Priority    int      `json:"priority"`
 	Pinned      bool     `json:"pinned"`
 	Color       string   `json:"color"`
+	// SnoozedUntil keeps it off the list until then.
+	SnoozedUntil *moment `json:"snoozed_until"`
 }
 
 // createTask writes one. An unknown slug is accepted: writing a word onto a task is how a tag
@@ -171,12 +223,13 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task, err := s.store.CreateTask(r.Context(), principalOf(r).ID, project.ID, reachOf(r), store.TaskNew{
-		Title:       req.Title,
-		Description: req.Description,
-		Tags:        req.Tags,
-		Priority:    req.Priority,
-		Pinned:      req.Pinned,
-		Color:       req.Color,
+		Title:        req.Title,
+		Description:  req.Description,
+		Tags:         req.Tags,
+		Priority:     req.Priority,
+		Pinned:       req.Pinned,
+		Color:        req.Color,
+		SnoozedUntil: req.SnoozedUntil.at(),
 	})
 	if err != nil {
 		s.fail(w, r, err)
@@ -204,11 +257,12 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := map[string]any{}
-	for k, v := range asMap(renderTask(task, slugs)) {
+	now := s.store.Now()
+	for k, v := range asMap(renderTask(task, slugs, now)) {
 		body[k] = v
 	}
-	body["mentions"] = renderStubs(mentions.Mentions, reachOf(r), slugs)
-	body["mentioned_by"] = renderStubs(mentions.MentionedBy, reachOf(r), slugs)
+	body["mentions"] = renderStubs(mentions.Mentions, reachOf(r), slugs, now)
+	body["mentioned_by"] = renderStubs(mentions.MentionedBy, reachOf(r), slugs, now)
 	comments, err := s.store.Comments(r.Context(), task.Seq)
 	if err != nil {
 		s.fail(w, r, err)
@@ -344,13 +398,13 @@ type taskStub struct {
 
 // renderStubs filters to the reach, on the same reasoning as everything else: what refers to a
 // task is not something a confined credential learns for free.
-func renderStubs(list []*store.Task, reach store.Reach, slugs map[string]string) []taskStub {
+func renderStubs(list []*store.Task, reach store.Reach, slugs map[string]string, now time.Time) []taskStub {
 	out := []taskStub{}
 	for _, t := range list {
 		if !reach.Allows(t) {
 			continue
 		}
-		out = append(out, taskStub{ID: t.ID, Title: t.Title, Project: slugs[t.ProjectID], Status: t.Status()})
+		out = append(out, taskStub{ID: t.ID, Title: t.Title, Project: slugs[t.ProjectID], Status: t.Status(now)})
 	}
 	return out
 }
@@ -371,6 +425,8 @@ type patchTaskRequest struct {
 	Color       *string   `json:"color"`
 	// Project moves it, with its tags, to the project with this slug.
 	Project *string `json:"project"`
+	// SnoozedUntil snoozes it until then; 0 or "" wakes it.
+	SnoozedUntil *moment `json:"snoozed_until"`
 }
 
 // patchTask changes wording and tags, and moves a task between projects. Absent leaves a field
@@ -397,13 +453,14 @@ func (s *Server) patchTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated, err := s.store.UpdateTask(r.Context(), principalOf(r).ID, reachOf(r), task.ID, store.TaskPatch{
-		Title:       req.Title,
-		Description: req.Description,
-		Tags:        req.Tags,
-		Priority:    req.Priority,
-		Pinned:      req.Pinned,
-		Color:       req.Color,
-		Project:     move,
+		Title:        req.Title,
+		Description:  req.Description,
+		Tags:         req.Tags,
+		Priority:     req.Priority,
+		Pinned:       req.Pinned,
+		Color:        req.Color,
+		Project:      move,
+		SnoozedUntil: req.SnoozedUntil.at(),
 	})
 	if err != nil {
 		s.fail(w, r, err)

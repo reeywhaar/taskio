@@ -1,4 +1,4 @@
-import { ago, MONTH, WEEK } from "@app/ago";
+import { ago, ahead, MONTH, WEEK } from "@app/ago";
 import { Boundary } from "@app/components/Boundary";
 import { CheckIcon, PinIcon, UndoIcon } from "@app/components/icons/Icon";
 import type { Task } from "@app/api/types";
@@ -70,8 +70,10 @@ export function TaskRow({
 }) {
   // Finished with, whichever way it got there: both leave the todo list, both are struck
   // through, and both offer the way back rather than the way forward.
-  const finished = task.status !== "todo";
+  const finished = task.status === "done" || task.status === "deleted";
   const binned = task.status === "deleted";
+  // Away: what matters is when it comes back, and it is not getting any older meanwhile.
+  const until = task.status === "snoozed" ? task.snoozed_until : null;
   // The one control on the right, and the three things it can mean.
   const mark = binned ? "Restore" : finished ? "Mark as todo" : "Mark done";
 
@@ -161,17 +163,27 @@ export function TaskRow({
 
         {/* Small and tucked under the id: a thing to notice, not to read. One in the bin
             says so instead — it is not waiting for anybody. Exact time in the tooltip. */}
-        <time
-          dateTime={new Date(at * 1000).toISOString()}
-          title={`${
-            binned ? "Deleted" : finished ? "Done" : "Last poked"
-          } ${new Date(at * 1000).toLocaleString()}`}
-          className={`text-[9px] leading-3 whitespace-nowrap sm:mt-0.5 sm:mb-2 ${
-            binned ? "text-accent" : age
-          }`}
-        >
-          {binned ? "deleted" : ago(at)}
-        </time>
+        {until ? (
+          <time
+            dateTime={new Date(until * 1000).toISOString()}
+            title={`Snoozed until ${new Date(until * 1000).toLocaleString()}`}
+            className="text-[9px] leading-3 whitespace-nowrap text-faint sm:mt-0.5 sm:mb-2"
+          >
+            {ahead(until)}
+          </time>
+        ) : (
+          <time
+            dateTime={new Date(at * 1000).toISOString()}
+            title={`${
+              binned ? "Deleted" : finished ? "Done" : "Last poked"
+            } ${new Date(at * 1000).toLocaleString()}`}
+            className={`text-[9px] leading-3 whitespace-nowrap sm:mt-0.5 sm:mb-2 ${
+              binned ? "text-accent" : age
+            }`}
+          >
+            {binned ? "deleted" : ago(at)}
+          </time>
+        )}
 
         {/* Under the id, where the column is already as wide as eight characters and nothing
             else is using the room. The pin leads, because it is what the list sorts by first

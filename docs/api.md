@@ -214,9 +214,9 @@ its scope names.
 
 ```
 GET    /api/tasks              ?project= &tags= &q= &status= &limit= &cursor=
-POST   /api/tasks              ?project=  {title, description?, tags?, priority?, pinned?, color?}
+POST   /api/tasks              ?project=  {title, description?, tags?, priority?, pinned?, color?, snoozed_until?}
 GET    /api/tasks/{id}
-PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?, project?}
+PATCH  /api/tasks/{id}         {title?, description?, tags?, priority?, pinned?, color?, project?, snoozed_until?}
 POST   /api/tasks/{id}/done
 POST   /api/tasks/{id}/todo
 POST   /api/tasks/{id}/poke
@@ -266,7 +266,7 @@ there. A task already at that value is not written: `updated_at` does not move f
 | --- | --- | --- |
 | `tags` | — | A filter, above |
 | `q` | — | Search. An id or a prefix of one wins outright; then the title, forgivingly; then the tags and the description, exactly |
-| `status` | `todo` | `todo`, `done`, `deleted` or `all`. `done` is everything finished with, deleted ones included; `deleted` is only those |
+| `status` | `todo` | `todo`, `snoozed`, `done`, `deleted` or `all`. `done` is everything finished with, deleted ones included; `deleted` is only those |
 | `pinned` | — | `true` or `false`. Unset asks about neither |
 | `limit` | `1000` | 1 to 1000. The default is the maximum |
 | `cursor` | — | From a previous response's `next_cursor` |
@@ -277,7 +277,7 @@ there. A task already at that value is not written: `updated_at` does not move f
                "tags": ["home","repair"], "status": "todo",
                "priority": 0, "pinned": false, "color": "",
                "created_at": 1789343452, "updated_at": 1789343452, "poked_at": 1789343452,
-               "done_at": null, "deleted_at": null } ],
+               "done_at": null, "deleted_at": null, "snoozed_until": null } ],
   "total": 1
 }
 ```
@@ -307,7 +307,8 @@ is another page — a search never has one, because results are ranked.
 Nothing here sorts, filters or groups by it, and no color is the default — so leave it alone
 unless you were asked for one.
 
-The done list is ordered by when things were finished. Every other list is ordered **pinned
+The done list is ordered by when things were finished, and the snoozed list by when each comes
+back, soonest first. Every other list is ordered **pinned
 first, then by `priority` descending, then by when they were last poked** — so a list read top
 to bottom is a list in the order somebody meant to work through it, and a task nobody has poked
 in a while sinks within its band.
@@ -335,6 +336,25 @@ is the pinned things already finished.
 
 Neither orders the done list. They are about what to do next, which a finished task no longer
 has an answer to, so the record of what happened stays in the order it happened.
+
+### Snoozing
+
+A snoozed task is a todo that is off the list until `snoozed_until`. Its `status` is `snoozed`,
+`status=todo` leaves it out, and `status=snoozed` lists it. When its moment comes it is a todo
+again by itself, with nobody writing anything, and its age counts from that moment: it comes back
+as if just poked rather than already stale.
+
+`snoozed_until` is unix seconds or a day as `YYYY-MM-DD`, which means noon UTC on it — the same
+day in nearly every zone, and no arithmetic. `0`, `""` or a moment already past wakes it now.
+The app snoozes by days or weeks, until noon on that day where the person is.
+
+```sh
+curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"snoozed_until": "2026-12-01"}' "$TASKIO/api/tasks/8qw4tz9k"
+```
+
+Snooze what is not for now rather than leaving it to go stale, and do not snooze what somebody is
+waiting on.
 
 ### Writing
 

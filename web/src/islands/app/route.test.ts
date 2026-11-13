@@ -49,7 +49,7 @@ describe("href", () => {
     expect(href({ route: { name: "list" }, filters })).toBe("/");
   });
 
-  // Three choices on screen, and todo is the one the URL says nothing about.
+  // Four choices on screen, and todo is the one the URL says nothing about.
   it("names the view it is showing, unless it is the default", () => {
     expect(
       href({
@@ -92,6 +92,14 @@ describe("href", () => {
     expect(read().route).toEqual({ name: "task", id: "8qw4tz9k", comment: 3 });
     window.history.replaceState(null, "", "/t/8qw4tz9k#elsewhere");
     expect(read().route).toEqual({ name: "task", id: "8qw4tz9k" });
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("reads the snoozed view back, and an unknown one as todo", () => {
+    window.history.replaceState(null, "", "/?view=snoozed");
+    expect(read().filters.view).toBe("snoozed");
+    window.history.replaceState(null, "", "/?view=asleep");
+    expect(read().filters.view).toBe("todo");
     window.history.replaceState(null, "", "/");
   });
 

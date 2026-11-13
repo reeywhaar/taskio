@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ago, MONTH, WEEK } from "@app/ago";
+import { ago, ahead, MONTH, WEEK } from "@app/ago";
 
 const now = 1_800_000_000;
 const back = (seconds: number) => ago(now - seconds, now);
@@ -30,5 +30,15 @@ describe("ago", () => {
   // A clock a few seconds out of step is not a task touched in the future.
   it("does not count forwards", () => {
     expect(ago(now + 30, now)).toBe("just now");
+  });
+});
+
+describe("ahead", () => {
+  it("says how long until, on the same scale", () => {
+    expect(ahead(now + 30, now)).toBe("any moment");
+    expect(ahead(now + 5 * 3600, now)).toBe("in 5 hours");
+    expect(ahead(now + 86400, now)).toBe("in 1 day");
+    expect(ahead(now + 3 * 86400 + 600, now)).toBe("in 3 days");
+    expect(ahead(now + 14 * 86400, now)).toBe("in 2 weeks");
   });
 });

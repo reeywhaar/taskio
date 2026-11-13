@@ -14,6 +14,8 @@ import (
 
 // How often each pass runs.
 const (
+	// Minutely is for what somebody is waiting to see: a snoozed task coming back.
+	Minutely = time.Minute
 	// Often is for what somebody notices the lateness of: a session that should have ended,
 	// a pin that should have come off.
 	Often  = 10 * time.Minute
@@ -26,6 +28,8 @@ const (
 // has no owner — lose the goroutine between finishing one pass and queueing the next and the
 // work stops with nothing to notice.
 func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
+	minutely := time.NewTicker(Minutely)
+	defer minutely.Stop()
 	often := time.NewTicker(Often)
 	defer often.Stop()
 	hourly := time.NewTicker(Hourly)
@@ -36,6 +40,8 @@ func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-minutely.C:
+			run(ctx, log, "snoozes", st.WakeSnoozed)
 		case <-often.C:
 			sweepOften(ctx, st, log)
 		case <-hourly.C:
@@ -58,6 +64,7 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 }
 
 func sweepOften(ctx context.Context, st *store.Store, log *slog.Logger) {
+	run(ctx, log, "snoozes", st.WakeSnoozed)
 	run(ctx, log, "expired sessions", st.SweepSessions)
 	run(ctx, log, "expired pins", st.UnpinExpired)
 }

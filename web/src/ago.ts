@@ -33,8 +33,29 @@ export function ago(at: number, now: number = Date.now() / 1000): string {
   return count(since / YEAR, "year");
 }
 
+/** How long until, on the same scale: what a snoozed task shows where a todo shows its age. */
+export function ahead(at: number, now: number = Date.now() / 1000): string {
+  const until = Math.max(0, Math.ceil(at - now));
+
+  if (until < MINUTE) return "any moment";
+  return `in ${span(until)}`;
+}
+
+function span(seconds: number): string {
+  if (seconds < HOUR) return units(seconds / MINUTE, "min");
+  if (seconds < DAY) return units(seconds / HOUR, "hour");
+  if (seconds < WEEK) return units(seconds / DAY, "day");
+  if (seconds < MONTH) return units(seconds / WEEK, "week");
+  if (seconds < YEAR) return units(seconds / MONTH, "month");
+  return units(seconds / YEAR, "year");
+}
+
 /** "1 week ago", "3 weeks ago" — the plural is the only thing that varies. */
 function count(n: number, unit: string): string {
+  return `${units(n, unit)} ago`;
+}
+
+function units(n: number, unit: string): string {
   const whole = Math.floor(n);
-  return `${whole} ${unit}${whole === 1 ? "" : "s"} ago`;
+  return `${whole} ${unit}${whole === 1 ? "" : "s"}`;
 }

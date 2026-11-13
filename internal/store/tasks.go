@@ -30,6 +30,9 @@ const (
 	// fourth thing: it carries done_at as well, so it leaves the todo list, turns up in the
 	// finished one where it can be put back, and is swept on the same ninety days.
 	StatusDeleted = "deleted"
+	// StatusSnoozed is a todo snoozed until a moment that has not come: off the list, and back
+	// on it, as if just poked, when it does.
+	StatusSnoozed = "snoozed"
 	StatusAll     = "all"
 )
 
@@ -56,6 +59,8 @@ type Task struct {
 	DoneAt  *time.Time
 	// DeletedAt is when it was thrown away, and implies DoneAt.
 	DeletedAt *time.Time
+	// SnoozedUntil is when it comes back onto the list, or nil for one that is on it.
+	SnoozedUntil *time.Time
 }
 
 // Status renders the timestamps. One fact, one column: a status column beside a timestamp is
@@ -63,14 +68,39 @@ type Task struct {
 //
 // Deleted wins over done because it is the more particular answer: every deleted task is also
 // done, and "deleted" is the word for how it got that way.
-func (t *Task) Status() string {
+//
+// Snoozed is a todo whose moment has not come, which is why it takes the time: it turns back
+// into a todo by nobody doing anything.
+func (t *Task) Status(now time.Time) string {
 	switch {
 	case t.DeletedAt != nil:
 		return StatusDeleted
 	case t.DoneAt != nil:
 		return StatusDone
+	case t.SnoozedUntil != nil && t.SnoozedUntil.After(now):
+		return StatusSnoozed
 	}
 	return StatusTodo
+}
+
+// snoozedUntil is what a snooze is stored as: nil for a moment that is not in the future, so
+// the column only ever holds a task that is actually away.
+func snoozedUntil(now time.Time, until *time.Time) *time.Time {
+	if until == nil || !until.After(now) {
+		return nil
+	}
+	at := until.UTC().Truncate(time.Second)
+	return &at
+}
+
+// pokedFor is where a snoozed task's age counts from: the moment it wakes, so it comes back as
+// fresh as one just written rather than already a week stale. Snoozing or waking is a poke
+// either way, so never earlier than now.
+func pokedFor(now time.Time, snoozed *time.Time) time.Time {
+	if snoozed != nil {
+		return *snoozed
+	}
+	return now
 }
 
 // TaskQuery is everything GET /api/tasks can ask.
@@ -96,6 +126,8 @@ type TaskNew struct {
 	Priority    int
 	Pinned      bool
 	Color       string
+	// SnoozedUntil keeps it off the list until then. Nil, or a moment already past, for now.
+	SnoozedUntil *time.Time
 }
 
 func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, reach Reach, in TaskNew) (*Task, error) {
@@ -128,18 +160,20 @@ func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, r
 	description = s.normalizeMentions(ctx, principalID, reach, description)
 
 	now := s.Now()
+	snoozed := snoozedUntil(now, in.SnoozedUntil)
 	task := &Task{
-		PrincipalID: principalID,
-		ProjectID:   projectID,
-		Title:       title,
-		Description: description,
-		Tags:        tags,
-		Priority:    in.Priority,
-		Pinned:      in.Pinned,
-		Color:       color,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		PokedAt:     now,
+		PrincipalID:  principalID,
+		ProjectID:    projectID,
+		Title:        title,
+		Description:  description,
+		Tags:         tags,
+		Priority:     in.Priority,
+		Pinned:       in.Pinned,
+		Color:        color,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		PokedAt:      pokedFor(now, snoozed),
+		SnoozedUntil: snoozed,
 	}
 
 	tx, err := s.writer.BeginTx(ctx, nil)
@@ -153,9 +187,9 @@ func (s *Store) CreateTask(ctx context.Context, principalID, projectID string, r
 	for attempt := 0; ; attempt++ {
 		task.ID = ids.NewTask()
 		res, err := tx.ExecContext(ctx,
-			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, pinned_at, color, created_at, updated_at, poked_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, pinnedAt(in.Pinned, now), color, unix(now), unix(now), unix(now))
+			`INSERT INTO tasks (id, principal_id, project_id, title, description, priority, pinned, pinned_at, color, created_at, updated_at, poked_at, snoozed_until)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			task.ID, principalID, projectID, title, description, in.Priority, in.Pinned, pinnedAt(in.Pinned, now), color, unix(now), unix(now), unix(task.PokedAt), nullUnix(snoozed))
 		if err == nil {
 			task.Seq, _ = res.LastInsertId()
 			break
@@ -194,6 +228,9 @@ type TaskPatch struct {
 	Color       *string
 	// Project moves it, with its tags: the id of the project it goes to.
 	Project *string
+	// SnoozedUntil keeps it off the list until then; a moment already past, the zero time
+	// included, wakes it now.
+	SnoozedUntil *time.Time
 }
 
 // UpdateTask applies a patch and reports the task as it now stands.
@@ -313,6 +350,23 @@ func (s *Store) UpdateTask(ctx context.Context, principalID string, reach Reach,
 		}
 		moved = true
 		task.ProjectID, task.UpdatedAt = project, now
+	}
+
+	if patch.SnoozedUntil != nil {
+		snoozed := snoozedUntil(now, patch.SnoozedUntil)
+		// Only when it differs, as everything else: the same moment saved again is not a poke,
+		// and waking one that is awake moves nothing.
+		res, err := tx.ExecContext(ctx,
+			`UPDATE tasks SET snoozed_until = ?, poked_at = ?, updated_at = ?
+			  WHERE seq = ? AND snoozed_until IS NOT ?`,
+			nullUnix(snoozed), unix(pokedFor(now, snoozed)), unix(now), task.Seq, nullUnix(snoozed))
+		if err != nil {
+			return nil, fmt.Errorf("snooze task: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			moved = true
+			task.SnoozedUntil, task.PokedAt, task.UpdatedAt = snoozed, pokedFor(now, snoozed), now
+		}
 	}
 
 	if patch.Tags != nil {
@@ -510,12 +564,12 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 	var (
 		t                       Task
 		created, updated, poked int64
-		done, deleted           sql.NullInt64
+		done, deleted, snoozed  sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted, &snoozed)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Somebody else's task is 404 rather than 403: whether a stranger keeps a task is not
 		// the caller's business either way.
@@ -535,8 +589,26 @@ func loadTask(ctx context.Context, q querier, principalID, id string) (*Task, er
 		at := time.Unix(deleted.Int64, 0).UTC()
 		t.DeletedAt = &at
 	}
+	t.SnoozedUntil = timeOf(snoozed)
 	t.Tags, err = loadTags(ctx, q, t.Seq)
 	return &t, err
+}
+
+// timeOf reads a nullable timestamp column.
+func timeOf(v sql.NullInt64) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	at := time.Unix(v.Int64, 0).UTC()
+	return &at
+}
+
+// nullUnix writes one: NULL for nil.
+func nullUnix(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return unix(*t)
 }
 
 // querier is whatever can run a query: the reader pool, the writer, or a transaction.

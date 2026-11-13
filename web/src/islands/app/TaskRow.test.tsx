@@ -19,6 +19,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   poked_at: 0,
   done_at: null,
   deleted_at: null,
+  snoozed_until: null,
   ...over,
 });
 

@@ -82,14 +82,20 @@ type TaskPage struct {
 // finished: a task written in March and done yesterday belongs at the top. Pinning and priority
 // are about what to do next, which a finished task no longer has an answer to — so they order
 // the live list and leave the record alone.
-func orderOf(status string) (columns []string, name string) {
-	if status == StatusDone {
-		return []string{"done_at"}, "done"
+//
+// Snoozed is the one that runs forward: soonest first, since what comes back next is what
+// somebody looking at it wants to know.
+func orderOf(status string) (columns []string, name string, ascending bool) {
+	switch status {
+	case StatusDone:
+		return []string{"done_at"}, "done", false
+	case StatusSnoozed:
+		return []string{"snoozed_until"}, "snoozed", true
 	}
 	// The last poke rather than the writing, inside the pin and the priority: a task somebody
 	// has just said still stands belongs above one nobody has looked at for a month. Named
 	// apart from the order it replaced, so a cursor from that one is refused, not misread.
-	return []string{"pinned", "priority", "poked_at"}, "poked"
+	return []string{"pinned", "priority", "poked_at"}, "poked", false
 }
 
 // ListTasks answers a query.
@@ -104,9 +110,14 @@ func (s *Store) ListTasks(ctx context.Context, principalID, projectID string, sc
 		where += " AND " + sql
 		args = append(args, fargs...)
 	}
+	now := unix(s.Now())
 	switch q.Status {
 	case StatusTodo, "":
-		where += " AND tasks.done_at IS NULL"
+		where += " AND tasks.done_at IS NULL AND (tasks.snoozed_until IS NULL OR tasks.snoozed_until <= ?)"
+		args = append(args, now)
+	case StatusSnoozed:
+		where += " AND tasks.done_at IS NULL AND tasks.snoozed_until > ?"
+		args = append(args, now)
 	case StatusDone:
 		// Deleted tasks are in here too, because deleting stamps done_at: finished with is
 		// finished with, and the one place somebody looks for a task they have just thrown
@@ -116,7 +127,7 @@ func (s *Store) ListTasks(ctx context.Context, principalID, projectID string, sc
 		where += " AND tasks.deleted_at IS NOT NULL"
 	case StatusAll:
 	default:
-		return nil, Invalid("status is todo, done, deleted or all.")
+		return nil, Invalid("status is todo, snoozed, done, deleted or all.")
 	}
 	if q.Pinned != nil {
 		where += " AND tasks.pinned = ?"
@@ -135,14 +146,18 @@ func (s *Store) ListTasks(ctx context.Context, principalID, projectID string, sc
 		return s.searchTasks(ctx, principalID, where, args, term, limit)
 	}
 
-	columns, order := orderOf(q.Status)
+	columns, order, ascending := orderOf(q.Status)
+	direction, past := " DESC", "<"
+	if ascending {
+		direction, past = " ASC", ">"
+	}
 	if q.Cursor != nil {
 		if q.Cursor.Order != order || len(q.Cursor.Keys) != len(columns) {
 			return nil, Invalid("That cursor belongs to a different ordering. Start the list again.")
 		}
 		// One row-value comparison rather than the unfolded OR chain, which is where an
 		// off-by-one in the tiebreak hides.
-		where += " AND (tasks." + strings.Join(columns, ", tasks.") + ", tasks.seq) < (" +
+		where += " AND (tasks." + strings.Join(columns, ", tasks.") + ", tasks.seq) " + past + " (" +
 			strings.Repeat("?, ", len(columns)) + "?)"
 		for _, k := range q.Cursor.Keys {
 			args = append(args, k)
@@ -158,11 +173,11 @@ func (s *Store) ListTasks(ctx context.Context, principalID, projectID string, sc
 
 	orderBy := ""
 	for _, c := range columns {
-		orderBy += "tasks." + c + " DESC, "
+		orderBy += "tasks." + c + direction + ", "
 	}
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE `+where+
-			` ORDER BY `+orderBy+`tasks.seq DESC LIMIT ?`,
+			` ORDER BY `+orderBy+`tasks.seq`+direction+` LIMIT ?`,
 		append(args, limit+1)...)
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
@@ -281,7 +296,7 @@ func (s *Store) searchTasks(ctx context.Context, principalID, where string, args
 
 // scanTasks reads rows and attaches each task's tags.
 // taskColumns is the row every read of a task selects, in the order scanTasks reads it.
-const taskColumns = "seq, id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, poked_at, done_at, deleted_at"
+const taskColumns = "seq, id, principal_id, project_id, title, description, priority, pinned, color, created_at, updated_at, poked_at, done_at, deleted_at, snoozed_until"
 
 // cursorKeys reads the sort values off the last row of a page, in the order they sort.
 func cursorKeys(columns []string, t *Task) []int64 {
@@ -297,6 +312,12 @@ func cursorKeys(columns []string, t *Task) []int64 {
 		case "done_at":
 			if t.DoneAt != nil {
 				keys = append(keys, unix(*t.DoneAt))
+			} else {
+				keys = append(keys, 0)
+			}
+		case "snoozed_until":
+			if t.SnoozedUntil != nil {
+				keys = append(keys, unix(*t.SnoozedUntil))
 			} else {
 				keys = append(keys, 0)
 			}
@@ -319,10 +340,10 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 		var (
 			t                       Task
 			created, updated, poked int64
-			done, deleted           sql.NullInt64
+			done, deleted, snoozed  sql.NullInt64
 		)
 		if err := rows.Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted); err != nil {
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted, &snoozed); err != nil {
 			return nil, fmt.Errorf("list tasks: %w", err)
 		}
 		t.CreatedAt = time.Unix(created, 0).UTC()
@@ -336,6 +357,7 @@ func scanTasks(ctx context.Context, q querier, rows *sql.Rows) ([]*Task, error) 
 			at := time.Unix(deleted.Int64, 0).UTC()
 			t.DeletedAt = &at
 		}
+		t.SnoozedUntil = timeOf(snoozed)
 		out = append(out, &t)
 	}
 	if err := rows.Err(); err != nil {
@@ -365,11 +387,12 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 		t                       Task
 		created, updated, poked int64
 		done, deleted           any
+		snoozed                 sql.NullInt64
 	)
 	err := q.QueryRowContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE seq = ?`, seq).
 		Scan(&t.Seq, &t.ID, &t.PrincipalID, &t.ProjectID, &t.Title, &t.Description,
-			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted)
+			&t.Priority, &t.Pinned, &t.Color, &created, &updated, &poked, &done, &deleted, &snoozed)
 	if err != nil {
 		return nil, fmt.Errorf("task: %w", err)
 	}
@@ -384,6 +407,7 @@ func loadTaskBySeq(ctx context.Context, q querier, seq int64) (*Task, error) {
 		at := time.Unix(v, 0).UTC()
 		t.DeletedAt = &at
 	}
+	t.SnoozedUntil = timeOf(snoozed)
 	t.Tags, err = loadTags(ctx, q, t.Seq)
 	return &t, err
 }

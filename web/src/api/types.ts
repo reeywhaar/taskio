@@ -2,8 +2,9 @@ import type { ImageSize } from "@app/api/images";
 
 /** What the API returns. Field names are the server's, unchanged. */
 
-/** deleted is a kind of done: it leaves the todo list and turns up among the finished. */
-export type Status = "todo" | "done" | "deleted";
+/** deleted is a kind of done: it leaves the todo list and turns up among the finished.
+ *  snoozed is a todo that is away until snoozed_until, and a todo again after. */
+export type Status = "todo" | "snoozed" | "done" | "deleted";
 
 export type Task = {
   id: string;
@@ -25,6 +26,8 @@ export type Task = {
   done_at: number | null;
   /** Set on a task somebody threw away, which also carries done_at. */
   deleted_at: number | null;
+  /** When a snoozed task comes back; null for one on the list. */
+  snoozed_until: number | null;
 };
 
 /** A mention: enough to draw a link with a title on it. */

@@ -278,7 +278,7 @@ func TestAGroupMovesOnlyToALiveProject(t *testing.T) {
 }
 
 // The rail's count: what each group's list holds still to do, split where a row's age changes
-// color, and nothing finished or outside the group.
+// color, and nothing finished, snoozed or outside the group.
 func TestAGroupCountsWhatItHoldsToDo(t *testing.T) {
 	s, st := newServerStore(t, nil)
 	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
@@ -297,6 +297,7 @@ func TestAGroupCountsWhatItHoldsToDo(t *testing.T) {
 	done := c.task(`{"title":"Sweep","tags":["home"]}`)["id"].(string)
 	c.do("POST", "/api/tasks/"+done+"/done", "")
 	c.task(`{"title":"Read","tags":["reading"]}`)
+	c.task(`{"title":"Clean the gutters","tags":["home"],"snoozed_until":"2026-12-01"}`)
 	at = now
 
 	got := c.json(c.do("GET", "/api/groups/todo", ""))["todo"].(map[string]any)

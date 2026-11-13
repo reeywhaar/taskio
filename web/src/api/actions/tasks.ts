@@ -47,6 +47,8 @@ export const patchTasksById = (
     color?: string;
     /** Moves it, with its tags, to the project with this slug. */
     project?: string;
+    /** Snoozes it until then, in unix seconds; 0 wakes it. */
+    snoozed_until?: number;
   },
 ) => request<Task>(`/api/tasks/${id}`, { method: "PATCH", body });
 

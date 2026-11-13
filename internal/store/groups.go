@@ -111,7 +111,8 @@ type Todo struct {
 	Fresh, Week, Month int
 }
 
-// GroupTodo counts each group's live tasks as its list would show them, keyed by group id.
+// GroupTodo counts each group's live tasks as its list would show them, keyed by group id. A
+// snoozed one is not on that list, so not in the count.
 func (s *Store) GroupTodo(ctx context.Context, principalID, projectID string, groups []*Group) (map[string]Todo, error) {
 	now := s.Now()
 	week, month := now.Add(-staleWeek).Unix(), now.Add(-staleMonth).Unix()
@@ -132,8 +133,9 @@ func (s *Store) GroupTodo(ctx context.Context, principalID, projectID string, gr
 			`SELECT coalesce(sum(poked_at > ?), 0),
 			        coalesce(sum(poked_at <= ? AND poked_at > ?), 0),
 			        coalesce(sum(poked_at <= ?), 0)
-			   FROM tasks WHERE `+where+` AND tasks.done_at IS NULL`,
-			append([]any{week, week, month, month}, args...)...).Scan(&t.Fresh, &t.Week, &t.Month)
+			   FROM tasks WHERE `+where+` AND tasks.done_at IS NULL
+			    AND (tasks.snoozed_until IS NULL OR tasks.snoozed_until <= ?)`,
+			append(append([]any{week, week, month, month}, args...), now.Unix())...).Scan(&t.Fresh, &t.Week, &t.Month)
 		if err != nil {
 			return nil, fmt.Errorf("count group tasks: %w", err)
 		}

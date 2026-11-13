@@ -16,6 +16,7 @@ import {
 import type { Tag, Task } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { optimisticTask, restoreTasks } from "@app/api/optimistic";
+import { isOpen } from "@app/api/status";
 import { useBehind } from "@app/api/build";
 import { useLive } from "@app/api/live";
 import { Button } from "@app/components/Button";
@@ -127,12 +128,12 @@ function List({
   /** The new-task dialog: null when shut, and otherwise the title it opens with. */
   const [writing, setWriting] = useState<string | null>(null);
 
-  // The screen's three choices are two questions to the API: pinned is a property of a todo,
-  // so the pinned view is the todo list narrowed rather than a third status.
+  // Pinned is a property of a todo, so the pinned view is the todo list narrowed rather than a
+  // status of its own; the others are the API's.
   const params = {
     project: filters.project,
     tags: printAnd(filters.tags),
-    status: filters.view === "done" ? "done" : "todo",
+    status: filters.view === "pinned" ? "todo" : filters.view,
     pinned: filters.view === "pinned" ? "true" : undefined,
     q: filters.q,
   };
@@ -221,17 +222,15 @@ function List({
 
   // Both draw the answer first and send it after: one bit, and a button that waits a round
   // trip to show it is a button somebody presses twice.
-  // Only a todo goes forward; done and deleted both come back. There is no verb for putting
-  // a deleted task in the done pile, because nobody has ever wanted one.
+  // A todo goes forward, snoozed or not; done and deleted both come back. There is no verb for
+  // putting a deleted task in the done pile, because nobody has ever wanted one.
   const toggleDone = useMutation({
     mutationFn: (task: Task) =>
-      task.status === "todo"
-        ? postTasksByIdDone(task.id)
-        : postTasksByIdTodo(task.id),
+      isOpen(task) ? postTasksByIdDone(task.id) : postTasksByIdTodo(task.id),
     onMutate: (task) =>
       optimisticTask(client, task.id, (t) => ({
         ...t,
-        status: t.status === "todo" ? "done" : "todo",
+        status: isOpen(t) ? "done" : "todo",
       })),
     onError: (_err, _task, before) => before && restoreTasks(client, before),
     onSettled: () => client.invalidateQueries({ queryKey: qk.tasks }),
@@ -248,7 +247,9 @@ function List({
         client,
         task.id,
         (t) => ({ ...t, pinned: !t.pinned }),
-        view === "done" ? undefined : qk.taskList(JSON.stringify(params)),
+        view === "done" || view === "snoozed"
+          ? undefined
+          : qk.taskList(JSON.stringify(params)),
       );
     },
     onError: (_err, _task, before) => before && restoreTasks(client, before),
@@ -398,7 +399,7 @@ function List({
             <Segmented
               label="Which list"
               value={filters.view}
-              options={["pinned", "todo", "done"] as const}
+              options={["pinned", "todo", "snoozed", "done"] as const}
               onChange={(next) =>
                 onGo({ ...location, filters: { ...filters, view: next } })
               }
@@ -464,9 +465,11 @@ function List({
                   //
                   // Not in the finished list, which is one run: it is ordered by when things
                   // were finished and by nothing else, so a band drawn where the pin or the
-                  // number changes is a line across a list that is not sorted by either.
+                  // number changes is a line across a list that is not sorted by either. The
+                  // snoozed list is the same, by when each comes back.
                   apart={
                     filters.view !== "done" &&
+                    filters.view !== "snoozed" &&
                     i > 0 &&
                     order.rankOf(tasks[i - 1]!) !== order.rankOf(task)
                   }
@@ -643,9 +646,11 @@ function Empty({
       <p className="mt-8 text-center text-sm text-muted">
         {filters.view === "pinned"
           ? "Nothing is pinned."
-          : filters.view === "done"
-            ? "Nothing finished yet."
-            : "No tasks yet."}
+          : filters.view === "snoozed"
+            ? "Nothing is snoozed."
+            : filters.view === "done"
+              ? "Nothing finished yet."
+              : "No tasks yet."}
       </p>
     );
   }

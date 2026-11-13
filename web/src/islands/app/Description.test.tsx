@@ -50,6 +50,7 @@ describe("a description that cannot be rendered", () => {
             poked_at: 0,
             done_at: null,
             deleted_at: null,
+            snoozed_until: null,
           } satisfies Task
         }
         selectable={false}

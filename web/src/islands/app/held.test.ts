@@ -20,6 +20,7 @@ const task = (id: string, pinned = false): Task =>
     poked_at: 1,
     done_at: null,
     deleted_at: null,
+    snoozed_until: null,
   }) as Task;
 
 const ids = (tasks: Task[]) => tasks.map((t) => t.id);

@@ -60,6 +60,24 @@ func (s *Store) UnpinExpired(ctx context.Context) (int64, error) {
 	return n, nil
 }
 
+// WakeSnoozed clears the snoozes whose moment has come.
+//
+// A list already leaves out only what is still asleep, so a task is back on time whether or not
+// this has run. What it is for is the open tab: nothing was written when the moment came, so
+// nothing told the tab to look, and the write here is what does.
+func (s *Store) WakeSnoozed(ctx context.Context) (int64, error) {
+	res, err := s.writer.ExecContext(ctx,
+		`UPDATE tasks SET snoozed_until = NULL WHERE snoozed_until <= ?`, unix(s.Now()))
+	if err != nil {
+		return 0, fmt.Errorf("wake snoozed: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		s.changedAll()
+	}
+	return n, nil
+}
+
 // SweepDoneTasks deletes what was finished long enough ago.
 //
 // Their tags, assets and mentions go by cascade, which is what leaves the orphans for the next

@@ -99,6 +99,7 @@ const detail = (status: "todo" | "done"): TaskDetail =>
     poked_at: 1789343452,
     done_at: status === "done" ? 1789343452 : null,
     deleted_at: null,
+    snoozed_until: null,
     mentions: [],
     mentioned_by: [],
     comments: [],
@@ -1090,5 +1091,85 @@ describe("copying a task", () => {
       within(dialog).getByPlaceholderText(/Markdown\. Paste a file/),
     ).toHaveProperty("value", "Copied from @8qw4tz9k.");
     expect(calls).toEqual([]);
+  });
+});
+
+const snoozeDialog = async () =>
+  (await screen.findByRole("heading", { name: "Snooze" })).closest("dialog")!;
+
+describe("snoozing from the dialog", () => {
+  it("saves what was typed, snoozes until noon that many days on, and closes", async () => {
+    const onClose = vi.fn();
+    await withVerdict(onClose);
+    fireEvent.click(screen.getByRole("button", { name: "Snooze…" }));
+    const dialog = await snoozeDialog();
+    fireEvent.change(within(dialog).getByLabelText("How many"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Snooze" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(calls).toEqual(["patch", "patch"]);
+    const at = new Date();
+    at.setDate(at.getDate() + 3);
+    at.setHours(12, 0, 0, 0);
+    expect(patch.mock.calls[1]![1]).toEqual({
+      snoozed_until: at.getTime() / 1000,
+    });
+  });
+
+  it("wakes a snoozed one, and says until when it slept", async () => {
+    const until = Math.floor(Date.now() / 1000) + 3 * 86400;
+    task = { ...detail("todo"), status: "snoozed", snoozed_until: until };
+    const onClose = vi.fn();
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={onClose}
+      />,
+    );
+    expect(await screen.findByText(/^snoozed until /)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Snooze…" }));
+    const dialog = await snoozeDialog();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Wake now" }));
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("8qw4tz9k", { snoozed_until: 0 }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("marks a snoozed one done rather than todo", async () => {
+    task = {
+      ...detail("todo"),
+      status: "snoozed",
+      snoozed_until: Math.floor(Date.now() / 1000) + 86400,
+    };
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Mark done" }));
+    await waitFor(() => expect(done).toHaveBeenCalledWith("8qw4tz9k"));
+    expect(todo).not.toHaveBeenCalled();
+  });
+
+  it("is not offered on a finished task", async () => {
+    task = detail("done");
+    mount(
+      <TaskDialog
+        initialMode="edit"
+        id="8qw4tz9k"
+        project=""
+        onClose={vi.fn()}
+      />,
+    );
+    await screen.findByRole("button", { name: "Mark as todo" });
+    expect(screen.queryByRole("button", { name: "Snooze…" })).toBeNull();
   });
 });

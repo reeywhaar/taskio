@@ -357,6 +357,12 @@ dialog's own label, so a copy for a related project is a press on it. It copies 
 screen, saved or not, and leaves this task as it is. The comments stay behind, as this one's
 history, and so does the pin.
 
+**Snooze…** takes a todo off the list for so many days or weeks, until noon on that day where the
+person is: a count and a unit, and the day it comes back said under them. Days rather than a
+calendar, because "in three days" is what somebody means. A snoozed task's dialog says until
+when, and the same button offers Wake now. Either is a status, so the dialog closes, as it does
+on Mark done. It comes back by itself, as if just poked, so it does not return already stale.
+
 ## Groups and projects are dragged like tags
 
 The rail's rows carry the same press-and-move gesture as the pills, one axis over: the carried
@@ -399,15 +405,17 @@ Groups are session-only in the API. Not because a program could not use one, but
 scoped token must not learn tag names its scope does not reach, and a group is a list of tag
 names.
 
-## The list's three choices are two questions
+## The list's four choices are three questions
 
-The control reads **Pinned · Todo · Done**, and only two of those are statuses. Pinning is a
-property a todo may have, so the pinned view asks the API for `status=todo&pinned=true` rather
-than for a third state a task can be in. The URL says `?view=pinned`, which is a different word
+The control reads **Pinned · Todo · Snoozed · Done**, and only three of those are statuses.
+Pinning is a property a todo may have, so the pinned view asks the API for
+`status=todo&pinned=true` rather than for a fourth state a task can be in. The URL says `?view=pinned`, which is a different word
 from the API's `status` on purpose: an agent copying one into the other gets a refusal rather
 than a surprise.
 
-A pinned task still appears under Todo. It is a marker, not a drawer.
+A pinned task still appears under Todo. It is a marker, not a drawer. A snoozed one does not: it
+is away, under Snoozed, soonest back first, its row saying when ("in 3 days") where a todo's says
+how old it is. The rail's counts leave it out too.
 
 ## Priority is a number and a pin is a place
 

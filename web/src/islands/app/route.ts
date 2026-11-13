@@ -16,11 +16,10 @@ export type Route =
 /**
  * Which list is on screen.
  *
- * Not the API's status, which is todo, done or all: pinned is a property a todo may have, so
- * the screen's third choice is a view over the same list rather than a fourth state a task
- * can be in.
+ * Not quite the API's status: pinned is a property a todo may have, so that choice is a view
+ * over the todo list rather than a state a task can be in.
  */
-export type View = "pinned" | "todo" | "done";
+export type View = "pinned" | "todo" | "snoozed" | "done";
 
 export type Filters = {
   /**
@@ -66,7 +65,10 @@ function readFilters(params: URLSearchParams): Filters {
   return {
     project: params.get("project") ?? "",
     tags: parseAnd(params.get("tags")),
-    view: view === "done" || view === "pinned" ? view : "todo",
+    view:
+      view === "done" || view === "pinned" || view === "snoozed"
+        ? view
+        : "todo",
     q: params.get("q") ?? "",
   };
 }
