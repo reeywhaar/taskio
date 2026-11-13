@@ -264,11 +264,12 @@ it holds, and pressed, it opens the swatches in one row under it. The swatches t
 block of ten there, the heaviest thing in the form for the field that means least. The two are
 unrelated: priority orders the list, and the color is a mark somebody made for themselves.
 
-**The project is the title bar's, not the form's.** A label at its head, "Main ⌄ 8qw4…",
+**The project is the title bar's, not the form's.** A label after the id, "8qw4… Main",
 opens the project pills, and the one line about what moving does is in there, where the move is
 chosen. It is where the task lives rather than one of its fields, and everything in the form is
-inside it. A new task's dialog carries the same label, after its title: "New task Main ⌄". Before
-it, the project read as the dialog's name and "New task" as a note on it.
+inside it. A new task's dialog carries the same label, after its title: "New task Main". Before
+it, the project read as the dialog's name and "New task" as a note on it. It wore a chevron once,
+which beside a title was one more mark for what the quieter color and the hover already say.
 
 Groups wear one too, through the same field and the same row, empty choice included: a dotted
 outline that is "No color" on a task, which then wears nothing, and "Default color" on a group,

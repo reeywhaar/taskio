@@ -376,24 +376,22 @@ export function TaskDialog({
           )
         ) : null
       }
-      place={
-        task.data ? (
-          <ProjectLabel
-            value={draft.project}
-            onChange={(slug) => setDraft({ ...draft, project: slug })}
-            hint={
-              <p>
-                Moving it takes its tags along: they are the new project&apos;s
-                tags from then on.
-              </p>
-            }
-          />
-        ) : null
-      }
       aside={
         task.data ? (
           <>
+            {/* The id first, the project after it: the id is the task's name here, and the
+                project is where it lives. */}
             <TaskId id={task.data.id} />
+            <ProjectLabel
+              value={draft.project}
+              onChange={(slug) => setDraft({ ...draft, project: slug })}
+              hint={
+                <p>
+                  Moving it takes its tags along: they are the new
+                  project&apos;s tags from then on.
+                </p>
+              }
+            />
             {/* The row's own control, beside the id: the same icon for the same thing. */}
             <button
               type="button"
@@ -405,8 +403,8 @@ export function TaskDialog({
               // Pinned, the same capsule as on the row.
               className={
                 task.data.pinned
-                  ? "wash inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs"
-                  : "flex items-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
+                  ? "wash inline-flex size-5 shrink-0 items-center justify-center self-center rounded-md text-xs"
+                  : "flex items-center self-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
               }
             >
               <PinIcon />
@@ -426,8 +424,8 @@ export function TaskDialog({
                 onClick={() => setSnoozing(true)}
                 className={
                   status === "snoozed"
-                    ? "wash inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs"
-                    : "flex items-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
+                    ? "wash inline-flex size-5 shrink-0 items-center justify-center self-center rounded-md text-xs"
+                    : "flex items-center self-center rounded-md p-0.5 text-base text-faint hover:bg-line hover:text-fg"
                 }
               >
                 <MoonIcon />

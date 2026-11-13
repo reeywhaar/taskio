@@ -36,7 +36,6 @@ export function Dialog({
   open,
   onClose,
   title,
-  place,
   aside,
   actions,
   children,
@@ -47,12 +46,9 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title: string;
-  /** After the title, on its line: where what the dialog holds lives, like a task's project.
-   *  After rather than before, because "Main ⌄ New task" read as the project's name with the
-   *  title for a label. */
-  place?: ReactNode;
-  /** What the title is about — an id, a state — on the title's own line rather than on a row of
-   *  its own underneath it. */
+  /** What the title is about, on the title's own line rather than on a row of its own under it:
+   *  an id, the project it lives in, a state. After the title rather than before: "Main ⌄ New
+   *  task" read as the project's name with the title for a label. */
   aside?: ReactNode;
   /** Buttons at the right of the title bar, beside the close: a switch between two faces of
    *  the same dialog, rather than one more thing to do to what is in it. */
@@ -179,12 +175,14 @@ export function Dialog({
               has a Cancel in its footer, and the one that is hardest to leave is the editor,
               which has three buttons and none of them is "not this".
 
-              The aside is a row of its own on a phone. It does not shrink — an id, a pin, an age —
-              and on one line with the rest it ran under the buttons at the right. The group around
-              the title is display:contents there, so the aside can wrap without being drawn
-              twice. */}
-          <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-4 py-2.5 sm:flex-nowrap sm:gap-3 sm:px-5">
-            <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-2">
+              What is beside the title wraps under it rather than running on. An id, a pin and
+              an age do not shrink, and on one line on a phone they ran under the buttons at the
+              right; now whatever does not fit goes to a second line, and the rest stays. */}
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
+            {/* On the baseline: a title, a mono id, a project and an age are four sizes, and
+                centred each sat at its own height. An icon has no baseline, and says so with
+                self-center. */}
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <h2
                 className={
                   hideTitle
@@ -194,14 +192,9 @@ export function Dialog({
               >
                 {title}
               </h2>
-              {place}
-              {aside ? (
-                <div className="order-last flex basis-full items-center gap-2 sm:order-none sm:basis-auto">
-                  {aside}
-                </div>
-              ) : null}
+              {aside}
             </div>
-            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               {actions}
               <button
                 type="button"

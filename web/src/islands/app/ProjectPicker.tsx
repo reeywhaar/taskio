@@ -5,7 +5,6 @@ import { getProjects } from "@app/api/actions/projects";
 import type { Project } from "@app/api/types";
 import { qk } from "@app/api/keys";
 import { Dialog } from "@app/components/Dialog";
-import { ChevronDownIcon } from "@app/components/icons/Icon";
 
 /** The project a slug names, where empty is the default — the URL's own rule. */
 export function projectNamed(
@@ -73,12 +72,13 @@ export function ProjectSelectDialog({
 }
 
 /**
- * Which project a task is in, as a label at the head of its dialog: the name, pressed to choose
+ * Which project a task is in, as a label in its dialog's title bar: the name, pressed to choose
  * another.
  *
  * In the title bar rather than a field among the others, because it is not one of them: it is
  * where the task lives, and everything in the form is inside it. Not a native select, because
- * the choice is drawn as pills everywhere else a project or a tag is picked.
+ * the choice is drawn as pills everywhere else a project or a tag is picked. No chevron: beside
+ * a title, the name in a quieter color that lights up under the pointer is enough of a button.
  */
 export function ProjectLabel({
   value,
@@ -102,10 +102,9 @@ export function ProjectLabel({
         aria-haspopup="dialog"
         title="Project"
         onClick={() => setChoosing(true)}
-        className="-ml-1.5 inline-flex max-w-40 shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm text-muted hover:bg-fill hover:text-fg"
+        className="-mx-1.5 inline-flex max-w-40 shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm text-muted hover:bg-fill hover:text-fg"
       >
         <span className="truncate">{shown?.name ?? " "}</span>
-        <ChevronDownIcon className="shrink-0 text-xs" />
       </button>
       <ProjectSelectDialog
         open={choosing}
