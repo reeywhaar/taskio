@@ -36,7 +36,7 @@ export function Dialog({
   open,
   onClose,
   title,
-  lead,
+  place,
   aside,
   actions,
   children,
@@ -47,8 +47,10 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title: string;
-  /** Before the title, on its line: where what the dialog holds lives, like a task's project. */
-  lead?: ReactNode;
+  /** After the title, on its line: where what the dialog holds lives, like a task's project.
+   *  After rather than before, because "Main ⌄ New task" read as the project's name with the
+   *  title for a label. */
+  place?: ReactNode;
   /** What the title is about — an id, a state — on the title's own line rather than on a row of
    *  its own underneath it. */
   aside?: ReactNode;
@@ -59,7 +61,7 @@ export function Dialog({
   footer?: ReactNode;
   /** A description is markdown with images in it, and needs room to be worth writing in. */
   wide?: boolean;
-  /** For a screen reader only, where the bar around it already says what this is: "Task" after
+  /** For a screen reader only, where the bar around it already says what this is: "Task" beside
    *  a task's project, id and age told somebody looking nothing. */
   hideTitle?: boolean;
 }) {
@@ -183,7 +185,6 @@ export function Dialog({
               twice. */}
           <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-4 py-2.5 sm:flex-nowrap sm:gap-3 sm:px-5">
             <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-2">
-              {lead}
               <h2
                 className={
                   hideTitle
@@ -193,6 +194,7 @@ export function Dialog({
               >
                 {title}
               </h2>
+              {place}
               {aside ? (
                 <div className="order-last flex basis-full items-center gap-2 sm:order-none sm:basis-auto">
                   {aside}

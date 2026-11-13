@@ -98,7 +98,7 @@ export function NewTaskDialog({
       open={open}
       onClose={onClose}
       title="New task"
-      lead={
+      place={
         <ProjectLabel
           value={draft.project}
           onChange={(slug) => setDraft({ ...draft, project: slug })}

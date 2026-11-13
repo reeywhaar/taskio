@@ -376,7 +376,7 @@ export function TaskDialog({
           )
         ) : null
       }
-      lead={
+      place={
         task.data ? (
           <ProjectLabel
             value={draft.project}
