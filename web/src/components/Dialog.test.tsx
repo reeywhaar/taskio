@@ -67,6 +67,18 @@ describe("Dialog", () => {
     );
   });
 
+  // The task dialog's: its project, id and age already say what it is.
+  it("keeps a hidden title for a screen reader", () => {
+    mount(
+      <Dialog open onClose={vi.fn()} title="Task" hideTitle>
+        <p>Something</p>
+      </Dialog>,
+    );
+    expect(screen.getByRole("heading", { name: "Task" }).className).toBe(
+      "sr-only",
+    );
+  });
+
   // data-autofocus, because React's autoFocus is a call that runs while this is still hidden.
   it("gives focus back to a field that asked for it", () => {
     mount(

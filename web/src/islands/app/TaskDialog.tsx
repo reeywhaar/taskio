@@ -347,8 +347,10 @@ export function TaskDialog({
       open
       wide
       onClose={onClose}
-      // "Task" either way: the name itself is at the head of the body, read or written.
+      // "Task" either way: the name itself is at the head of the body, read or written. Not
+      // drawn: the project, id and age around it already say it is a task.
       title={task.data ? "Task" : "Loading"}
+      hideTitle
       actions={
         task.data ? (
           mode === "edit" ? (

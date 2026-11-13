@@ -25,7 +25,8 @@ whole of what somebody with a screenshot does; a title holds no picture.
 beside the close, and switch the dialog between the fields and the task as it reads — its name
 as a heading at the head of the body, with its words and its mentions, and the same footer. The
 name is in the body rather than the title bar, which on a phone cut it to a letter or two beside
-the project, id and age; the bar says "Task" in both faces. The preview was a second
+the project, id and age. The bar said "Task" in both faces after that, a word that told nobody
+anything beside a project, an id and an age, and now it says it to a screen reader only. The preview was a second
 tab once, which made it the same size and shape as the box it replaced, and then a second dialog
 over the first, which was a second thing to close for what is the same task in the same place.
 View is there with no description too, since the read face is the title, the facts and the
@@ -263,7 +264,7 @@ it holds, and pressed, it opens the swatches in one row under it. The swatches t
 block of ten there, the heaviest thing in the form for the field that means least. The two are
 unrelated: priority orders the list, and the color is a mark somebody made for themselves.
 
-**The project is the title bar's, not the form's.** A label at its head, "Main ⌄ Task 8qw4…",
+**The project is the title bar's, not the form's.** A label at its head, "Main ⌄ 8qw4…",
 opens the project pills, and the one line about what moving does is in there, where the move is
 chosen. It is where the task lives rather than one of its fields, and everything in the form is
 inside it. A new task's dialog carries the same label.

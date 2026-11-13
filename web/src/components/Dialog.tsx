@@ -42,6 +42,7 @@ export function Dialog({
   children,
   footer,
   wide = false,
+  hideTitle = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -58,6 +59,9 @@ export function Dialog({
   footer?: ReactNode;
   /** A description is markdown with images in it, and needs room to be worth writing in. */
   wide?: boolean;
+  /** For a screen reader only, where the bar around it already says what this is: "Task" after
+   *  a task's project, id and age told somebody looking nothing. */
+  hideTitle?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const parent = useContext(DialogContext);
@@ -180,7 +184,13 @@ export function Dialog({
           <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-line px-4 py-2.5 sm:flex-nowrap sm:gap-3 sm:px-5">
             <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-2">
               {lead}
-              <h2 className="min-w-0 truncate text-base font-semibold">
+              <h2
+                className={
+                  hideTitle
+                    ? "sr-only"
+                    : "min-w-0 truncate text-base font-semibold"
+                }
+              >
                 {title}
               </h2>
               {aside ? (
