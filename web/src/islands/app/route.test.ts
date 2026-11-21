@@ -95,9 +95,10 @@ describe("href", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("reads the snoozed view back, and an unknown one as todo", () => {
+  // Snoozed was a view once; a link to it is a link to the list its tasks are at the end of.
+  it("reads the old snoozed view, and an unknown one, as todo", () => {
     window.history.replaceState(null, "", "/?view=snoozed");
-    expect(read().filters.view).toBe("snoozed");
+    expect(read().filters.view).toBe("todo");
     window.history.replaceState(null, "", "/?view=asleep");
     expect(read().filters.view).toBe("todo");
     window.history.replaceState(null, "", "/");

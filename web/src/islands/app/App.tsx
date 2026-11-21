@@ -145,6 +145,18 @@ function List({
     queryFn: () => getTasks(params),
     placeholderData: keepPreviousData,
   });
+  /**
+   * The snoozed ones, at the end of the todo list after a gap rather than behind a view of their
+   * own: away, but still somebody's to do, and a tab was one more place to remember to look.
+   * The same question otherwise, so a search or a tag narrows them as it narrows the rest.
+   */
+  const awayParams = { ...params, status: "snoozed", pinned: undefined };
+  const snoozed = useQuery({
+    queryKey: qk.taskList(JSON.stringify(awayParams)),
+    queryFn: () => getTasks(awayParams),
+    enabled: view === "todo",
+    placeholderData: keepPreviousData,
+  });
   const tags = useQuery({
     queryKey: qk.tagsOf(filters.project),
     queryFn: () => getTags(filters.project),
@@ -247,9 +259,7 @@ function List({
         client,
         task.id,
         (t) => ({ ...t, pinned: !t.pinned }),
-        view === "done" || view === "snoozed"
-          ? undefined
-          : qk.taskList(JSON.stringify(params)),
+        view === "done" ? undefined : qk.taskList(JSON.stringify(params)),
       );
     },
     onError: (_err, _task, before) => before && restoreTasks(client, before),
@@ -295,6 +305,32 @@ function List({
     },
   );
   const tasks = order.tasks;
+  /** After the end of the todo list, so not while there is more of it to load. */
+  const away =
+    view === "todo" && !list.data?.next_cursor
+      ? (snoozed.data?.tasks ?? [])
+      : [];
+  /** Every row on screen, which is what a selection is made from. */
+  const rows = away.length ? [...tasks, ...away] : tasks;
+  const rowOf = (task: Task, apart: boolean) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      apart={apart}
+      selectable={selection !== null}
+      selected={selection?.includes(task.id) ?? false}
+      onSelect={(id) =>
+        setSelection((current) =>
+          current?.includes(id)
+            ? current.filter((x) => x !== id)
+            : [...(current ?? []), id],
+        )
+      }
+      onOpen={(id) => onGo({ ...location, route: { name: "task", id } })}
+      onToggleDone={(t) => toggleDone.mutate(t)}
+      onTogglePinned={(t) => togglePinned.mutate(t)}
+    />
+  );
   // Replaces rather than pushes, like the typing that filled it: clearing a five-letter query
   // should not be a sixth entry to press back through.
   const clearSearch = () =>
@@ -399,7 +435,7 @@ function List({
             <Segmented
               label="Which list"
               value={filters.view}
-              options={["pinned", "todo", "snoozed", "done"] as const}
+              options={["pinned", "todo", "done"] as const}
               onChange={(next) =>
                 onGo({ ...location, filters: { ...filters, view: next } })
               }
@@ -448,48 +484,46 @@ function List({
           }`}
           aria-busy={stale}
         >
-          {tasks.length === 0 && !stale ? (
+          {rows.length === 0 &&
+          !stale &&
+          !(view === "todo" && snoozed.isLoading) ? (
             <Empty
               filters={filters}
               onClear={(next) => onGo({ ...location, filters: next })}
               onWrite={(title) => setWriting(title)}
             />
           ) : (
-            <ul className="mt-4 flex flex-col gap-2">
-              {tasks.map((task, i) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  // A wider gap where the run changes, so the bands are something to see
-                  // rather than something to work out by reading down the column.
-                  //
-                  // Not in the finished list, which is one run: it is ordered by when things
-                  // were finished and by nothing else, so a band drawn where the pin or the
-                  // number changes is a line across a list that is not sorted by either. The
-                  // snoozed list is the same, by when each comes back.
-                  apart={
-                    filters.view !== "done" &&
-                    filters.view !== "snoozed" &&
-                    i > 0 &&
-                    order.rankOf(tasks[i - 1]!) !== order.rankOf(task)
-                  }
-                  selectable={selection !== null}
-                  selected={selection?.includes(task.id) ?? false}
-                  onSelect={(id) =>
-                    setSelection((current) =>
-                      current?.includes(id)
-                        ? current.filter((x) => x !== id)
-                        : [...(current ?? []), id],
-                    )
-                  }
-                  onOpen={(id) =>
-                    onGo({ ...location, route: { name: "task", id } })
-                  }
-                  onToggleDone={(t) => toggleDone.mutate(t)}
-                  onTogglePinned={(t) => togglePinned.mutate(t)}
-                />
-              ))}
-            </ul>
+            <>
+              {tasks.length > 0 ? (
+                <ul className="mt-4 flex flex-col gap-2">
+                  {tasks.map((task, i) =>
+                    rowOf(
+                      task,
+                      // A wider gap where the run changes, so the bands are something to see
+                      // rather than something to work out by reading down the column.
+                      //
+                      // Not in the finished list, which is one run: it is ordered by when
+                      // things were finished and by nothing else, so a band drawn where the pin
+                      // or the number changes is a line across a list that is not sorted by
+                      // either.
+                      filters.view !== "done" &&
+                        i > 0 &&
+                        order.rankOf(tasks[i - 1]!) !== order.rankOf(task),
+                    ),
+                  )}
+                </ul>
+              ) : null}
+              {/* Further apart than a band inside the list: not a change of rank among what is
+                  to do now, but the end of it. Soonest back first, each row saying when. */}
+              {away.length > 0 ? (
+                <ul
+                  aria-label="Snoozed"
+                  className={`flex flex-col gap-2 ${tasks.length > 0 ? "mt-10" : "mt-4"}`}
+                >
+                  {away.map((task) => rowOf(task, false))}
+                </ul>
+              ) : null}
+            </>
           )}
 
           {/* Watched rather than measured, and below the list rather than after it: what marks
@@ -499,7 +533,7 @@ function List({
           {filters.q ? (
             <Elsewhere
               found={wider.data?.tasks ?? []}
-              shown={tasks}
+              shown={rows}
               view={filters.view}
               waiting={deep && wider.isPending}
               onOpen={(id) =>
@@ -542,7 +576,7 @@ function List({
       {selection ? (
         <BulkBar
           ids={selection}
-          chosen={tasks.filter((task) => selection.includes(task.id))}
+          chosen={rows.filter((task) => selection.includes(task.id))}
           tags={tags.data?.tags ?? []}
           view={filters.view}
           project={filters.project}
@@ -554,11 +588,10 @@ function List({
           onHeight={setBarHeight}
           onCancel={stopPicking}
           everything={
-            tasks.length > 0 &&
-            tasks.every((task) => selection.includes(task.id))
+            rows.length > 0 && rows.every((task) => selection.includes(task.id))
           }
           onSelectAll={() => {
-            const here = tasks.map((task) => task.id);
+            const here = rows.map((task) => task.id);
             setSelection((current) => selectAll(current ?? [], here));
           }}
           onDone={() => {
@@ -646,11 +679,9 @@ function Empty({
       <p className="mt-8 text-center text-sm text-muted">
         {filters.view === "pinned"
           ? "Nothing is pinned."
-          : filters.view === "snoozed"
-            ? "Nothing is snoozed."
-            : filters.view === "done"
-              ? "Nothing finished yet."
-              : "No tasks yet."}
+          : filters.view === "done"
+            ? "Nothing finished yet."
+            : "No tasks yet."}
       </p>
     );
   }

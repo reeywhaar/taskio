@@ -409,17 +409,20 @@ Groups are session-only in the API. Not because a program could not use one, but
 scoped token must not learn tag names its scope does not reach, and a group is a list of tag
 names.
 
-## The list's four choices are three questions
+## The list's three choices are two questions
 
-The control reads **Pinned · Todo · Snoozed · Done**, and only three of those are statuses.
-Pinning is a property a todo may have, so the pinned view asks the API for
-`status=todo&pinned=true` rather than for a fourth state a task can be in. The URL says `?view=pinned`, which is a different word
+The control reads **Pinned · Todo · Done**, and only two of those are statuses. Pinning is a
+property a todo may have, so the pinned view asks the API for `status=todo&pinned=true` rather
+than for a third state a task can be in. The URL says `?view=pinned`, which is a different word
 from the API's `status` on purpose: an agent copying one into the other gets a refusal rather
 than a surprise.
 
-A pinned task still appears under Todo. It is a marker, not a drawer. A snoozed one does not: it
-is away, under Snoozed, soonest back first, its row saying when ("in 3 days") where a todo's says
-how old it is. The rail's counts leave it out too.
+A pinned task still appears under Todo. It is a marker, not a drawer. A snoozed one is at the end
+of Todo, after a gap wider than the one between bands, soonest back first, its row saying when
+("in 3 days") where a todo's says how old it is. It was a fourth choice once, and a tab is one
+more place to remember to look: at the end of the list it is still in sight, and out of the way
+of what is to do now. A search and the lit tags narrow it like the rest. The rail's counts leave
+it out.
 
 ## Priority is a number and a pin is a place
 
