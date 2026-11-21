@@ -212,6 +212,12 @@ A task's own chips come back in that same order, because the chips on a row and 
 it are the same tags: sorted two different ways they read as two different sets, and the eye goes
 looking for the difference.
 
+**New tag asks in a dialog.** It was a field that opened in place of the pill and took the tag
+on Enter, and on anything else let it go: a press outside it, which is what somebody does once
+they have typed the word, threw the word away. The dialog has an Add to press and keeps what was
+typed until Add or Cancel. A name is folded rather than refused — "Home Repairs" is
+home-repairs — and the dialog says what it will be before it is added.
+
 ## A pill has three states, and the third is not one you can ask for
 
 Lit, unlit, and half of each: the tag is carried by some of what the cloud stands for and not by

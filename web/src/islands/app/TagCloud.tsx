@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { useCarry } from "@app/islands/app/carry";
+import { NewTagDialog } from "@app/islands/app/NewTagDialog";
 
 import { PlusIcon } from "@app/components/icons/Icon";
 import type { Tag } from "@app/api/types";
@@ -176,7 +177,6 @@ export function TagCloud({
   onReorder?: (slugs: string[]) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
   /** The pill being carried, and the one it would be dropped in front of. */
   const [carrying, setCarrying] = useState<string | null>(null);
   const [onto, setOnto] = useState<string | null>(null);
@@ -238,45 +238,24 @@ export function TagCloud({
       ))}
 
       {onCreate ? (
-        adding ? (
-          <input
-            autoFocus
-            value={draft}
-            placeholder="new tag"
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => {
-              setAdding(false);
-              setDraft("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setAdding(false);
-                setDraft("");
-              }
-              if (e.key !== "Enter") return;
-              e.preventDefault();
-              // Folded rather than refused: somebody typing "Home Repairs" means home-repairs.
-              const slug = draft
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-z0-9_ -]/g, "")
-                .replace(/\s+/g, "-")
-                .replace(/^-+|-+$/g, "");
-              if (slug) onCreate(slug);
-              setAdding(false);
-              setDraft("");
-            }}
-            className="sunken w-28 rounded-full border-0 bg-bg px-2.5 py-1 text-xs focus:outline-none"
-          />
-        ) : (
+        <>
           <button
             type="button"
+            aria-haspopup="dialog"
             onClick={() => setAdding(true)}
             className="inline-flex items-center gap-1 rounded-full border-[1.5px] border-dashed border-line px-2.5 py-1 text-xs text-muted hover:border-faint hover:text-fg"
           >
             <PlusIcon /> New tag
           </button>
-        )
+          <NewTagDialog
+            open={adding}
+            onAdd={(slug) => {
+              onCreate(slug);
+              setAdding(false);
+            }}
+            onClose={() => setAdding(false)}
+          />
+        </>
       ) : null}
     </div>
   );

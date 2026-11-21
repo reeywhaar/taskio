@@ -49,6 +49,49 @@ describe("TagCloud", () => {
     expect(screen.getByText("New tag")).toBeDefined();
   });
 
+  /** The field it was dropped the word on any press outside it; the dialog keeps it until Add. */
+  it("asks for a new tag in a dialog, and adds it folded", () => {
+    const onCreate = vi.fn();
+    render(
+      <TagCloud
+        tags={tags}
+        selected={[]}
+        onToggle={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "New tag" }));
+    const name = screen.getByLabelText("Name");
+    fireEvent.change(name, { target: { value: "Home Repairs" } });
+    expect(screen.getByText("home-repairs")).toBeDefined();
+    fireEvent.blur(name);
+    expect((name as HTMLInputElement).value).toBe("Home Repairs");
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(onCreate).toHaveBeenCalledWith("home-repairs");
+  });
+
+  it("adds nothing on Cancel, and nothing that folds to nothing", () => {
+    const onCreate = vi.fn();
+    render(
+      <TagCloud
+        tags={tags}
+        selected={[]}
+        onToggle={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "New tag" }));
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "!!" },
+    });
+    expect(
+      (screen.getByRole("button", { name: "Add" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   /**
    * A cloud can stand for more than one task, and then a tag is carried by some of them and not
    * the rest. mixed is what a tri-state control says, and it is what keeps the pill out of the
