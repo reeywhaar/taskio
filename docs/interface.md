@@ -248,7 +248,7 @@ appear on the row being pointed at. Where there is no pointer, they are simply t
 The rail's pencils are the exception. Simply there, they were a pencil on every project and
 every group, and the rail read as a form. A touch screen has none. **Edit** at the top of the
 rail turns to Done, and while it is on, a press on a project or a group opens its editor rather
-than its list, as a phone's own lists do it. The sheet stays open behind the editor, still in
+than its list, as a phone's own lists do it, with a pencil before each name to say so. The sheet stays open behind the editor, still in
 Edit, so the next one is a press away; closing the sheet ends it. With a pointer there is no
 Edit, and a row's pencil comes up on hover as before.
 

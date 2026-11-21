@@ -12,7 +12,6 @@ import { qk } from "@app/api/keys";
 import {
   BurgerIcon,
   ChevronDownIcon,
-  CrossIcon,
   PencilIcon,
 } from "@app/components/icons/Icon";
 import { useCarry } from "@app/islands/app/carry";
@@ -396,17 +395,8 @@ export function Nav({
                 <Mark color={color} />
                 taskio
               </span>
-              <span className="flex items-center gap-2">
-                {edit}
-                <button
-                  type="button"
-                  aria-label="Close menu"
-                  className="rounded-md p-1 hover:bg-shade"
-                  onClick={() => setOpen(false)}
-                >
-                  <CrossIcon />
-                </button>
-              </span>
+              {/* No close of its own: the list beside it is the way out, and Escape. */}
+              {edit}
             </div>
             {items}
           </nav>
@@ -707,6 +697,11 @@ function Item({
               : "text-muted group-hover/row:text-fg"
         }`}
       >
+        {/* Before the name in Edit, where a phone's own lists put what a row will do: the row
+            is the button, and this says what it does now. */}
+        {editMode && onEdit ? (
+          <PencilIcon className="shrink-0 text-faint" />
+        ) : null}
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {/* At the row's end, where the pencil comes up on hover and takes their place: the
             pencil kept its room while hidden, and left the numbers short of the edge. */}

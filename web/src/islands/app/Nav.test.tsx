@@ -351,8 +351,11 @@ describe("Nav", () => {
     const edit = within(rail()).getByRole("button", { name: "Edit" });
     expect(edit.className).toContain("pointer-fine:hidden");
 
+    expect(errands().querySelector("svg")).toBeNull();
     fireEvent.click(edit);
     expect(errands().getAttribute("aria-haspopup")).toBe("dialog");
+    // A pencil before the name says what a press does now.
+    expect(errands().firstElementChild?.tagName).toBe("svg");
     fireEvent.click(errands());
     expect(await screen.findByRole("heading", { name: "Group" })).toBeDefined();
     expect(onGo).not.toHaveBeenCalled();
