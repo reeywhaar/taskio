@@ -258,8 +258,10 @@ export function Nav({
         </button>
       </li>
 
-      {/* Well apart from New project: at 16px Settings read as one more project. */}
-      <li className="mt-12">
+      {/* At the foot with Docs, away from the projects: the two are about taskio rather than
+          about any project in it. Never nearer New project than 48px, which on a full rail is
+          all that is left between them; at 16px Settings read as one more project. */}
+      <li className="mt-auto pt-12">
         <Item
           label="Settings"
           lit={location.route.name === "settings"}
@@ -276,7 +278,7 @@ export function Nav({
           At the bottom rather than behind a rule: a rule in a list this short is a heavier mark
           than the thing it separates, and the distance says the same thing without drawing
           anything. */}
-      <li className="mt-auto">
+      <li>
         <a
           className="block rounded-md px-3 py-2 text-sm text-muted hover:bg-shade hover:text-fg"
           href="/docs"
