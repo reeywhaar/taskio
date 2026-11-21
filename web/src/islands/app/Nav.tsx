@@ -258,7 +258,8 @@ export function Nav({
         </button>
       </li>
 
-      <li className="mt-4">
+      {/* Well apart from New project: at 16px Settings read as one more project. */}
+      <li className="mt-12">
         <Item
           label="Settings"
           lit={location.route.name === "settings"}
