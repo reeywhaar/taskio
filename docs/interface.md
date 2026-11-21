@@ -243,7 +243,14 @@ which is a column of marks down the page.
 
 So both follow one rule, read from opposite ends. Where there is a pointer, a row's controls
 appear on the row being pointed at. Where there is no pointer, they are simply there. The same
-`pointer-coarse` test the rail's pencil and the code blocks' copy button already used.
+`pointer-coarse` test the code blocks' copy button already used.
+
+The rail's pencils are the exception. Simply there, they were a pencil on every project and
+every group, and the rail read as a form. A touch screen has none. **Edit** at the top of the
+rail turns to Done, and while it is on, a press on a project or a group opens its editor rather
+than its list, as a phone's own lists do it. The sheet stays open behind the editor, still in
+Edit, so the next one is a press away; closing the sheet ends it. With a pointer there is no
+Edit, and a row's pencil comes up on hover as before.
 
 What is not a control follows it too: the nought a task of priority zero carries is a value
 nobody needs a column of, and it appears on the same terms.

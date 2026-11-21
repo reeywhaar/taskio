@@ -338,6 +338,36 @@ describe("Nav", () => {
     expect(fireEvent.contextMenu(carried!)).toBe(true);
   });
 
+  /** On a touch screen a pencil on every row was a rail about editing: Edit, then the row. */
+  it("opens a row's editor rather than its list in Edit", async () => {
+    const onGo = vi.fn();
+    mount(<Nav location={at([])} onGo={onGo} />);
+    const errands = () => within(rail()).getByRole("link", { name: "Errands" });
+    await within(rail()).findByRole("link", { name: "Errands" });
+    // No pencils where there is no pointer, and no Edit where there is one.
+    expect(
+      within(rail()).getByRole("button", { name: "Edit Errands" }).className,
+    ).toContain("pointer-coarse:hidden");
+    const edit = within(rail()).getByRole("button", { name: "Edit" });
+    expect(edit.className).toContain("pointer-fine:hidden");
+
+    fireEvent.click(edit);
+    expect(errands().getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(errands());
+    expect(await screen.findByRole("heading", { name: "Group" })).toBeDefined();
+    expect(onGo).not.toHaveBeenCalled();
+    fireEvent.click(within(rail()).getByRole("link", { name: "Garden" }));
+    expect(
+      await screen.findByRole("heading", { name: "Edit project" }),
+    ).toBeDefined();
+    expect(onGo).not.toHaveBeenCalled();
+
+    // Done, and a press is a way to the list again.
+    fireEvent.click(within(rail()).getByRole("button", { name: "Done" }));
+    fireEvent.click(errands());
+    expect(onGo).toHaveBeenCalledTimes(1);
+  });
+
   it("gives projects a pencil, and has no All", async () => {
     mount(<Nav location={at([])} onGo={vi.fn()} />);
     await waitFor(() => screen.getAllByRole("button", { name: "Edit Main" }));

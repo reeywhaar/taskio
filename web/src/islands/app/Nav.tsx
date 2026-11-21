@@ -47,6 +47,18 @@ export function Nav({
   onGo: (next: Location) => void;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * On a touch screen, a press on a project or a group opens its editor rather than its list.
+   *
+   * The pencil waits for a pointer, and without one it was on every row: a rail about editing
+   * rather than about where you are. So a touch screen has none, and edits the way a phone's
+   * own lists do — Edit, then the row itself. A pointer still shows the pencil on hover.
+   */
+  const [editMode, setEditMode] = useState(false);
+  // Put away with the sheet, so it opens again as the rail it usually is.
+  useEffect(() => {
+    if (!open) setEditMode(false);
+  }, [open]);
   const [editing, setEditing] = useState<Editing>(null);
   /** The project the group being edited is in, which need not be the one on screen. */
   const [editingIn, setEditingIn] = useState("");
@@ -196,15 +208,14 @@ export function Nav({
               mark={markForProject(project.id)}
               to={toProject(project)}
               onClick={() => showProject(project)}
-              onEdit={() => {
-                setOpen(false);
-                setEditingProject(project);
-              }}
+              // The sheet stays open behind it, in Edit, so the next one is a press away.
+              onEdit={() => setEditingProject(project)}
               onOver={(id) => {
                 setCarryingProject(project.id);
                 setOntoProject(id && id !== project.id ? id : null);
               }}
               onDrop={dropProject}
+              editMode={editMode}
               folded={!unfold}
               onFold={() =>
                 setUnfolded((was) => ({ ...was, [project.id]: !unfold }))
@@ -214,11 +225,11 @@ export function Nav({
             {unfold ? (
               <Groups
                 slug={slugOf(project)}
+                editMode={editMode}
                 lit={(group) => isOpen && litBy(group.tags)}
                 to={(group) => toGroup(project, group)}
                 onOpen={(group) => go(toGroup(project, group))}
                 onEdit={(group) => {
-                  setOpen(false);
                   setEditingIn(slugOf(project));
                   setEditing(group);
                 }}
@@ -296,6 +307,24 @@ export function Nav({
     </ul>
   );
 
+  /**
+   * Only where there is no pointer: one shows the pencil on hover, and needs no mode. A word
+   * rather than a button with a ground: a raised button at the head of the rail was the
+   * heaviest thing on it, for the thing done least.
+   */
+  const edit = (
+    <button
+      type="button"
+      aria-pressed={editMode}
+      onClick={() => setEditMode(!editMode)}
+      className={`rounded-md px-2 py-1 text-sm pointer-fine:hidden ${
+        editMode ? "font-medium text-brand" : "text-muted"
+      }`}
+    >
+      {editMode ? "Done" : "Edit"}
+    </button>
+  );
+
   return (
     <>
       <div className="flex items-center gap-2 border-b border-line px-2 py-2 md:hidden">
@@ -320,9 +349,12 @@ export function Nav({
       </div>
 
       <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex lg:w-60 xl:w-72">
-        <div className="flex items-center gap-2 px-4 py-3 font-semibold">
-          <Mark color={color} />
-          taskio
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
+          <span className="flex items-center gap-2 font-semibold">
+            <Mark color={color} />
+            taskio
+          </span>
+          {edit}
         </div>
         {items}
       </nav>
@@ -345,8 +377,11 @@ export function Nav({
           }`}
           onClick={() => setOpen(false)}
         />
+        {/* Wider than it was, and still a strip of the list beside it to press to close. At
+            224px the names stopped short of the counts with half a 390px screen spare; at 320
+            it was a page rather than a drawer. */}
         <div
-          className={`relative h-full w-56 transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          className={`relative h-full w-[min(17rem,80vw)] transition-transform duration-200 ease-out motion-reduce:transition-none ${
             open ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -358,14 +393,17 @@ export function Nav({
                 <Mark color={color} />
                 taskio
               </span>
-              <button
-                type="button"
-                aria-label="Close menu"
-                className="rounded-md p-1 hover:bg-shade"
-                onClick={() => setOpen(false)}
-              >
-                <CrossIcon />
-              </button>
+              <span className="flex items-center gap-2">
+                {edit}
+                <button
+                  type="button"
+                  aria-label="Close menu"
+                  className="rounded-md p-1 hover:bg-shade"
+                  onClick={() => setOpen(false)}
+                >
+                  <CrossIcon />
+                </button>
+              </span>
             </div>
             {items}
           </nav>
@@ -417,6 +455,7 @@ export function Nav({
  */
 function Groups({
   slug,
+  editMode,
   lit,
   to,
   onOpen,
@@ -425,6 +464,7 @@ function Groups({
 }: {
   /** The project's, as the URL says it. */
   slug: string;
+  editMode: boolean;
   /** The group on screen, which is only ever one in the project on screen. */
   lit: (group: Group) => boolean;
   to: (group: Group) => Location;
@@ -499,6 +539,7 @@ function Groups({
             to={to(group)}
             onClick={() => onOpen(group)}
             onEdit={() => onEdit(group)}
+            editMode={editMode}
             onOver={(id) => {
               setCarrying(group.id);
               setOnto(id && id !== group.id ? id : null);
@@ -551,8 +592,8 @@ function Mark({ color }: { color: string }) {
  * One row of the rail, and the pencil beside it where there is something to edit.
  *
  * The pencil waits for the pointer, because a rail of names with a control on every line is a
- * rail about editing rather than about where you are. Where there is no pointer to wait for it
- * is there, dimmed, as the task dialog's is.
+ * rail about editing rather than about where you are. Where there is no pointer there is no
+ * pencil: Edit at the top of the rail makes the row itself the way to its editor.
  *
  * A group or a project row also carries: press and move and it goes somewhere else among its
  * own kind. A group cannot be dropped among the projects, nor a project among one's groups. A
@@ -572,6 +613,7 @@ function Item({
   onEdit,
   onOver,
   onDrop,
+  editMode = false,
   folded,
   onFold,
   bare = false,
@@ -594,6 +636,8 @@ function Item({
   onEdit?: () => void;
   onOver?: (id: string | null) => void;
   onDrop?: () => void;
+  /** A press opens the editor rather than the list: Edit, on a touch screen. */
+  editMode?: boolean;
   /** A project's groups are hidden, and the chevron that shows them is pointing at the name. */
   folded?: boolean;
   onFold?: () => void;
@@ -645,9 +689,11 @@ function Item({
           )
             return;
           e.preventDefault();
-          onClick();
+          if (editMode && onEdit) onEdit();
+          else onClick();
         }}
         aria-current={lit ? "page" : undefined}
+        aria-haspopup={editMode && onEdit ? "dialog" : undefined}
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-left text-sm select-none [-webkit-touch-callout:none] ${
           onOver ? "touch-pan-y" : ""
         } ${onEdit && !onFold ? "pointer-fine:group-hover/row:pr-9" : ""} ${
@@ -676,10 +722,11 @@ function Item({
           // No ground of its own: it is standing on the row's now, and a shade over a shade
           // is a second rectangle inside the one this change was about. Beside a chevron it
           // keeps its place in the row, rather than coming up over the chevron on hover.
-          className={`rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-60 ${
+          // None on a touch screen, which edits by Edit and then the row.
+          className={`rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
             onFold
               ? ""
-              : "pointer-coarse:mr-1 pointer-fine:absolute pointer-fine:top-1/2 pointer-fine:right-1 pointer-fine:-translate-y-1/2"
+              : "pointer-fine:absolute pointer-fine:top-1/2 pointer-fine:right-1 pointer-fine:-translate-y-1/2"
           }`}
         >
           <PencilIcon />
