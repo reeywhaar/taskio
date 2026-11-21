@@ -9,7 +9,12 @@ import {
 import { getProjects, putProjectsOrder } from "@app/api/actions/projects";
 import type { Group, GroupTodo, Project } from "@app/api/types";
 import { qk } from "@app/api/keys";
-import { BurgerIcon, CrossIcon, PencilIcon } from "@app/components/icons/Icon";
+import {
+  BurgerIcon,
+  ChevronDownIcon,
+  CrossIcon,
+  PencilIcon,
+} from "@app/components/icons/Icon";
 import { useCarry } from "@app/islands/app/carry";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
 import {
@@ -25,8 +30,11 @@ import { href, title, type Location } from "@app/islands/app/route";
  * than hidden.
  *
  * A project row is the whole project, which is what All used to be: the list with nothing lit.
- * Only the open project's groups are drawn, a step in from it — a group is a view of one
- * project's tags, and every project's groups at once is a rail about the other projects.
+ * The open project's groups are drawn, a step in from it — a group is a view of one project's
+ * tags, and every project's groups at once is a rail about the other projects. The chevron at a
+ * project's end unfolds another's, or folds the open one's, without opening anything: on a
+ * phone, reaching a group in another project was opening the project, the sheet closing, and
+ * opening the sheet again.
  *
  * Below the breakpoint it goes behind a burger and slides over as a sheet — the same component
  * with different chrome rather than a second nav.
@@ -40,6 +48,10 @@ export function Nav({
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
+  /** The project the group being edited is in, which need not be the one on screen. */
+  const [editingIn, setEditingIn] = useState("");
+  /** Projects somebody folded or unfolded, by id; the rest show their groups when open. */
+  const [unfolded, setUnfolded] = useState<Record<string, boolean>>({});
   const [editingProject, setEditingProject] = useState<EditingProject>(null);
   const client = useQueryClient();
 
@@ -49,39 +61,11 @@ export function Nav({
     queryKey: qk.groupsOf(here),
     queryFn: () => getGroups(here),
   });
-  const todo = useQuery({
-    queryKey: qk.groupTodo(here),
-    queryFn: () => getGroupsTodo(here),
-  });
   const listedProjects = projects.data?.projects ?? [];
   /** The project on screen: named in the URL, or the default when it names none. */
   const opened = listedProjects.find((p) =>
     here ? p.slug === here : p.default,
   );
-
-  /** The group being carried, and the one it would be dropped on. */
-  const [carrying, setCarrying] = useState<string | null>(null);
-  const [onto, setOnto] = useState<string | null>(null);
-
-  const listed = groups.data?.groups ?? [];
-
-  const arrange = useMutation({
-    mutationFn: (ids: string[]) => putGroupsOrder(here, { ids }),
-    onMutate: (ids) => {
-      const key = qk.groupsOf(here);
-      const before = client.getQueryData<{ groups: Group[] }>(key);
-      if (before) {
-        const by = new Map(before.groups.map((g) => [g.id, g]));
-        client.setQueryData(key, {
-          groups: ids.flatMap((id) => by.get(id) ?? []),
-        });
-      }
-      return before;
-    },
-    onError: (_err, _ids, before) =>
-      before && client.setQueryData(qk.groupsOf(here), before),
-    onSettled: () => client.invalidateQueries({ queryKey: qk.groups }),
-  });
 
   /** The projects being carried, on the same terms as the groups. */
   const [carryingProject, setCarryingProject] = useState<string | null>(null);
@@ -118,31 +102,6 @@ export function Nav({
     if (!carryingProject || ontoProject !== id) return null;
     const ids = listedProjects.map((p) => p.id);
     return ids.indexOf(carryingProject) < ids.indexOf(id) ? "below" : "above";
-  };
-
-  /**
-   * Nothing moves until the group is let go, and All is not in it.
-   *
-   * The same arrangement as the tag cloud's, one axis over: a bar above or below the row it
-   * would land on, drawn as a pseudo-element so the rows do not shift under the finger.
-   */
-  const drop = () => {
-    const ids = listed.map((g) => g.id);
-    const from = carrying ? ids.indexOf(carrying) : -1;
-    const to = onto ? ids.indexOf(onto) : -1;
-    setCarrying(null);
-    setOnto(null);
-    if (from < 0 || to < 0 || from === to) return;
-    const next = [...ids];
-    next.splice(from, 1);
-    next.splice(to, 0, ids[from]!);
-    arrange.mutate(next);
-  };
-
-  const markFor = (id: string): "above" | "below" | null => {
-    if (!carrying || onto !== id) return null;
-    const ids = listed.map((g) => g.id);
-    return ids.indexOf(carrying) < ids.indexOf(id) ? "below" : "above";
   };
 
   useEffect(() => {
@@ -188,11 +147,19 @@ export function Nav({
     }
   }, [color]);
 
-  /** Where a group's row goes: the list with its tags lit. */
-  const toTags = (tags: string[]): Location => ({
+  /** A project as the URL says it: the open one as it is said now, the default as nothing. */
+  const slugOf = (project: Project) =>
+    project.id === opened?.id ? here : project.default ? "" : project.slug;
+
+  /** Where a group's row goes: its project's list, with its tags lit. */
+  const toGroup = (project: Project, group: Group): Location => ({
     ...location,
     route: { name: "list" },
-    filters: { ...location.filters, tags },
+    filters: {
+      ...location.filters,
+      project: slugOf(project),
+      tags: group.tags,
+    },
   });
 
   /** The whole of a project. Its tags are its own, so none of the ones lit here carry over. */
@@ -216,6 +183,7 @@ export function Nav({
     <ul className="flex flex-1 flex-col gap-0.5 p-2">
       {listedProjects.map((project) => {
         const isOpen = project.id === opened?.id;
+        const unfold = unfolded[project.id] ?? isOpen;
         return (
           <Fragment key={project.id}>
             <Item
@@ -237,50 +205,29 @@ export function Nav({
                 setOntoProject(id && id !== project.id ? id : null);
               }}
               onDrop={dropProject}
+              folded={!unfold}
+              onFold={() =>
+                setUnfolded((was) => ({ ...was, [project.id]: !unfold }))
+              }
             />
 
-            {/* A step in, so they read as belonging to the project above them. */}
-            {isOpen ? (
-              <li>
-                <ul className="ml-3 flex flex-col gap-0.5">
-                  {listed.map((group) => (
-                    <Item
-                      key={group.id}
-                      id={group.id}
-                      label={group.name}
-                      todo={todo.data?.todo[group.id]}
-                      lit={litBy(group.tags)}
-                      carried={carrying === group.id}
-                      mark={markFor(group.id)}
-                      to={toTags(group.tags)}
-                      onClick={() => go(toTags(group.tags))}
-                      onEdit={() => {
-                        setOpen(false);
-                        setEditing(group);
-                      }}
-                      onOver={(id) => {
-                        setCarrying(group.id);
-                        setOnto(id && id !== group.id ? id : null);
-                      }}
-                      onDrop={drop}
-                    />
-                  ))}
-                  {/* Smaller than the rows: they make a row rather than being one, and at the
-                      rows' size they read as one more group and one more project. */}
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpen(false);
-                        setEditing("new");
-                      }}
-                      className="w-full rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
-                    >
-                      New group
-                    </button>
-                  </li>
-                </ul>
-              </li>
+            {unfold ? (
+              <Groups
+                slug={slugOf(project)}
+                lit={(group) => isOpen && litBy(group.tags)}
+                to={(group) => toGroup(project, group)}
+                onOpen={(group) => go(toGroup(project, group))}
+                onEdit={(group) => {
+                  setOpen(false);
+                  setEditingIn(slugOf(project));
+                  setEditing(group);
+                }}
+                onNew={() => {
+                  setOpen(false);
+                  setEditingIn(slugOf(project));
+                  setEditing("new");
+                }}
+              />
             ) : null}
           </Fragment>
         );
@@ -403,7 +350,9 @@ export function Nav({
             open ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <nav className="flex h-full w-full flex-col bg-surface shadow-rail">
+          {/* It scrolls, as the rail does: a sheet as tall as the screen with more in it than
+              that was cut off at the bottom with no way down to it. */}
+          <nav className="flex h-full w-full flex-col overflow-y-auto overscroll-contain bg-surface shadow-rail">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="flex items-center gap-2 font-semibold">
                 <Mark color={color} />
@@ -425,7 +374,7 @@ export function Nav({
 
       <GroupDialog
         editing={editing}
-        project={here}
+        project={editingIn}
         onClose={() => setEditing(null)}
         onMoved={(group, to) => {
           // The list it was showing went with it, so the list goes too.
@@ -455,6 +404,121 @@ export function Nav({
         }
       />
     </>
+  );
+}
+
+/**
+ * One project's groups, a step in under it so they read as belonging to it, and pressed and
+ * moved among themselves.
+ *
+ * Nothing moves until the group is let go, and All is not in it. The same arrangement as the tag
+ * cloud's, one axis over: a bar above or below the row it would land on, drawn as its own
+ * element so the rows do not shift under the finger.
+ */
+function Groups({
+  slug,
+  lit,
+  to,
+  onOpen,
+  onEdit,
+  onNew,
+}: {
+  /** The project's, as the URL says it. */
+  slug: string;
+  /** The group on screen, which is only ever one in the project on screen. */
+  lit: (group: Group) => boolean;
+  to: (group: Group) => Location;
+  onOpen: (group: Group) => void;
+  onEdit: (group: Group) => void;
+  onNew: () => void;
+}) {
+  const client = useQueryClient();
+  const groups = useQuery({
+    queryKey: qk.groupsOf(slug),
+    queryFn: () => getGroups(slug),
+  });
+  const todo = useQuery({
+    queryKey: qk.groupTodo(slug),
+    queryFn: () => getGroupsTodo(slug),
+  });
+  const listed = groups.data?.groups ?? [];
+
+  /** The group being carried, and the one it would be dropped on. */
+  const [carrying, setCarrying] = useState<string | null>(null);
+  const [onto, setOnto] = useState<string | null>(null);
+
+  const arrange = useMutation({
+    mutationFn: (ids: string[]) => putGroupsOrder(slug, { ids }),
+    onMutate: (ids) => {
+      const key = qk.groupsOf(slug);
+      const before = client.getQueryData<{ groups: Group[] }>(key);
+      if (before) {
+        const by = new Map(before.groups.map((g) => [g.id, g]));
+        client.setQueryData(key, {
+          groups: ids.flatMap((id) => by.get(id) ?? []),
+        });
+      }
+      return before;
+    },
+    onError: (_err, _ids, before) =>
+      before && client.setQueryData(qk.groupsOf(slug), before),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.groups }),
+  });
+
+  const drop = () => {
+    const ids = listed.map((g) => g.id);
+    const from = carrying ? ids.indexOf(carrying) : -1;
+    const at = onto ? ids.indexOf(onto) : -1;
+    setCarrying(null);
+    setOnto(null);
+    if (from < 0 || at < 0 || from === at) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(at, 0, ids[from]!);
+    arrange.mutate(next);
+  };
+
+  const markFor = (id: string): "above" | "below" | null => {
+    if (!carrying || onto !== id) return null;
+    const ids = listed.map((g) => g.id);
+    return ids.indexOf(carrying) < ids.indexOf(id) ? "below" : "above";
+  };
+
+  return (
+    <li>
+      <ul className="ml-3 flex flex-col gap-0.5">
+        {listed.map((group) => (
+          <Item
+            key={group.id}
+            id={group.id}
+            label={group.name}
+            todo={todo.data?.todo[group.id]}
+            lit={lit(group)}
+            carried={carrying === group.id}
+            mark={markFor(group.id)}
+            to={to(group)}
+            onClick={() => onOpen(group)}
+            onEdit={() => onEdit(group)}
+            onOver={(id) => {
+              setCarrying(group.id);
+              setOnto(id && id !== group.id ? id : null);
+            }}
+            onDrop={drop}
+          />
+        ))}
+        {/* Smaller than the rows: they make a row rather than being one, and at the rows' size
+            they read as one more group and one more project. */}
+        <li>
+          <button
+            type="button"
+            onClick={onNew}
+            className="w-full rounded-md px-3 py-1 text-left text-xs text-faint hover:bg-shade hover:text-fg"
+          >
+            New group
+          </button>
+        </li>
+      </ul>
+    </li>
   );
 }
 
@@ -491,7 +555,8 @@ function Mark({ color }: { color: string }) {
  * is there, dimmed, as the task dialog's is.
  *
  * A group or a project row also carries: press and move and it goes somewhere else among its
- * own kind. A group cannot be dropped among the projects, nor a project among one's groups.
+ * own kind. A group cannot be dropped among the projects, nor a project among one's groups. A
+ * finger holds first: a row that carried on the first move was a rail a finger could not scroll.
  */
 function Item({
   id,
@@ -507,6 +572,8 @@ function Item({
   onEdit,
   onOver,
   onDrop,
+  folded,
+  onFold,
   bare = false,
 }: {
   /** The group or project this row is, where it is one. */
@@ -527,6 +594,9 @@ function Item({
   onEdit?: () => void;
   onOver?: (id: string | null) => void;
   onDrop?: () => void;
+  /** A project's groups are hidden, and the chevron that shows them is pointing at the name. */
+  folded?: boolean;
+  onFold?: () => void;
   /** Already inside an <li>, because the caller needed to space it. */
   bare?: boolean;
 }) {
@@ -535,6 +605,7 @@ function Item({
     enabled: !!onOver,
     onOver: (el) => onOver?.(el?.dataset[kind] ?? null),
     onDrop: () => onDrop?.(),
+    hold: HOLD,
   });
 
   const row = (
@@ -550,6 +621,7 @@ function Item({
           draggable and no long-press callout: dragging a row is the rail's own reordering, and
           the browser's link drag or menu would take the gesture from it. */}
       <a
+        ref={carry.ref}
         href={href(to)}
         draggable={false}
         {...{ [`data-${kind}`]: id }}
@@ -557,6 +629,7 @@ function Item({
         onPointerMove={carry.move}
         onPointerUp={carry.release}
         onPointerCancel={carry.cancel}
+        onContextMenu={carry.menu}
         onClick={(e) => {
           if (carry.spent.current) {
             e.preventDefault();
@@ -576,8 +649,8 @@ function Item({
         }}
         aria-current={lit ? "page" : undefined}
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-left text-sm select-none [-webkit-touch-callout:none] ${
-          onOver ? "touch-none" : ""
-        } ${onEdit ? "pointer-fine:group-hover/row:pr-9" : ""} ${
+          onOver ? "touch-pan-y" : ""
+        } ${onEdit && !onFold ? "pointer-fine:group-hover/row:pr-9" : ""} ${
           lit
             ? "font-medium text-brand"
             : opened
@@ -601,10 +674,32 @@ function Item({
           onClick={onEdit}
           aria-label={`Edit ${label}`}
           // No ground of its own: it is standing on the row's now, and a shade over a shade
-          // is a second rectangle inside the one this change was about.
-          className="rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:mr-1 pointer-coarse:opacity-60 pointer-fine:absolute pointer-fine:top-1/2 pointer-fine:right-1 pointer-fine:-translate-y-1/2"
+          // is a second rectangle inside the one this change was about. Beside a chevron it
+          // keeps its place in the row, rather than coming up over the chevron on hover.
+          className={`rounded-md p-1.5 text-faint opacity-0 hover:text-fg focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-60 ${
+            onFold
+              ? ""
+              : "pointer-coarse:mr-1 pointer-fine:absolute pointer-fine:top-1/2 pointer-fine:right-1 pointer-fine:-translate-y-1/2"
+          }`}
         >
           <PencilIcon />
+        </button>
+      ) : null}
+      {/* At the end of the row, where a sidebar on a phone puts it, so the names stay in line
+          with Settings and the rest. */}
+      {onFold ? (
+        <button
+          type="button"
+          onClick={onFold}
+          aria-expanded={!folded}
+          aria-label={`${folded ? "Show" : "Hide"} ${label}'s groups`}
+          className="mr-1 rounded-md p-1.5 text-faint hover:text-fg"
+        >
+          <ChevronDownIcon
+            className={`transition-transform motion-reduce:transition-none ${
+              folded ? "-rotate-90" : ""
+            }`}
+          />
         </button>
       ) : null}
       {/* The bar itself rather than a pseudo-element on the row: it is absolute, so it takes
@@ -621,6 +716,9 @@ function Item({
   );
   return bare ? row : <li>{row}</li>;
 }
+
+/** How long a finger holds a row before it carries; moving sooner scrolls the rail. */
+const HOLD = 400;
 
 /** Past nine it says "a lot", which is all a rail has room to say. */
 const capped = (n: number) => (n > 9 ? "9+" : String(n));

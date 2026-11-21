@@ -1,5 +1,13 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+import { putGroupsOrder } from "@app/api/actions/groups";
 
 import { Nav } from "@app/islands/app/Nav";
 import type { Location } from "@app/islands/app/route";
@@ -20,7 +28,7 @@ vi.mock("@app/api/actions/groups", () => ({
     }),
   patchGroupsById: (id: string, body: object) =>
     Promise.resolve({ id, created_at: 2, ...body }),
-  putGroupsOrder: () => Promise.resolve({ groups: [] }),
+  putGroupsOrder: vi.fn(() => Promise.resolve({ groups: [] })),
   getGroupsTodo: () =>
     Promise.resolve({ todo: { gr_2: { fresh: 2, week: 0, month: 12 } } }),
 }));
@@ -243,6 +251,91 @@ describe("Nav", () => {
     fireEvent.pointerDown(under!, { clientX: 0, clientY: 0, pointerId: 2 });
     fireEvent.click(under!);
     expect(onGo).toHaveBeenCalledTimes(1);
+  });
+
+  /** On a phone, opening the project closed the sheet, and the group was a second trip. */
+  it("unfolds another project's groups without opening it", async () => {
+    const onGo = vi.fn();
+    mount(<Nav location={at([])} onGo={onGo} />);
+    await within(rail()).findAllByRole("link", { name: "Errands" });
+    fireEvent.click(
+      within(rail()).getByRole("button", { name: "Show Garden's groups" }),
+    );
+    const errands = await waitFor(() => {
+      const found = within(rail()).getAllByRole("link", { name: "Errands" });
+      expect(found).toHaveLength(2);
+      return found;
+    });
+    expect(onGo).not.toHaveBeenCalled();
+    // The second is Garden's, and it opens Garden with its tags lit.
+    fireEvent.click(errands[1]!);
+    expect(onGo).toHaveBeenCalledWith({
+      route: { name: "list" },
+      filters: { project: "garden", tags: ["errands"], view: "todo", q: "" },
+    });
+    // Lit only in the project on screen, which Garden is not yet.
+    expect(errands[1]!.getAttribute("aria-current")).toBeNull();
+  });
+
+  it("folds the open project's groups away", async () => {
+    mount(<Nav location={at([])} onGo={vi.fn()} />);
+    await within(rail()).findAllByRole("link", { name: "Errands" });
+    const fold = within(rail()).getByRole("button", {
+      name: "Hide Main's groups",
+    });
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(fold);
+    expect(within(rail()).queryByRole("link", { name: "Errands" })).toBeNull();
+    expect(
+      within(rail())
+        .getByRole("button", { name: "Show Main's groups" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+  });
+
+  /** A row that carried on the first move was a rail a finger could not scroll. */
+  it("lets a finger scroll the rail, and carries a row it holds", async () => {
+    Element.prototype.setPointerCapture = vi.fn();
+    mount(<Nav location={at([])} onGo={vi.fn()} />);
+    const [carried] = await within(rail()).findAllByRole("link", {
+      name: "Deep work",
+    });
+    const [under] = within(rail()).getAllByRole("link", { name: "Errands" });
+    const was = document.elementFromPoint;
+    document.elementFromPoint = () => under!;
+    const row = carried!.parentElement!;
+    const finger = { pointerType: "touch", pointerId: 1 };
+    vi.useFakeTimers();
+    try {
+      // Moved at once: a scroll, so nothing is carried, now or when the hold would be up.
+      fireEvent.pointerDown(carried!, { ...finger, clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(carried!, { ...finger, clientX: 0, clientY: 40 });
+      act(() => vi.advanceTimersByTime(500));
+      expect(row.className).not.toContain("opacity-40");
+      expect(fireEvent.touchMove(carried!, { cancelable: true })).toBe(true);
+      fireEvent.pointerCancel(carried!, finger);
+
+      // Held, it carries without moving; Android's long-press menu does not get it.
+      fireEvent.pointerDown(carried!, { ...finger, clientX: 0, clientY: 0 });
+      expect(fireEvent.contextMenu(carried!)).toBe(false);
+      act(() => vi.advanceTimersByTime(400));
+      expect(row.className).toContain("opacity-40");
+      // And the rail holds still under it: the row's own listener, there from the start.
+      expect(fireEvent.touchMove(carried!, { cancelable: true })).toBe(false);
+      fireEvent.pointerMove(carried!, { ...finger, clientX: 0, clientY: 40 });
+      fireEvent.pointerUp(carried!, finger);
+    } finally {
+      vi.useRealTimers();
+      document.elementFromPoint = was;
+    }
+    await waitFor(() =>
+      expect(vi.mocked(putGroupsOrder)).toHaveBeenCalledWith("", {
+        ids: ["gr_2", "gr_1"],
+      }),
+    );
+    // A mouse's right click is still the link's menu.
+    fireEvent.pointerDown(carried!, { pointerType: "mouse", pointerId: 2 });
+    expect(fireEvent.contextMenu(carried!)).toBe(true);
   });
 
   it("gives projects a pencil, and has no All", async () => {

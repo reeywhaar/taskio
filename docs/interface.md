@@ -284,9 +284,15 @@ of the last few used, and a mark nobody reads does not need one.
 ## The rail is projects, and the open one's groups
 
 A project row is the whole project — the list with nothing lit, which is what All used to be,
-so there is no All. Only the open project's groups are drawn, a step in from it: a group is a
+so there is no All. The open project's groups are drawn, a step in from it: a group is a
 view of one project's tags, and every project's groups at once is a rail about the other
 projects. Opening a project lights none of the last one's tags, since they are not its tags.
+
+The chevron at a project's end unfolds another project's groups, or folds the open one's, and
+opens nothing. Without it a group in another project was two trips on a phone: open the project,
+which closes the sheet, then open the sheet again for the group. At the end of the row rather
+than before the name, where a phone's sidebar puts it, so the names stay in line with Settings
+and Docs. A group pressed there opens its project with its tags lit.
 
 Every row is a link to the address it shows, so a new tab, a middle click and Copy link work as on
 any link; a plain press stays in the page. The links are not draggable and carry no long-press
@@ -374,6 +380,16 @@ row dims, a bar shows the place it would land, and nothing moves until it is let
 itself is in one place — the two would otherwise be two copies of pointer capture, a slop
 threshold and a swallowed click. A group moves among its project's groups and a project among
 the projects; neither can be dropped among the other.
+
+A finger holds a row before it carries, 400ms, and a buzz says so where the phone can. A row
+that carried on the first move, like a pill does, was a rail a finger could not scroll: every
+row is a row to drag, so a swipe anywhere on the rail was a drag. Moving sooner than the hold is
+a scroll, and the browser has it, which is what `touch-action: pan-y` on the rows says. Once
+the hold is up the page holds still under the carry, by a touch listener on each row that is
+there from the start: a phone decides when a touch begins whether anything may stop it
+scrolling, and one added to the window when the hold was up was asked too late — the rail
+scrolled, and the scroll cancelled the carry. A mouse carries on the first move, as
+before, and its right click is still the link's menu; Android's long-press menu is not offered.
 
 A new group is written after the ones already there rather than at position zero, which is where
 the first arranged group sits. Otherwise writing one puts it at the top of somebody's

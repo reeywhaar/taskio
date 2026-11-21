@@ -1,4 +1,10 @@
-import { useRef, type PointerEvent as Press } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent as Click,
+  type PointerEvent as Press,
+} from "react";
 
 /** How far a press has to travel to be a drag rather than a press that wobbled. */
 const SLOP = 6;
@@ -45,6 +51,7 @@ export function useCarry({
   onOver,
   onDrop,
   enabled = true,
+  hold = 0,
 }: {
   /** What counts as somewhere to land: a selector its targets match. */
   find: string;
@@ -56,13 +63,50 @@ export function useCarry({
   onDrop: () => void;
   /** Off where there is nothing to arrange, so a press is only ever a press. */
   enabled?: boolean;
+  /**
+   * For a finger or a pen: how long a press must stay put before it carries, in milliseconds.
+   * Moving sooner is a scroll, and the browser has it. Without one, a list whose every row
+   * carries is a list a finger cannot scroll. The element says touch-action: pan-y, and takes
+   * the returned ref.
+   */
+  hold?: number;
 }) {
   const from = useRef<{ x: number; y: number } | null>(null);
   const moving = useRef(false);
   /** This press has already meant something, so the click after it means nothing. */
   const spent = useRef(false);
+  /** A finger's press, waiting out the hold. */
+  const timer = useRef(0);
+  const waiting = useRef(false);
+  /** The last press was not a mouse's, whose long press is a menu that would take it. */
+  const touched = useRef(false);
+
+  // Gone mid-hold: the timer would carry a row that is no longer there.
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  /**
+   * Holds the page still under a finger that is carrying, the way it is under a mouse.
+   *
+   * On the element, and there from the start. A phone decides when a touch begins whether
+   * anything may stop it scrolling, by whether a listener that is not passive is under it, and
+   * React's own touch listeners are passive. One added to the window once the hold was up was
+   * asked too late: the rail scrolled under the carry, and the scroll cancelled it.
+   */
+  const still = useCallback((e: TouchEvent) => {
+    if (moving.current && e.cancelable) e.preventDefault();
+  }, []);
+  const ref = useCallback(
+    (el: HTMLElement | null) => {
+      if (!el || !hold) return;
+      el.addEventListener("touchmove", still, { passive: false });
+      return () => el.removeEventListener("touchmove", still);
+    },
+    [hold, still],
+  );
 
   const end = (dropped: boolean) => {
+    window.clearTimeout(timer.current);
+    waiting.current = false;
     from.current = null;
     if (moving.current) swallowClick();
     if (moving.current && dropped) onDrop();
@@ -71,15 +115,46 @@ export function useCarry({
 
   return {
     spent,
+    ref,
     press: (e: Press<HTMLElement>) => {
       spent.current = false;
       moving.current = false;
       from.current = { x: e.clientX, y: e.clientY };
-      if (enabled) e.currentTarget.setPointerCapture(e.pointerId);
+      touched.current = e.pointerType === "touch" || e.pointerType === "pen";
+      if (!enabled) return;
+      if (hold && touched.current) {
+        const { clientX, clientY, pointerId } = e;
+        const el = e.currentTarget;
+        waiting.current = true;
+        timer.current = window.setTimeout(() => {
+          waiting.current = false;
+          moving.current = true;
+          spent.current = true;
+          try {
+            el.setPointerCapture(pointerId);
+          } catch {
+            // Lifted in the same instant: the release ends it.
+          }
+          navigator.vibrate?.(10);
+          onStart?.();
+          const under = document
+            .elementFromPoint(clientX, clientY)
+            ?.closest(find);
+          onOver(under instanceof HTMLElement ? under : null);
+        }, hold);
+        return;
+      }
+      e.currentTarget.setPointerCapture(e.pointerId);
     },
     move: (e: Press<HTMLElement>) => {
       const start = from.current;
       if (!start || !enabled) return;
+      if (waiting.current) {
+        // Moved before the hold was up: a scroll, and not this one's business.
+        if (Math.hypot(e.clientX - start.x, e.clientY - start.y) >= SLOP)
+          end(false);
+        return;
+      }
       if (!moving.current) {
         if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < SLOP) return;
         moving.current = true;
@@ -93,5 +168,10 @@ export function useCarry({
     },
     release: () => end(true),
     cancel: () => end(false),
+    /** A long press on Android is a menu otherwise, and it would take the hold. A mouse's
+     *  right click is still the link's menu. */
+    menu: (e: Click<HTMLElement>) => {
+      if (enabled && hold && touched.current) e.preventDefault();
+    },
   };
 }
