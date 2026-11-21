@@ -109,6 +109,12 @@ For the frontend, `npm --prefix web run dev` gives Vite on its own port, and `np
 run smoke` drives a real headless Chromium against a running instance — palettes, contrast,
 layout and the sign-in gate, which are the things jsdom cannot answer.
 
+`scripts/run_dev.sh` builds the working tree and runs it in Docker on
+`http://taskio.localhost:3009`, already filled with projects, groups and tasks: sign in as
+`demo` / `demodemo`. The image is `demo/Dockerfile`, which sets that up on its first start; the
+data stays in `private/demo_data` until the folder is deleted. `scripts/seed.mjs` is the same
+filling, for any taskio and an account already on it.
+
 ```
 main.go            the CLI's entry
 internal/
@@ -120,6 +126,7 @@ internal/
   backup/ sweep/   the two background loops
 web/               React, Tailwind, three islands
 docs/              deploy, API, conventions — api.md renders to /docs
+demo/ scripts/     a filled instance to try, and what fills it
 ```
 
 ## Conventions
