@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Token } from "@app/api/types";
-import { Password, Pins, SignedIn, Tokens } from "@app/islands/app/Settings";
+import { Account, Pins, SignedIn, Tokens } from "@app/islands/app/Settings";
 import { mount } from "@app/test/harness";
 
 const account = {
@@ -218,10 +218,10 @@ describe("who is signed in", () => {
   });
 });
 
-/** Sections of one button each were a column of slabs: the password is one, a row each. */
-describe("the password", () => {
+/** Sections of one button each were a column of slabs: the account is one, a row each. */
+describe("the account", () => {
   it("is one section, its actions words at the row's end", async () => {
-    mount(<Password />);
+    mount(<Account />);
     expect(
       await screen.findByRole("button", { name: "Change…" }),
     ).toBeDefined();

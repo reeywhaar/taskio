@@ -55,7 +55,7 @@ export function Settings() {
         <Tokens />
         {/* Beside the sessions: both are how this account is got into, and a password changed
             signs every other session out. */}
-        <Password />
+        <Account />
         <Sessions />
       </div>
     </div>
@@ -90,9 +90,9 @@ export function SignedIn() {
 }
 
 /**
- * The password, and the address to get back in by when it is lost: one section, a row each.
- * They were sections of their own, each a heading over one button, which was a column of slabs
- * for the lightest things on the page.
+ * The account: its password, and the address to get back in by when the password is lost. One
+ * section, a row each, both labelled: under a heading of Password, a row for the recovery
+ * address did not belong.
  *
  * The recovery address is only an address somebody has proved they can read. Until the code
  * comes back the account has none at all — not a provisional one — so a flow abandoned anywhere
@@ -100,7 +100,7 @@ export function SignedIn() {
  * the account has no address: explaining an administrator's job on everybody's settings page is
  * aimed at somebody who is not reading it.
  */
-export function Password() {
+export function Account() {
   const client = useQueryClient();
   const account = useQuery({ queryKey: qk.account, queryFn: getAccount });
   const [changing, setChanging] = useState(false);
@@ -116,12 +116,12 @@ export function Password() {
   const relay = account.data?.relay_configured ?? false;
 
   return (
-    <Panel title="Password" state={account} dummy={<DummyRows count={2} />}>
+    <Panel title="Account" state={account} dummy={<DummyRows count={2} />}>
       <ul className="flex flex-col">
-        {/* No label: the heading says what it is, and a row called Password under a section
-            called Password said it twice. Changing it ends every other session and keeps this
-            one — that is what people mean by it. */}
+        {/* Changing it ends every other session and keeps this one — that is what people mean
+            by it. */}
         <Row
+          label="Password"
           actions={
             <Button
               variant="link"
@@ -160,7 +160,7 @@ export function Password() {
               </>
             }
           >
-            {current || <span className="text-muted">None on file.</span>}
+            {current || <span className="text-muted">not set</span>}
             {/* An address already on file keeps its row when the relay goes away, so it can
                 still be seen and forgotten. What it cannot then do is change. */}
             {relay ? null : (
