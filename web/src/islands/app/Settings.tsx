@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ago } from "@app/ago";
+import { ago, ahead } from "@app/ago";
 import {
   deleteAccountRecovery,
   getAccount,
   patchAccount,
 } from "@app/api/actions/account";
-import { getAuthMe, postAuthLogout } from "@app/api/actions/auth";
+import { getAuthMe } from "@app/api/actions/auth";
 import {
   deleteSessions,
   deleteSessionsById,
@@ -25,6 +25,7 @@ import { Boundary } from "@app/components/Boundary";
 import { Button } from "@app/components/Button";
 import { Copyable } from "@app/components/Copyable";
 import { Dialog } from "@app/components/Dialog";
+import { PersonIcon } from "@app/components/icons/Icon";
 import { Dummy, DummyLines, DummyRows } from "@app/components/Dummy";
 import { Field } from "@app/components/Field";
 import { Select } from "@app/components/Select";
@@ -41,95 +42,65 @@ import { lengthName } from "@app/islands/app/TokenFields";
  * account's, and nothing else in the product is.
  */
 export function Settings() {
-  const me = useQuery({ queryKey: qk.me, queryFn: getAuthMe });
   return (
     <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-3 py-4 md:px-6">
-        <Panel
-          title="Account"
-          state={me}
-          dummy={
-            <>
-              <Dummy className="h-4 w-56" />
-              <Dummy className="mt-3 h-11 w-24" />
-            </>
-          }
-        >
-          <p className="text-sm text-muted">
-            Signed in as <span className="text-fg">{me.data?.username}</span>
-            {me.data?.role === "admin" ? (
-              <>
-                {" · "}
-                <a className="underline" href="/admin">
-                  Admin
-                </a>
-              </>
-            ) : null}
-          </p>
-          <Button
-            className="mt-3"
-            onClick={() =>
-              postAuthLogout().then(() => window.location.assign("/"))
-            }
-          >
-            Sign out
-          </Button>
-        </Panel>
-
-        <Password />
-        <Recovery />
+        <SignedIn />
         <Pins />
         <Storage />
         <Tokens />
+        {/* Beside the sessions: both are how this account is got into, and a password changed
+            signs every other session out. */}
+        <Password />
         <Sessions />
       </div>
     </div>
   );
 }
 
-/** Ends every other session and keeps this one — that is what people mean by it. */
-function Password() {
-  const [open, setOpen] = useState(false);
-  const [changed, setChanged] = useState(false);
-
+/**
+ * Who is signed in, at the top right, where an account is on most pages that have one. It was a
+ * section of its own, with a heading over one line, which said less than its place on the page.
+ * Nothing while the answer is on its way: a name that arrives a moment late moves nothing.
+ */
+export function SignedIn() {
+  const me = useQuery({ queryKey: qk.me, queryFn: getAuthMe });
   return (
-    <Panel title="Password">
-      <Button
-        onClick={() => {
-          setChanged(false);
-          setOpen(true);
-        }}
-      >
-        Change password…
-      </Button>
-      {changed ? (
-        <p className="mt-2 text-sm text-muted">
-          Changed. Every other browser has been signed out.
-        </p>
+    <div className="-mb-4 flex min-h-5 justify-end text-sm">
+      {me.data ? (
+        <span className="flex items-center gap-1.5">
+          <PersonIcon className="text-faint" />
+          {me.data.username}
+          {me.data.role === "admin" ? (
+            <>
+              <span className="text-faint">·</span>
+              <a className="text-muted underline" href="/admin">
+                Admin
+              </a>
+            </>
+          ) : null}
+        </span>
       ) : null}
-      <PasswordDialog
-        open={open}
-        onClose={(saved) => {
-          setOpen(false);
-          if (saved) setChanged(true);
-        }}
-      />
-    </Panel>
+    </div>
   );
 }
 
 /**
- * Only an address somebody has proved they can read. Until the code comes back the account has
- * no recovery address at all — not a provisional one — so a flow abandoned anywhere leaves
- * exactly what was there before.
+ * The password, and the address to get back in by when it is lost: one section, a row each.
+ * They were sections of their own, each a heading over one button, which was a column of slabs
+ * for the lightest things on the page.
  *
- * The section is not shown when the instance has no relay and the account has no address:
- * explaining an administrator's job on everybody's settings page is aimed at somebody who is not
- * reading it.
+ * The recovery address is only an address somebody has proved they can read. Until the code
+ * comes back the account has none at all — not a provisional one — so a flow abandoned anywhere
+ * leaves exactly what was there before. Its row is not drawn when the instance has no relay and
+ * the account has no address: explaining an administrator's job on everybody's settings page is
+ * aimed at somebody who is not reading it.
  */
-function Recovery() {
+export function Password() {
   const client = useQueryClient();
   const account = useQuery({ queryKey: qk.account, queryFn: getAccount });
+  const [changing, setChanging] = useState(false);
+  const [changed, setChanged] = useState(false);
   const [proving, setProving] = useState(false);
 
   const forget = useMutation({
@@ -137,52 +108,101 @@ function Recovery() {
     onSuccess: () => client.invalidateQueries({ queryKey: qk.account }),
   });
 
-  // Waiting rather than absent: a section that appears once the answer lands pushes everything
-  // under it down, so it holds its place with a shape.
-  if (account.isPending || account.isError) {
-    return (
-      <Panel title="Recovery address" state={account}>
-        {null}
-      </Panel>
-    );
-  }
-  const { recovery_email: current, relay_configured: relay } = account.data;
-  // The section is not shown when the instance has no relay and the account has no address:
-  // explaining an administrator's job on everybody's settings page is aimed at somebody who is
-  // not reading it.
-  if (!relay && !current) return null;
+  const current = account.data?.recovery_email ?? "";
+  const relay = account.data?.relay_configured ?? false;
 
   return (
-    <Panel title="Recovery address">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className={current ? "" : "text-muted"}>
-          {current || "None on file."}
-        </span>
-        {current ? (
-          <Button variant="link" onClick={() => forget.mutate()}>
-            Forget it
-          </Button>
+    <Panel title="Password" state={account} dummy={<DummyRows count={2} />}>
+      <ul className="flex flex-col">
+        {/* No label: the heading says what it is, and a row called Password under a section
+            called Password said it twice. Changing it ends every other session and keeps this
+            one — that is what people mean by it. */}
+        <Row
+          actions={
+            <Button
+              variant="link"
+              onClick={() => {
+                setChanged(false);
+                setChanging(true);
+              }}
+            >
+              Change…
+            </Button>
+          }
+        >
+          {changed ? (
+            <span className="text-muted">
+              Changed. Every other browser has been signed out.
+            </span>
+          ) : (
+            <span className="tracking-widest text-faint">••••••••</span>
+          )}
+        </Row>
+        {relay || current ? (
+          <Row
+            label="Recovery address"
+            actions={
+              <>
+                {current ? (
+                  <Button variant="link" onClick={() => forget.mutate()}>
+                    Forget
+                  </Button>
+                ) : null}
+                {relay ? (
+                  <Button variant="link" onClick={() => setProving(true)}>
+                    {current ? "Change…" : "Add…"}
+                  </Button>
+                ) : null}
+              </>
+            }
+          >
+            {current || <span className="text-muted">None on file.</span>}
+            {/* An address already on file keeps its row when the relay goes away, so it can
+                still be seen and forgotten. What it cannot then do is change. */}
+            {relay ? null : (
+              <span className="block text-xs text-warn">
+                There is no mail relay, so it cannot be changed until one is set
+                up.
+              </span>
+            )}
+          </Row>
         ) : null}
-      </div>
+      </ul>
 
-      {relay ? (
-        <Button className="mt-2" onClick={() => setProving(true)}>
-          {current ? "Change it…" : "Add one…"}
-        </Button>
-      ) : (
-        /* An address already on file keeps the section even when the relay goes away, so it
-           can still be seen and forgotten. What it cannot then do is change. */
-        <p className="mt-2 text-sm text-warn">
-          There is no mail relay, so this cannot be changed until one is set up.
-        </p>
-      )}
-
+      <PasswordDialog
+        open={changing}
+        onClose={(saved) => {
+          setChanging(false);
+          if (saved) setChanged(true);
+        }}
+      />
       <RecoveryDialog
         open={proving}
-        current={current ?? ""}
+        current={current}
         onClose={() => setProving(false)}
       />
     </Panel>
+  );
+}
+
+/** One of the password's rows: what it is, what it is now, and what can be done about it. */
+function Row({
+  label,
+  actions,
+  children,
+}: {
+  label?: string;
+  actions?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line py-2 text-sm">
+      {/* As wide as it is: a column for the labels left a gap of a word's width before "demo",
+          and the rows are too few and too different to be a table. */}
+      {label ? <span className="shrink-0 text-muted">{label}</span> : null}
+      <span className="min-w-0 flex-1 break-words">{children}</span>
+      <span className="flex shrink-0 gap-3">{actions}</span>
+    </li>
   );
 }
 
@@ -250,7 +270,7 @@ export function Pins() {
     onSuccess: (next) => client.setQueryData(qk.account, next),
   });
   return (
-    <Panel title="Pins" state={account} dummy={<Dummy className="h-11 w-56" />}>
+    <Panel title="Pins" state={account} dummy={<Dummy className="h-9 w-56" />}>
       <Field
         label="Unpin after"
         hint={
@@ -306,11 +326,17 @@ function Heading({ children }: { children: React.ReactNode }) {
 /** The three lengths the mint dialog offers, said in words. */
 function Panel({
   title,
+  description,
+  actions,
   state,
   dummy,
   children,
 }: {
   title: string;
+  /** Under the title, what the section is for. */
+  description?: React.ReactNode;
+  /** To the right of the title and its description: the section's commands. */
+  actions?: React.ReactNode;
   /** The query this section is waiting on, if it waits on one. */
   state?: { isPending: boolean; isError: boolean; refetch: () => void };
   dummy?: React.ReactNode;
@@ -318,7 +344,25 @@ function Panel({
 }) {
   return (
     <section>
-      <Heading>{title}</Heading>
+      {description || actions ? (
+        // The commands beside what they are for rather than under it, wrapping below on a
+        // phone: under it, a button sat between the sentence and the list it adds to.
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="min-w-0 flex-1 basis-64">
+            <Heading>{title}</Heading>
+            {description ? (
+              <p className="text-sm text-muted">{description}</p>
+            ) : null}
+          </div>
+          {actions ? (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {actions}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <Heading>{title}</Heading>
+      )}
       <Boundary what={title} onReset={() => state?.refetch()}>
         {state?.isError ? (
           <div className="flex flex-wrap items-center gap-3">
@@ -333,6 +377,20 @@ function Panel({
       </Boundary>
     </section>
   );
+}
+
+/**
+ * When a token stops, said the way that matters: how long is left for one ending within the
+ * day, which is what an agent's half-hour token is — a date there said nothing but today — and
+ * the date for one further off.
+ */
+function stops(at: number): string {
+  const left = at - Date.now() / 1000;
+  if (Math.abs(left) < 24 * 3600) {
+    return left > 0 ? `stops ${ahead(at)}` : `stopped ${ago(at)}`;
+  }
+  const day = new Date(at * 1000).toLocaleDateString();
+  return `${left > 0 ? "stops" : "stopped"} on ${day}`;
 }
 
 export function Tokens() {
@@ -373,148 +431,148 @@ export function Tokens() {
   return (
     <Panel
       title="Tokens"
-      state={tokens}
-      dummy={
+      description={
         <>
-          <DummyLines count={1} />
-          <Dummy className="mt-3 h-11 w-32" />
-          <DummyRows className="mt-3" />
+          How something that is not a browser uses taskio.{" "}
+          <a className="underline" href="/docs">
+            The API is documented here
+          </a>
+          .
         </>
       }
+      actions={
+        <>
+          {/* A revoked token is kept so one that turns up in a log afterwards can still be
+              named. That is worth something for a week and nothing for a year, and until then
+              it is a line in the only list of the live ones. */}
+          {revoked > 0 ? (
+            <Button onClick={() => forget.mutate()} disabled={forget.isPending}>
+              Forget {revoked} revoked
+            </Button>
+          ) : null}
+          <Button onClick={() => setMinting(true)}>Mint a token</Button>
+        </>
+      }
+      state={tokens}
+      dummy={<DummyRows />}
     >
-      <p className="mb-3 text-sm text-muted">
-        How something that is not a browser uses taskio.{" "}
-        <a className="underline" href="/docs">
-          The API is documented here
-        </a>
-        .
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setMinting(true)}>Mint a token</Button>
-        {/* A revoked token is kept so one that turns up in a log afterwards can still be
-            named. That is worth something for a week and nothing for a year, and until then
-            it is a line in the only list of the live ones. */}
-        {revoked > 0 ? (
-          <Button onClick={() => forget.mutate()} disabled={forget.isPending}>
-            Forget {revoked} revoked
-          </Button>
-        ) : null}
-      </div>
-
-      <ul className="mt-3 flex flex-col">
+      <ul className="flex flex-col">
         {(tokens.data?.tokens ?? []).map((token) => (
+          // Two lines: what it is and what can be done to it, then what it has been doing. On
+          // one line they wrapped wherever the width ran out, which left Revoke… on a line of
+          // its own under the rest.
           <li
             key={token.id}
-            className="flex flex-wrap items-center gap-2 border-b border-line py-2 text-sm"
+            className="flex flex-col gap-1 border-b border-line py-2 text-sm"
           >
-            <span className="font-mono text-xs text-faint">{token.id}</span>
-            <span>{token.label}</span>
-            {/* A chip per project it reaches, with what confines it there — or one saying it
-                reaches them all, which is what a token with no rows does. */}
-            {token.projects.length === 0 ? (
-              <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
-                every project
-              </span>
-            ) : null}
-            {token.projects.map((row) => (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono text-xs text-faint">{token.id}</span>
+              <span>{token.label}</span>
+              {/* A chip per project it reaches, with what confines it there — or one saying it
+                  reaches them all, which is what a token with no rows does. */}
+              {token.projects.length === 0 ? (
+                <span className="rounded-full bg-shade px-2 py-0.5 text-xs text-muted">
+                  every project
+                </span>
+              ) : null}
+              {token.projects.map((row) => (
+                <span
+                  key={row.project}
+                  className={`rounded-full bg-shade px-2 py-0.5 text-xs text-muted ${
+                    row.deleted ? "line-through" : ""
+                  }`}
+                  title={row.deleted ? "This project was deleted." : undefined}
+                >
+                  {row.name}
+                  {row.scope ? ` · ${row.scope}` : ""}
+                </span>
+              ))}
+              {token.revoked_at ? (
+                <span className="text-xs text-faint">revoked</span>
+              ) : null}
+              <span className="flex-1" />
+              {!token.revoked_at ? (
+                // Together, so they wrap as one rather than one at a time.
+                <span className="flex shrink-0 gap-3">
+                  <Button variant="link" onClick={() => setEditing(token)}>
+                    Edit
+                  </Button>
+                  {/* Asked, because the secret in use stops at once: whatever holds it is broken
+                      until it is given the new one. Everything else about the token stays. */}
+                  <Button
+                    variant="link"
+                    disabled={rotate.isPending}
+                    onClick={async () => {
+                      const yes = await confirm({
+                        title: "Rotate this token?",
+                        message: (
+                          <>
+                            It gets a new secret and keeps everything else.
+                            Whatever uses <b>{token.label}</b> stops working
+                            until it is given the new one.
+                          </>
+                        ),
+                        confirm: "Rotate",
+                      });
+                      if (yes) rotate.mutate(token.id);
+                    }}
+                  >
+                    Rotate…
+                  </Button>
+                  {/* Asked, because it is the one thing on this row that cannot be taken back:
+                      whatever holds the token stops working on its next request, and the only
+                      way on is a new token pasted into every place the old one was. */}
+                  <Button
+                    variant="link"
+                    onClick={async () => {
+                      const yes = await confirm({
+                        title: "Revoke this token?",
+                        message: (
+                          <>
+                            Whatever uses <b>{token.label}</b> stops working at
+                            once, and it cannot be undone.
+                          </>
+                        ),
+                        confirm: "Revoke",
+                        danger: true,
+                      });
+                      if (yes) revoke.mutate(token.id);
+                    }}
+                  >
+                    Revoke…
+                  </Button>
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-x-3 text-xs text-faint">
+              {/* Used by what, from where — the question a token raises when it looks wrong. */}
               <span
-                key={row.project}
-                className={`rounded-full bg-shade px-2 py-0.5 text-xs text-muted ${
-                  row.deleted ? "line-through" : ""
-                }`}
-                title={row.deleted ? "This project was deleted." : undefined}
+                title={
+                  token.last_agent ||
+                  (token.last_used_at
+                    ? ""
+                    : token.rotated_at
+                      ? "Nothing has used the new secret yet."
+                      : "It has never been used.")
+                }
               >
-                {row.name}
-                {row.scope ? ` · ${row.scope}` : ""}
-              </span>
-            ))}
-            {token.revoked_at ? (
-              <span className="text-xs text-faint">revoked</span>
-            ) : null}
-            <span className="flex-1" />
-            {/* Used by what, from where — the question a token raises when it looks wrong. */}
-            <span
-              className="text-xs text-faint"
-              title={
-                token.last_agent ||
-                (token.last_used_at
-                  ? ""
+                {token.last_used_at
+                  ? `used ${ago(token.last_used_at)}${token.last_ip ? ` from ${token.last_ip}` : ""}`
                   : token.rotated_at
-                    ? "Nothing has used the new secret yet."
-                    : "It has never been used.")
-              }
-            >
-              {token.last_used_at
-                ? `used ${ago(token.last_used_at)}${token.last_ip ? ` from ${token.last_ip}` : ""}`
-                : token.rotated_at
-                  ? `rotated ${ago(token.rotated_at)}, not used since`
-                  : "never used"}
-            </span>
-            {token.idle_seconds > 0 ? (
-              <span className="text-xs text-faint">
-                retires after {lengthName(token.idle_seconds)} unused
+                    ? `rotated ${ago(token.rotated_at)}, not used since`
+                    : "never used"}
               </span>
-            ) : null}
-            {/* The other clock, which nothing on this row said anything about: a token minted
-                with an end date looked exactly like one that would run for ever. */}
-            {token.expires_at && !token.revoked_at ? (
-              <span className="text-xs text-faint">
-                {token.expires_at * 1000 > Date.now() ? "stops" : "stopped"} on{" "}
-                {new Date(token.expires_at * 1000).toLocaleDateString()}
-              </span>
-            ) : null}
-            {!token.revoked_at ? (
-              <>
-                <Button variant="link" onClick={() => setEditing(token)}>
-                  Edit
-                </Button>
-                {/* Asked, because the secret in use stops at once: whatever holds it is broken
-                    until it is given the new one. Everything else about the token stays. */}
-                <Button
-                  variant="link"
-                  disabled={rotate.isPending}
-                  onClick={async () => {
-                    const yes = await confirm({
-                      title: "Rotate this token?",
-                      message: (
-                        <>
-                          It gets a new secret and keeps everything else.
-                          Whatever uses <b>{token.label}</b> stops working until
-                          it is given the new one.
-                        </>
-                      ),
-                      confirm: "Rotate",
-                    });
-                    if (yes) rotate.mutate(token.id);
-                  }}
-                >
-                  Rotate…
-                </Button>
-                {/* Asked, because it is the one thing on this row that cannot be taken back:
-                    whatever holds the token stops working on its next request, and the only
-                    way on is a new token pasted into every place the old one was. */}
-                <Button
-                  variant="link"
-                  onClick={async () => {
-                    const yes = await confirm({
-                      title: "Revoke this token?",
-                      message: (
-                        <>
-                          Whatever uses <b>{token.label}</b> stops working at
-                          once, and it cannot be undone.
-                        </>
-                      ),
-                      confirm: "Revoke",
-                      danger: true,
-                    });
-                    if (yes) revoke.mutate(token.id);
-                  }}
-                >
-                  Revoke…
-                </Button>
-              </>
-            ) : null}
+              {token.idle_seconds > 0 ? (
+                <span>
+                  retires after {lengthName(token.idle_seconds)} unused
+                </span>
+              ) : null}
+              {/* The other clock, which nothing on this row said anything about: a token minted
+                  with an end date looked exactly like one that would run for ever. */}
+              {token.expires_at && !token.revoked_at ? (
+                <span>{stops(token.expires_at)}</span>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>

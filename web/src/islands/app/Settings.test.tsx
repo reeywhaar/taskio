@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Token } from "@app/api/types";
-import { Pins, Tokens } from "@app/islands/app/Settings";
+import { Password, Pins, SignedIn, Tokens } from "@app/islands/app/Settings";
 import { mount } from "@app/test/harness";
 
 const account = {
@@ -18,6 +18,17 @@ vi.mock("@app/api/actions/account", () => ({
   getAccount: () => Promise.resolve(account),
   patchAccount: (body: { pin_hours: number }) => setAccount(body),
   deleteAccountRecovery: vi.fn(),
+}));
+
+vi.mock("@app/api/actions/auth", () => ({
+  getAuthMe: () =>
+    Promise.resolve({
+      id: "pr_1",
+      username: "robin",
+      role: "user",
+      created_at: 1,
+    }),
+  postAuthLogout: vi.fn(() => Promise.resolve()),
 }));
 
 const revoke = vi.fn();
@@ -104,6 +115,25 @@ describe("a token's row", () => {
     await waitFor(() => expect(revoke).toHaveBeenCalledWith("4b9933cf3430"));
   });
 
+  /** An agent's half-hour token: a date would say only "today". */
+  it("says how long is left for a token ending within the day", async () => {
+    tokens = [
+      token({ expires_at: Math.floor(Date.now() / 1000) + 10 * 60 + 30 }),
+    ];
+    mount(<Tokens />);
+    expect(await screen.findByText("stops in 10 mins")).toBeDefined();
+  });
+
+  /** Edit, Rotate… and Revoke… wrap as one rather than one at a time. */
+  it("keeps a row's actions together", async () => {
+    tokens = [token()];
+    mount(<Tokens />);
+    const edit = await screen.findByRole("button", { name: "Edit" });
+    expect(edit.parentElement).toBe(
+      screen.getByRole("button", { name: "Revoke…" }).parentElement,
+    );
+  });
+
   /** A limit no preset matches is said as it is, the way the edit dialog says it. */
   it("names an idle limit exactly, and says when it stops", async () => {
     const at = Math.floor(Date.now() / 1000) + 10 * 86400;
@@ -175,5 +205,27 @@ describe("pins", () => {
       expect(setAccount).toHaveBeenCalledWith({ pin_hours: 0 }),
     );
     await waitFor(() => expect(select.value).toBe("0"));
+  });
+});
+
+/** Who is signed in is at the top right, not a section of its own. */
+describe("who is signed in", () => {
+  it("names the account, with no Sign out beside it", async () => {
+    mount(<SignedIn />);
+    expect(await screen.findByText("robin")).toBeDefined();
+    // The sessions have it for this browser; once is enough.
+    expect(screen.queryByRole("button", { name: /Sign out/ })).toBeNull();
+  });
+});
+
+/** Sections of one button each were a column of slabs: the password is one, a row each. */
+describe("the password", () => {
+  it("is one section, its actions words at the row's end", async () => {
+    mount(<Password />);
+    expect(
+      await screen.findByRole("button", { name: "Change…" }),
+    ).toBeDefined();
+    // No relay and no address: nothing to say about recovery.
+    expect(screen.queryByText("Recovery address")).toBeNull();
   });
 });
