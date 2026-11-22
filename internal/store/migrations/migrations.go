@@ -41,6 +41,7 @@ var all = []Migration{
 	assetSize,
 	commentDeleted,
 	taskSnoozed,
+	accessLinks,
 }
 
 // exec runs a statement block as one migration.

@@ -14,6 +14,7 @@ import {
   ChevronDownIcon,
   PencilIcon,
 } from "@app/components/icons/Icon";
+import { AgentAccess } from "@app/islands/app/AgentAccess";
 import { useCarry } from "@app/islands/app/carry";
 import { GroupDialog, type Editing } from "@app/islands/app/GroupDialog";
 import {
@@ -348,6 +349,22 @@ export function Nav({
             <span className="font-normal text-muted"> • {current.name}</span>
           ) : null}
         </span>
+        {/* The list toolbar's on a wider screen; on a phone it had no room left there. */}
+        {onList ? (
+          <AgentAccess
+            project={opened}
+            group={current}
+            trigger={(show) => (
+              <button
+                type="button"
+                onClick={show}
+                className="ml-auto shrink-0 rounded-md px-2 py-1 text-sm text-muted hover:bg-shade hover:text-fg"
+              >
+                Agent access
+              </button>
+            )}
+          />
+        ) : null}
       </div>
 
       <nav className="hidden w-48 shrink-0 flex-col overflow-y-auto bg-surface shadow-rail md:flex lg:w-60 xl:w-72">

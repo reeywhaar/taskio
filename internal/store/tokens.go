@@ -182,6 +182,18 @@ func writeRows(ctx context.Context, tx *sql.Tx, tokenID string, rows []TokenProj
 
 // CreateToken mints one and returns it with the secret, readable exactly once.
 func (s *Store) CreateToken(ctx context.Context, principalID, label string, projects []TokenProject, expires *time.Time, idle time.Duration) (*Token, string, error) {
+	tok, value, err := s.mintToken(ctx, principalID, label, projects, expires, idle, false)
+	if err != nil {
+		return nil, "", err
+	}
+	s.changed(principalID)
+	return tok, value, nil
+}
+
+// mintToken writes a token without saying the account's content changed, which is the caller's
+// to say. A temporary one is an access link's: swept once it lapses, and never a reason to send
+// a backup.
+func (s *Store) mintToken(ctx context.Context, principalID, label string, projects []TokenProject, expires *time.Time, idle time.Duration, temporary bool) (*Token, string, error) {
 	label, err := cleanLabel(label)
 	if err != nil {
 		return nil, "", err
@@ -221,10 +233,10 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label string, proj
 	}
 	defer tx.Rollback()
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, created_at, expires_at, idle_ttl)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tokens (id, principal_id, label, secret_hash, hint, created_at, expires_at, idle_ttl, temporary)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		tok.ID, principalID, label, tokenKey(value), tok.Hint, unix(tok.CreatedAt), exp,
-		int64(idle/time.Second))
+		int64(idle/time.Second), temporary)
 	if err != nil {
 		return nil, "", fmt.Errorf("create token: %w", err)
 	}
@@ -234,16 +246,22 @@ func (s *Store) CreateToken(ctx context.Context, principalID, label string, proj
 	if err := tx.Commit(); err != nil {
 		return nil, "", fmt.Errorf("create token: %w", err)
 	}
-	s.changed(principalID)
 	return tok, value, nil
 }
 
 // Tokens lists one account's, newest first.
+//
+// An access link's among them while it works, so it can be revoked before its half hour is up,
+// and never once it does not: lapsed or revoked, there would be one in the list for every time
+// somebody let an agent in. The sweep deletes the row soon after; this does not wait for it.
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, label, hint, created_at, expires_at, last_used_at, revoked_at,
 		        last_ip, last_agent, idle_ttl, rotated_at
-		   FROM tokens WHERE principal_id = ? ORDER BY created_at DESC`, principalID)
+		   FROM tokens
+		  WHERE principal_id = ?
+		    AND NOT (temporary = 1 AND (revoked_at IS NOT NULL OR expires_at <= ?))
+		  ORDER BY created_at DESC`, principalID, unix(s.Now()))
 	if err != nil {
 		return nil, fmt.Errorf("list tokens: %w", err)
 	}

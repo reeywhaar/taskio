@@ -360,6 +360,27 @@ a secret that has leaked, or one that has been in too many places. It asks first
 secret stops at once, and then shows the new one the way a new token's is shown: once, with Copy.
 The id is derived from the secret, so it changes, and the old row stays in the list as revoked.
 
+## Letting an agent in is a link
+
+**Agent access**, beside New task (in the phone's bar below the breakpoint), makes a link to paste
+into an agent. It opens a page of markdown: the instance, the API reference, the project, the
+token, and the recipe for sending it nonced. Opened on a group, it also asks the agent to keep
+to that group's tags. The token reaches the whole project either way: a group is a view of it,
+and what a group asks of an agent is asked on the page rather than enforced.
+
+The link shows the token for five minutes and the token works for thirty, both from when the
+link was made, and the page says so at the top so the agent writes the token down. Long enough
+to paste and get going; short enough that the link in a chat's history, a proxy's log or a
+link preview is dead by the time anybody else looks, and the token gone before it is anybody's
+problem. For more time, a new link. The secret sits below the opening lines, which are what a
+chat's preview of a pasted link shows.
+
+The link is not the token. It has its own code, stored as a hash, and keeps the token sealed with
+a key the code gives and nothing else does — so the table, in a backup or anywhere, opens
+nothing. Neither counts as a change: making one, opening it and sweeping it away send no backup.
+The token is listed under Settings → Tokens while it works, to revoke, and never after: lapsed or
+revoked, it would be one more row for every time somebody let an agent in, and the sweep deletes
+it within the minute.
 ## A task is moved with a field, not a gesture
 
 The task form leads its row with the project — `[project] [priority] … [color]` — because it is

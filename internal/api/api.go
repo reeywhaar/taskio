@@ -105,6 +105,8 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.mux.Handle("GET /docs", docs)
 	s.mux.Handle("GET /docs.md", docs)
 	s.mux.HandleFunc("GET /llms.txt", s.llms)
+	// What an agent access link opens: the link is the credential, for five minutes.
+	s.mux.HandleFunc("GET /access/{code}", s.accessPage)
 
 	// Everything about proving who you are is under one root. An invitation belongs here
 	// rather than under a resource of its own: accepting one is how an account starts.
@@ -182,6 +184,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 
 	s.handle("GET /api/tokens", s.requireSession(s.listTokens))
 	s.handle("POST /api/tokens", s.requireSession(s.createToken))
+	s.handle("POST /api/access", s.requireSession(s.createAccess))
 	s.handle("PATCH /api/tokens/{id}", s.requireSession(s.patchToken))
 	s.handle("POST /api/tokens/{id}/rotate", s.requireSession(s.rotateToken))
 	s.handle("DELETE /api/tokens/revoked", s.requireSession(s.forgetRevokedTokens))

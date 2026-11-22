@@ -23,6 +23,7 @@ import { Button } from "@app/components/Button";
 import { Segmented } from "@app/components/Segmented";
 import { CrossIcon, SearchIcon } from "@app/components/icons/Icon";
 import { TextField } from "@app/components/TextField";
+import { AgentAccess, useWhere } from "@app/islands/app/AgentAccess";
 import { Nav } from "@app/islands/app/Nav";
 import { TagCloud } from "@app/islands/app/TagCloud";
 import { TaskRow } from "@app/islands/app/TaskRow";
@@ -107,6 +108,7 @@ function List({
   const behind = useBehind();
   const { filters, route } = location;
   const { view } = filters;
+  const where = useWhere(filters.project, filters.tags);
   const [selection, setSelection] = useState<string[] | null>(null);
   /**
    * The bar is on its way out.
@@ -450,9 +452,22 @@ function List({
             </Button>
           </div>
 
-          <Button variant="solid" size="bar" onClick={() => setWriting("")}>
-            New task
-          </Button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Here from the breakpoint the rail shows up at; below it, in the phone's bar,
+                where the toolbar had no room left for it. */}
+            <AgentAccess
+              project={where.project}
+              group={where.group}
+              trigger={(open) => (
+                <Button size="bar" className="max-md:hidden" onClick={open}>
+                  Agent access
+                </Button>
+              )}
+            />
+            <Button variant="solid" size="bar" onClick={() => setWriting("")}>
+              New task
+            </Button>
+          </div>
         </div>
 
         <div className="mt-3">

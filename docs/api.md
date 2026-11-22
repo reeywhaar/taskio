@@ -23,6 +23,11 @@ It is shown once. A lost token is rotated rather than recovered: the same token 
 secret, its label, reach, limits and comments kept, and the old secret stops at once. Its id
 changes with the secret.
 
+Or from an **access link** somebody sends you, `/access/…`: a page, in markdown, with a token for
+one project and what to keep to in it. The page shows the token for five minutes and the token
+works for thirty, both from when the link was made, so write it down on the first read. A page
+past its five minutes answers `404`.
+
 ### Nonced tokens
 
 A token can be sent whole, or kept back and proved with a hash. Same token either way.

@@ -14,7 +14,8 @@ import (
 
 // How often each pass runs.
 const (
-	// Minutely is for what somebody is waiting to see: a snoozed task coming back.
+	// Minutely is for what somebody is waiting to see, a snoozed task coming back, and for an
+	// agent's access, which is gone the minute it lapses rather than kept as expired.
 	Minutely = time.Minute
 	// Often is for what somebody notices the lateness of: a session that should have ended,
 	// a pin that should have come off.
@@ -42,6 +43,7 @@ func Run(ctx context.Context, st *store.Store, log *slog.Logger) {
 			return
 		case <-minutely.C:
 			run(ctx, log, "snoozes", st.WakeSnoozed)
+			run(ctx, log, "agent access", st.SweepAccess)
 		case <-often.C:
 			sweepOften(ctx, st, log)
 		case <-hourly.C:
@@ -59,6 +61,7 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 	run(ctx, log, "invites", st.SweepInvites)
 	run(ctx, log, "recovery attempts", st.SweepRecovery)
 	run(ctx, log, "recovery links", st.SweepRecoveryLinks)
+	run(ctx, log, "agent access", st.SweepAccess)
 	run(ctx, log, "done tasks", st.SweepDoneTasks)
 	run(ctx, log, "orphaned assets", st.SweepOrphanAssets)
 }
