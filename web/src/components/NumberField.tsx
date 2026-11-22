@@ -103,7 +103,7 @@ function Step({
       className={`flex shrink-0 items-center justify-center rounded-md text-muted hover:text-fg ${
         compact
           ? "size-7 hover:bg-fill pointer-coarse:size-9"
-          : "raised size-9 bg-bg pointer-coarse:size-10"
+          : "raised size-9 bg-bg"
       }`}
     >
       {children}

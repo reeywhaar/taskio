@@ -17,9 +17,9 @@ type Variant = "solid" | "quiet" | "link" | "danger";
 /**
  * How tall, which is a question about what the button is standing next to.
  *
- * field and bar are one height, a field's, which is the bar's: 36px, and 40 under a finger. A
+ * field and bar are one height, a field's, which is the bar's: 36px, a finger included. A
  * field's was 44, and a page of single buttons — Sign out, Change password… — read as a column of
- * slabs for the lightest things on it.
+ * slabs for the lightest things on it; 40 on a phone was the same slab, a little shorter.
  *
  * What is left between them is the width. field keeps a floor, 64px on a phone and 80 above, so
  * "Add" is not a square: four buttons in a task's footer were 7px too wide for a 390px screen at
@@ -30,9 +30,8 @@ type Size = "field" | "bar" | "compact";
 
 // compact is the bulk bar's: eight controls, and at bar size they wrapped to a second line.
 const shapes: Record<Size, string> = {
-  field:
-    "min-h-9 min-w-16 px-3 py-1.5 text-sm sm:min-w-20 pointer-coarse:min-h-10",
-  bar: "min-h-9 px-3 py-1.5 text-sm pointer-coarse:min-h-10",
+  field: "min-h-9 min-w-16 px-3 py-1.5 text-sm sm:min-w-20",
+  bar: "min-h-9 px-3 py-1.5 text-sm",
   compact: "min-h-7 px-2 py-1 text-xs pointer-coarse:min-h-9",
 };
 

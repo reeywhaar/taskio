@@ -10,7 +10,7 @@ export function TextField({
 }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`sunken min-h-9 rounded-md border-0 bg-bg px-3 py-1.5 pointer-coarse:min-h-10 text-fg placeholder:text-faint focus:outline-none ${className}`}
+      className={`sunken min-h-9 rounded-md border-0 bg-bg px-3 py-1.5 text-fg placeholder:text-faint focus:outline-none ${className}`}
       {...props}
     />
   );

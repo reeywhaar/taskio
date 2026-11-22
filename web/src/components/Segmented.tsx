@@ -53,7 +53,7 @@ export function Segmented<T extends string>({
       aria-label={label}
       // The track's radius is the backdrop's and the gap between them, so the two corners are
       // concentric: the same radius on both left the pill's corners bulging at the track's.
-      className="sunken relative inline-flex min-h-9 gap-1 rounded-[calc(var(--radius-md)+--spacing(1))] p-1 text-sm pointer-coarse:min-h-10"
+      className="sunken relative inline-flex min-h-9 gap-1 rounded-[calc(var(--radius-md)+--spacing(1))] p-1 text-sm"
     >
       {box ? (
         <span

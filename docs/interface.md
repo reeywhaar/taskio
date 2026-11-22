@@ -121,11 +121,12 @@ editor is a paragraph of text where it costs a size.
 
 ## One control height
 
-A button, a field and a select are 36px, the height of the bar over the list, and 40 under a
-finger. A field and the buttons beside it were 44px, and the bar 36, because three 44px controls
-under a 44px search field were four bars of the same weight stacked down the screen. But the
-fields' height carried everywhere a button went, and a settings page of single buttons — Sign
-out, Change password… — read as a column of slabs for the lightest things on it.
+A button, a field and a select are 36px, the height of the bar over the list, on a phone as
+well: 40 there was the same slab a little shorter, and 36 is still a finger's width. A field
+and the buttons beside it were 44px, and the bar 36, because three 44px controls under a 44px
+search field were four bars of the same weight stacked down the screen. But the fields' height
+carried everywhere a button went, and a settings page of single buttons — Sign out, Change
+password… — read as a column of slabs for the lightest things on it.
 
 What still differs is the width. A button beside a field keeps a floor, 64px on a phone and 80
 above, so "Add" is not a square; the bar's controls have none, because four controls on one line
