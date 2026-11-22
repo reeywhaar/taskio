@@ -492,14 +492,14 @@ export function TaskDialog({
           appearing where nothing was. */}
       {!task.data && !task.isError ? (
         <div className="flex flex-col gap-4">
-          <Dummy className="h-10 w-full sm:h-11" />
+          <Dummy className="h-9 w-full" />
           <div className="flex flex-col gap-2">
             <Dummy className="h-4 w-14" />
             <Dummy className="h-40 w-full" />
           </div>
           <div className="flex items-start justify-between gap-6">
-            <Dummy className="h-11 w-40" />
-            <Dummy className="h-11 w-32" />
+            <Dummy className="h-9 w-40" />
+            <Dummy className="h-9 w-32" />
           </div>
           <Dummy className="h-7 w-52" />
         </div>

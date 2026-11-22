@@ -119,17 +119,19 @@ Above `40rem` — wider than the phones that zoom — the description editor dro
 14px. Only the editor: the other fields are single lines where 16px costs nothing, and the
 editor is a paragraph of text where it costs a size.
 
-## Two control heights, and both shrink on a phone
+## One control height
 
-A field is 44px and a control beside one matches it; the bar over the list is 36px, because
-three 44px controls under a 44px field is four bars of the same weight stacked down the screen
-and the segmented control is the only one of them that is a place rather than an action.
+A button, a field and a select are 36px, the height of the bar over the list, and 40 under a
+finger. A field and the buttons beside it were 44px, and the bar 36, because three 44px controls
+under a 44px search field were four bars of the same weight stacked down the screen. But the
+fields' height carried everywhere a button went, and a settings page of single buttons — Sign
+out, Change password… — read as a column of slabs for the lightest things on it.
 
-On a phone both come down — the field to 40px, the bar to 40 under a finger — and the bar's
-controls lose their minimum width. Four controls on one line is worth more there than a square
-Select: the row wrapped onto two at every width below 390px, which cost more vertical space than
-the taller controls ever bought. The type size does not shrink with them, because that is what
-makes iOS zoom.
+What still differs is the width. A button beside a field keeps a floor, 64px on a phone and 80
+above, so "Add" is not a square; the bar's controls have none, because four controls on one line
+is worth more on a phone than a square Select: the row wrapped onto two at every width below
+390px. The type size does not shrink with the height, because that is what makes iOS zoom: a
+field is 16px text in a 36px box.
 
 ## `TextField` states no width and no text size
 

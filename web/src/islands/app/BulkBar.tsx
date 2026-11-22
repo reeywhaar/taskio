@@ -137,8 +137,7 @@ export function BulkBar({
 
   return (
     // bar-sized buttons, because this is a row of controls and not a row beside a field: at the
-    // field size they are 44px slabs with an 80px floor under the width, and six of those is a
-    // wall.
+    // field size each has an 80px floor under its width, and six of those is a wall.
     //
     // Nothing is asked for in here any more. A prompt that stood in the bar's own row — a field
     // and the two buttons answering it — was taller than the buttons it replaced, so opening one
