@@ -11,6 +11,7 @@ import {
   blankToken,
   expiresAt,
   TokenFields,
+  writtenRows,
   type TokenForm,
 } from "@app/islands/app/TokenFields";
 import { parseScope, printScope } from "@app/islands/app/route";
@@ -27,20 +28,6 @@ function formOf(token: Token): TokenForm {
       deleted: row.deleted,
     })),
   };
-}
-
-/**
- * Rows as they would be written: live ones only, each scope in the server's grammar. A deleted
- * project's row is left out, because the server refuses a token being given one — saving the
- * projects is where it goes, and the row says so beforehand.
- */
-function written(rows: TokenForm["rows"]) {
-  return rows
-    .filter((row) => !row.deleted)
-    .map((row) => ({
-      project: row.project,
-      scope: printScope(row.tags, row.any),
-    }));
 }
 
 /** Rows as one comparable string: projects, deleted or not, and scopes with tags in one order. */
@@ -68,7 +55,7 @@ function changes(token: Token, form: TokenForm): TokenPatch {
   const patch: TokenPatch = {};
   if (form.label.trim() !== token.label) patch.label = form.label.trim();
   if (!sameRows(form.rows, formOf(token).rows))
-    patch.projects = written(form.rows);
+    patch.projects = writtenRows(form.rows);
   if (Number(form.idle) !== token.idle_seconds)
     patch.idle_seconds = Number(form.idle);
   if (form.expires !== "keep" && !(form.expires === "0" && !token.expires_at))

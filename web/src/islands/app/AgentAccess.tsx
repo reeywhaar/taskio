@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { postAccess } from "@app/api/actions/access";
+import { patchTokensById } from "@app/api/actions/tokens";
 import { getGroups } from "@app/api/actions/groups";
 import { getProjects } from "@app/api/actions/projects";
 import { qk } from "@app/api/keys";
@@ -10,6 +11,7 @@ import type { Group, Project } from "@app/api/types";
 import { copy } from "@app/clipboard";
 import { Dialog } from "@app/components/Dialog";
 import { CheckIcon, CopyIcon } from "@app/components/icons/Icon";
+import { Rows, writtenRows, type ReachRow } from "@app/islands/app/TokenFields";
 
 /**
  * The project on screen, and the group whose tags are the ones lit, if one is.
@@ -57,8 +59,11 @@ export function AgentAccess({
   group: Group | undefined;
   trigger: (open: () => void) => ReactNode;
 }) {
+  const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** What the token reaches, as the editor below the link has it. */
+  const [rows, setRows] = useState<ReachRow[]>([]);
   const make = useMutation({
     mutationFn: () =>
       postAccess(
@@ -66,33 +71,48 @@ export function AgentAccess({
         group?.id ?? "",
       ),
   });
+  const link = make.data;
 
   useEffect(() => {
     if (!open) return;
     setCopied(false);
+    setRows(project ? [{ project: project.slug, tags: [], any: true }] : []);
     make.mutate();
     // One link per opening, and only on opening.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const link = make.data;
+  /**
+   * What it reaches, written as it is changed: the token is already out, and there is no Save
+   * between a change and whatever holds it. A moment after the last press, so a run of tags
+   * picked one after another is one write, and in order.
+   */
+  const reach = useMutation({
+    mutationFn: (next: ReachRow[]) =>
+      patchTokensById(link!.token, { projects: writtenRows(next) }),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.tokens }),
+  });
+  const timer = useRef(0);
+  const changeRows = (next: ReachRow[]) => {
+    setRows(next);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => reach.mutate(next), 400);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   return (
     <>
       {trigger(() => setOpen(true))}
       <Dialog open={open} onClose={() => setOpen(false)} title="Agent access">
         <div className="flex flex-col gap-3">
           <p className="text-sm">
-            A link to paste into an agent. It gives a token for{" "}
+            A link to paste into an agent. It gives a token that reaches what is
+            below
             {group ? (
               <>
-                <b>{project?.name}</b>, and asks it to keep to{" "}
-                <b>{group.name}</b>.
+                , and asks the agent to keep to <b>{group.name}</b>
               </>
-            ) : (
-              <>
-                the whole of <b>{project?.name}</b>.
-              </>
-            )}
+            ) : null}
+            .
           </p>
           {/* The whole of it, wrapped, on the ground a code block has, and the copy beside it:
               read at a glance and copied in one press, where a field showed the start of it and
@@ -135,6 +155,21 @@ export function AgentAccess({
               minutes. The token works until {clock(link.token_expires_at)}, and
               until then is under Settings → Tokens, to revoke.
             </p>
+          ) : null}
+          {/* The same rows a token's own dialog edits, here before the link goes anywhere: a
+              project it was made for to begin with, narrowed to some tags or joined by another
+              project as the work needs. The page says what it reaches when it is opened. */}
+          {link ? (
+            <>
+              <Rows value={rows} onChange={changeRows} />
+              {reach.isError ? (
+                <p className="text-sm text-accent">
+                  {reach.error instanceof ApiError
+                    ? reach.error.message
+                    : "That could not be saved."}
+                </p>
+              ) : null}
+            </>
           ) : null}
           {make.isError ? (
             <p className="text-sm text-accent">

@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { postAccess } from "@app/api/actions/access";
+import { patchTokensById } from "@app/api/actions/tokens";
 import type { Group, Project } from "@app/api/types";
 import { AgentAccess } from "@app/islands/app/AgentAccess";
 import { mount } from "@app/test/harness";
@@ -10,10 +11,27 @@ vi.mock("@app/api/actions/access", () => ({
   postAccess: vi.fn(() =>
     Promise.resolve({
       url: "https://taskio.example.com/access/abc",
+      token: "65a106afd2d3",
       expires_at: 1_800_000_300,
       token_expires_at: 1_800_001_800,
     }),
   ),
+}));
+
+vi.mock("@app/api/actions/tokens", () => ({
+  patchTokensById: vi.fn(() => Promise.resolve({})),
+}));
+vi.mock("@app/api/actions/projects", () => ({
+  getProjects: () => Promise.resolve({ projects: [main, side] }),
+}));
+vi.mock("@app/api/actions/tags", () => ({
+  getTags: () =>
+    Promise.resolve({
+      tags: [
+        { id: "tg_1", slug: "garden" },
+        { id: "tg_2", slug: "home" },
+      ],
+    }),
 }));
 
 const main: Project = {
@@ -83,6 +101,27 @@ describe("AgentAccess", () => {
     );
     open();
     await waitFor(() => expect(postAccess).toHaveBeenCalledWith("", ""));
-    expect(screen.getByText(/the whole of/)).toBeDefined();
+    expect(await screen.findByText("The whole project.")).toBeDefined();
+  });
+
+  /** The token is already out: what it reaches is written as it is changed, with no Save. */
+  it("narrows the token from the dialog, a moment after the change", async () => {
+    mount(
+      <AgentAccess
+        project={side}
+        group={undefined}
+        trigger={(show) => <button onClick={show}>Agent access</button>}
+      />,
+    );
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "garden" }));
+    expect(patchTokensById).not.toHaveBeenCalled();
+    await waitFor(
+      () =>
+        expect(patchTokensById).toHaveBeenCalledWith("65a106afd2d3", {
+          projects: [{ project: "side", scope: "and(garden)" }],
+        }),
+      { timeout: 2000 },
+    );
   });
 });

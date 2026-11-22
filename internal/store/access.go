@@ -35,10 +35,19 @@ type Access struct {
 	LinkExpiresAt  time.Time
 	Principal      *Principal
 	Project        *Project
-	// Group is the part of the project the work is meant for, or nil for the whole of it. The
-	// token reaches the whole project either way: a group is a view, and what it asks of an agent
-	// is said on the page rather than enforced.
+	// Group is the part of the project the work is meant for, or nil for the whole of it. A
+	// group is a view: what it asks of an agent is said on the page rather than enforced.
 	Group *Group
+	// Reach is what the token reaches as it stands, which the link's dialog can change after it
+	// was made: the project it was made for to begin with. None is every project.
+	Reach []AccessReach
+}
+
+// AccessReach is one project an access token reaches, and the scope it keeps to there.
+type AccessReach struct {
+	Project *Project
+	// Scope is a flat and() or or() of the project's tags, or empty for all of it.
+	Scope string
 }
 
 // CreateAccess makes a token for one project, and a link that shows it for AccessLinkTTL.
@@ -112,6 +121,7 @@ func (s *Store) CreateAccess(ctx context.Context, principalID, projectID, groupI
 		Principal:      p,
 		Project:        project,
 		Group:          group,
+		Reach:          []AccessReach{{Project: project}},
 	}, nil
 }
 
@@ -165,6 +175,16 @@ func (s *Store) OpenAccess(ctx context.Context, code string) (*Access, error) {
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
+	reach := make([]AccessReach, 0, len(tok.Projects))
+	for _, row := range tok.Projects {
+		rp, err := s.ProjectByID(ctx, principalID, row.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		if rp.DeletedAt == nil {
+			reach = append(reach, AccessReach{Project: rp, Scope: row.Scope})
+		}
+	}
 	return &Access{
 		Token:          value,
 		TokenID:        tokenID,
@@ -173,6 +193,7 @@ func (s *Store) OpenAccess(ctx context.Context, code string) (*Access, error) {
 		Principal:      p,
 		Project:        project,
 		Group:          group,
+		Reach:          reach,
 	}, nil
 }
 

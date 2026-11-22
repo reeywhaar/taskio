@@ -111,3 +111,28 @@ func TestAnAgentCannotMakeAnAccessLink(t *testing.T) {
 		t.Errorf("a whole-project page names a scope:\n%s", body)
 	}
 }
+
+// The dialog can narrow the token after the link is made; the page says what it reaches then.
+func TestTheAccessPageSaysWhatTheTokenReachesNow(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	made := c.json(c.do("POST", "/api/access", `{}`))
+	id, _ := made["token"].(string)
+	if id == "" {
+		t.Fatalf("made = %v, want the token's id", made)
+	}
+	me, _ := c.json(c.do("GET", "/api/auth/me", ""))["id"].(string)
+	project, err := st.DefaultProject(context.Background(), me)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `{"projects":[{"project":"` + project.Slug + `","scope":"and(garden)"}]}`
+	if r := c.do("PATCH", "/api/tokens/"+id, body); r.StatusCode != http.StatusOK {
+		t.Fatalf("narrowing = %s", r.Status)
+	}
+	path := strings.TrimPrefix(made["url"].(string), "https://taskio.example.com")
+	page, _ := io.ReadAll(newClient(t, s).do("GET", path, "").Body)
+	if !strings.Contains(string(page), "only the tasks matching `garden`") {
+		t.Errorf("the page does not say the narrowed reach:\n%s", page)
+	}
+}

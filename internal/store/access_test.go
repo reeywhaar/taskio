@@ -187,3 +187,31 @@ func TestAccessForAGroupElsewhereIsRefused(t *testing.T) {
 		t.Errorf("err = %v, want not found", err)
 	}
 }
+
+// Narrowed from the link's dialog, revoked from Settings: still not content, still no backup.
+func TestChangingAnAccessTokenIsNotAChangeEither(t *testing.T) {
+	st, p, project, _ := accessFixture(t)
+	ctx := context.Background()
+	code, made, err := st.CreateAccess(ctx, p.ID, project, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := st.Changes()
+	rows := []TokenProject{{ProjectID: project, Scope: "and(garden)"}}
+	if _, err := st.UpdateToken(ctx, p.ID, made.TokenID, TokenChange{Projects: &rows}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.OpenAccess(ctx, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Reach) != 1 || got.Reach[0].Scope != "garden" {
+		t.Errorf("reach = %+v, want the narrowed scope", got.Reach)
+	}
+	if err := st.RevokeToken(ctx, p.ID, made.TokenID); err != nil {
+		t.Fatal(err)
+	}
+	if after := st.Changes(); after != before {
+		t.Errorf("changes went from %d to %d", before, after)
+	}
+}

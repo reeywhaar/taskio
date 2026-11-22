@@ -367,8 +367,11 @@ The id is derived from the secret, so it changes, and the old row stays in the l
 **Agent access**, beside New task (in the phone's bar below the breakpoint), makes a link to paste
 into an agent. It opens a page of markdown: the instance, the API reference, the project, the
 token, and the recipe for sending it nonced. Opened on a group, it also asks the agent to keep
-to that group's tags. The token reaches the whole project either way: a group is a view of it,
-and what a group asks of an agent is asked on the page rather than enforced.
+to that group's tags. The token reaches the project it was made in, and under the link the dialog
+has the same Reaches rows a token's own dialog has, to narrow it to some tags or add a project
+before the link goes anywhere. Each change is written a moment after it is made, with no Save,
+since the token is already out; the page says what it reaches when it is opened. A group is a
+view: what it asks of an agent is asked on the page rather than enforced.
 
 The link shows the token for five minutes and the token works for thirty, both from when the
 link was made, and the page says so at the top so the agent writes the token down. Long enough
@@ -379,7 +382,8 @@ chat's preview of a pasted link shows.
 
 The link is not the token. It has its own code, stored as a hash, and keeps the token sealed with
 a key the code gives and nothing else does — so the table, in a backup or anywhere, opens
-nothing. Neither counts as a change: making one, opening it and sweeping it away send no backup.
+nothing. Neither counts as a change: making one, opening it, narrowing or revoking its token and
+sweeping it away send no backup.
 The token is listed under Settings → Tokens while it works, to revoke, and never after: lapsed or
 revoked, it would be one more row for every time somebody let an agent in, and the sweep deletes
 it within the minute.

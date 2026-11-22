@@ -14,6 +14,7 @@ import {
   projectNamed,
   ProjectSelectDialog,
 } from "@app/islands/app/ProjectPicker";
+import { printScope } from "@app/islands/app/route";
 import { TagCloud } from "@app/islands/app/TagCloud";
 
 const DAY = 86400;
@@ -192,6 +193,20 @@ function reach(row: ReachRow): string {
 }
 
 /**
+ * Rows as they would be written: live ones only, each scope in the server's grammar. A deleted
+ * project's row is left out, because the server refuses a token being given one — saving the
+ * projects is where it goes, and the row says so beforehand.
+ */
+export function writtenRows(rows: ReachRow[]) {
+  return rows
+    .filter((row) => !row.deleted)
+    .map((row) => ({
+      project: row.project,
+      scope: printScope(row.tags, row.any),
+    }));
+}
+
+/**
  * The projects a token reaches, a row each: the project, its tags, and a way to take the row
  * away. None at all is every project — a new token operates across the account until it is
  * given rows, and only then is it confined to the ones listed.
@@ -201,7 +216,7 @@ function reach(row: ReachRow): string {
  * adding another, which says what is happening instead of quietly moving a scope's tags onto a
  * project they may not exist in.
  */
-function Rows({
+export function Rows({
   value,
   onChange,
 }: {

@@ -64,6 +64,9 @@ type Token struct {
 	LastAgent string
 	// IdleTTL is how long it may go unused before it stops working. Zero is never.
 	IdleTTL time.Duration
+	// Temporary is an access link's: a half-hour token whose making, changing and going are not
+	// changes a backup is sent for.
+	Temporary bool
 }
 
 // Idle reports whether this token has gone too long unused. Counted from the last use, or from
@@ -257,7 +260,7 @@ func (s *Store) mintToken(ctx context.Context, principalID, label string, projec
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, label, hint, created_at, expires_at, last_used_at, revoked_at,
-		        last_ip, last_agent, idle_ttl, rotated_at
+		        last_ip, last_agent, idle_ttl, rotated_at, temporary
 		   FROM tokens
 		  WHERE principal_id = ?
 		    AND NOT (temporary = 1 AND (revoked_at IS NOT NULL OR expires_at <= ?))
@@ -273,7 +276,7 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 		var created, idle int64
 		var expires, used, revoked, rotated sql.NullInt64
 		if err := rows.Scan(&tok.ID, &tok.Label, &tok.Hint, &created,
-			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle, &rotated); err != nil {
+			&expires, &used, &revoked, &tok.LastIP, &tok.LastAgent, &idle, &rotated, &tok.Temporary); err != nil {
 			return nil, err
 		}
 		tok.IdleTTL = time.Duration(idle) * time.Second
@@ -430,9 +433,19 @@ func (s *Store) UpdateToken(ctx context.Context, principalID, id string, change 
 		return nil, err
 	}
 	if n > 0 || rowsChanged {
-		s.changed(principalID)
+		s.tokenChanged(principalID, was.Temporary)
 	}
 	return &tok, nil
+}
+
+// tokenChanged says one of an account's tokens moved: a change for the backup like any other,
+// unless it is an access link's, which the open token list is told about and a backup is not.
+func (s *Store) tokenChanged(principalID string, temporary bool) {
+	if temporary {
+		s.notify(principalID)
+		return
+	}
+	s.changed(principalID)
 }
 
 // token reads one of an account's tokens, revoked or not.
@@ -442,10 +455,10 @@ func (s *Store) token(ctx context.Context, principalID, id string) (*Token, erro
 	var expires, used, revoked, rotated sql.NullInt64
 	err := s.reader.QueryRowContext(ctx,
 		`SELECT label, hint, created_at, expires_at, last_used_at, revoked_at,
-		        last_ip, last_agent, idle_ttl, rotated_at
+		        last_ip, last_agent, idle_ttl, rotated_at, temporary
 		   FROM tokens WHERE principal_id = ? AND id = ?`, principalID, id).
 		Scan(&tok.Label, &tok.Hint, &created, &expires, &used, &revoked,
-			&tok.LastIP, &tok.LastAgent, &idle, &rotated)
+			&tok.LastIP, &tok.LastAgent, &idle, &rotated, &tok.Temporary)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, NotFound("There is no such token.")
 	}
@@ -467,16 +480,18 @@ func (s *Store) token(ctx context.Context, principalID, id string) (*Token, erro
 // RevokeToken marks one revoked rather than deleting it, so a token that turns up in a log
 // afterwards can still be named.
 func (s *Store) RevokeToken(ctx context.Context, principalID, id string) error {
-	res, err := s.writer.ExecContext(ctx,
-		`UPDATE tokens SET revoked_at = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL`,
-		unix(s.Now()), principalID, id)
+	var temporary bool
+	err := s.writer.QueryRowContext(ctx,
+		`UPDATE tokens SET revoked_at = ? WHERE principal_id = ? AND id = ? AND revoked_at IS NULL
+		 RETURNING temporary`,
+		unix(s.Now()), principalID, id).Scan(&temporary)
+	if errors.Is(err, sql.ErrNoRows) {
+		return NotFound("There is no such token.")
+	}
 	if err != nil {
 		return fmt.Errorf("revoke token: %w", err)
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return NotFound("There is no such token.")
-	}
-	s.changed(principalID)
+	s.tokenChanged(principalID, temporary)
 	return nil
 }
 

@@ -36,7 +36,9 @@ func (s *Server) createAccess(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("agent access issued", "principal", principalOf(r).ID, "token", access.TokenID,
 		"project", project.ID)
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"url":              s.cfg.Link("/access/" + code),
+		"url": s.cfg.Link("/access/" + code),
+		// So the dialog can change what it reaches before it is handed over.
+		"token":            access.TokenID,
 		"expires_at":       access.LinkExpiresAt.Unix(),
 		"token_expires_at": access.TokenExpiresAt.Unix(),
 	})
@@ -85,13 +87,38 @@ func accessMarkdown(base string, a *store.Access) string {
 	p("This page stops showing the token at %s, five minutes after it was made. Write down the "+
 		"token and whatever else you need from here now. The token goes on working until %s.\n\n",
 		at(a.LinkExpiresAt), at(a.TokenExpiresAt))
-	p("%s has let you into one project of their taskio, a task list with an HTTP API.\n\n",
-		a.Principal.Username)
+	p("%s has let you into their taskio, a task list with an HTTP API.\n\n", a.Principal.Username)
 
 	p("- Instance: %s\n", base)
 	p("- API reference: %s/docs.md, everything the token can do. Read it before the first request.\n", base)
-	p("- Project: **%s** (`%s`). The token reaches this project and nothing else, so `?project=` "+
-		"can be left out.\n", a.Project.Name, a.Project.Slug)
+	// What the token reaches as it stands, which may no longer be the project it was made for.
+	named := func(r store.AccessReach) string {
+		out := fmt.Sprintf("**%s** (`%s`)", r.Project.Name, r.Project.Slug)
+		if r.Scope != "" {
+			out += fmt.Sprintf(", only the tasks matching `%s`", r.Scope)
+		}
+		return out
+	}
+	several := len(a.Reach) != 1
+	switch len(a.Reach) {
+	case 0:
+		p("- Projects: every one the account has. Name one with `?project=` on the routes that " +
+			"work inside one; left out, it is the default.\n")
+	case 1:
+		p("- Project: %s. The token reaches this project and nothing else, so `?project=` can be "+
+			"left out.", named(a.Reach[0]))
+		if a.Reach[0].Scope != "" {
+			p(" Everything you write there has to match too.")
+		}
+		p("\n")
+	default:
+		names := make([]string, len(a.Reach))
+		for i, r := range a.Reach {
+			names[i] = named(r)
+		}
+		p("- Projects: %s. Name one with `?project=` on every request that works inside a "+
+			"project.\n", strings.Join(names, "; "))
+	}
 	filter := ""
 	if a.Group != nil && len(a.Group.Tags) > 0 {
 		filter = "and(" + strings.Join(a.Group.Tags, ",") + ")"
@@ -124,9 +151,16 @@ func accessMarkdown(base string, a *store.Access) string {
 	p("  ts=$(date +%%s)\n")
 	p("  echo \"tkc_$ts.$id.$(printf '%%s.%%s.%%s' \"$ts\" \"$id\" \"$key\" | shasum -a 256 | cut -d' ' -f1)\"\n")
 	p("}\n\n")
-	query := ""
+	var params []string
+	if several {
+		params = append(params, "project="+a.Project.Slug)
+	}
 	if filter != "" {
-		query = "?tags=" + filter
+		params = append(params, "tags="+filter)
+	}
+	query := ""
+	if len(params) > 0 {
+		query = "?" + strings.Join(params, "&")
 	}
 	p("curl -sS -H \"Authorization: Bearer $(nonced)\" \"$TASKIO/api/tasks%s\"\n", query)
 	p("```\n")
