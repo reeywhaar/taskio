@@ -38,7 +38,7 @@ export function Field({
         still the first thing the caption finds, and a reader meets the explanation after the
         thing it explains — which is the order it is useful in.
       */}
-      <label className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1 gap-y-1">
+      <label className="grid grid-cols-[auto_auto_1fr] items-center gap-x-1 gap-y-0.5">
         <span className="col-start-1 row-start-1 caps text-[0.625rem] text-muted">
           {label}
         </span>
@@ -74,7 +74,7 @@ export function Group({
 }) {
   return (
     <div className={`text-sm ${wide ? "sm:col-span-2" : ""}`}>
-      <div className="mb-1 flex items-center gap-1 text-[0.625rem]">
+      <div className="mb-0.5 flex items-center gap-1 text-[0.625rem]">
         <p className="caps text-muted">{label}</p>
         {hint ? <Help label={label}>{hint}</Help> : null}
       </div>

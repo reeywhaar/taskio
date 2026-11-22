@@ -46,8 +46,12 @@ export function Settings() {
     <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-3 py-4 md:px-6">
         <SignedIn />
-        <Pins />
-        <Storage />
+        {/* Side by side where there is room: two short sections, each a line or two, stacked
+            down a wide page with most of its width empty. */}
+        <div className="grid gap-8 sm:grid-cols-2">
+          <Pins />
+          <Storage />
+        </div>
         <Tokens />
         {/* Beside the sessions: both are how this account is got into, and a password changed
             signs every other session out. */}
@@ -345,17 +349,17 @@ function Panel({
   return (
     <section>
       {description || actions ? (
-        // The commands beside what they are for rather than under it, wrapping below on a
-        // phone: under it, a button sat between the sentence and the list it adds to.
-        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <div className="min-w-0 flex-1 basis-64">
+        // The commands beside what they are for rather than under it, at every width: under it
+        // on a phone, a button sat between the sentence and the list it adds to.
+        <div className="mb-3 flex items-center gap-4">
+          <div className="min-w-0 flex-1">
             <Heading>{title}</Heading>
             {description ? (
               <p className="text-sm text-muted">{description}</p>
             ) : null}
           </div>
           {actions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               {actions}
             </div>
           ) : null}
@@ -432,13 +436,9 @@ export function Tokens() {
     <Panel
       title="Tokens"
       description={
-        <>
-          How something that is not a browser uses taskio.{" "}
-          <a className="underline" href="/docs">
-            The API is documented here
-          </a>
-          .
-        </>
+        <a className="underline" href="/docs">
+          API documentation
+        </a>
       }
       actions={
         <>
