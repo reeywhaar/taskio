@@ -28,17 +28,20 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.loginAll.allow("") {
+		s.refused(r, "sign-in rate limited")
 		refuse(w, http.StatusTooManyRequests, CodeRateLimited, "Too many sign-in attempts. Wait a minute.")
 		return
 	}
 	if !s.loginUser.allow(strings.ToLower(req.Username)) {
+		s.refused(r, "sign-in rate limited")
 		refuse(w, http.StatusTooManyRequests, CodeRateLimited, "Too many sign-in attempts for that account. Wait a minute.")
 		return
 	}
 
 	p, err := s.store.Authenticate(r.Context(), req.Username, req.Password)
 	if err != nil {
-		// One refusal for a wrong password and a missing account.
+		// One refusal for a wrong password and a missing account, in the log as on the wire.
+		s.refused(r, "sign-in refused")
 		refuse(w, http.StatusUnauthorized, CodeUnauthenticated, "That username and password do not match.")
 		return
 	}
@@ -73,6 +76,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getInvite(w http.ResponseWriter, r *http.Request) {
 	inv, err := s.store.InviteByToken(r.Context(), r.PathValue("token"))
 	if err != nil {
+		s.refusedLink(r, err)
 		s.fail(w, r, err)
 		return
 	}
@@ -98,6 +102,7 @@ func (s *Server) acceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := s.store.AcceptInvite(r.Context(), r.PathValue("token"), req.Username, req.Password)
 	if err != nil {
+		s.refusedLink(r, err)
 		s.fail(w, r, err)
 		return
 	}
@@ -152,6 +157,7 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			return
 		}
 		if !s.tokenAuth.allow(s.clientOf(r)) {
+			s.refused(r, "token rate limited")
 			refuse(w, http.StatusTooManyRequests, CodeRateLimited, "Too many attempts. Wait a minute.")
 			return
 		}
@@ -166,7 +172,9 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 			if refusal, ok := store.AsNonceRefusal(err); ok {
 				// The log says which, for the value's own shape and timestamp only. It never
 				// reads the token table, so it is no oracle for whether an id exists.
-				s.log.Warn("a nonced token was refused", "id", refusal.ID, "reason", refusal.Reason)
+				s.refused(r, "token refused", "id", refusal.ID, "reason", refusal.Reason)
+			} else {
+				s.refused(r, "token refused")
 			}
 			refuse(w, http.StatusUnauthorized, CodeUnauthenticated, "That token is not one this accepts.")
 			return
@@ -174,6 +182,7 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 
 		p, err := s.store.PrincipalByID(r.Context(), tok.PrincipalID)
 		if err != nil || p.DisabledAt != nil {
+			s.refused(r, "token refused", "reason", "account disabled")
 			refuse(w, http.StatusUnauthorized, CodeUnauthenticated, "That token is not one this accepts.")
 			return
 		}
@@ -187,6 +196,27 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.Handler {
 		r = r.WithContext(contextWith(authed, ctxToken, tok))
 		next.ServeHTTP(w, r)
 	})
+}
+
+// refused writes down a refusal at the door, with who it came from, for fail2ban or anything
+// like it to count. Before this a wrong password, a bad token and a guessed link left no line at
+// all, and an address trying passwords all night was not in the log once.
+//
+// One shape, so a filter is one expression: level WARN, a fixed message, and the address first —
+// msg="sign-in refused" ip=203.0.113.9. Never the username that was tried: it is sometimes a
+// password typed into the wrong field, and a refusal for a missing account reads the same as one
+// for a wrong password, here as on the wire.
+func (s *Server) refused(r *http.Request, what string, attrs ...any) {
+	s.log.Warn(what, append([]any{"ip", s.clientOf(r)}, attrs...)...)
+}
+
+// refusedLink counts a link that is not one of ours: an invitation or a recovery link somebody
+// guessed or mangled. A recovery link that was ours, used or out of date, is a person, and not
+// counted. A used invitation is not found at all, so it is; one press is far from a ban.
+func (s *Server) refusedLink(r *http.Request, err error) {
+	if errors.Is(err, store.ErrNotFound) {
+		s.refused(r, "link refused")
+	}
 }
 
 // clientOf is who the request came from: what the proxies in front say they accepted, or the peer.

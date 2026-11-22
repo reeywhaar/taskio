@@ -59,6 +59,58 @@ proxy that does not set it passes the caller's along.
 Rootless Docker and Podman can deliver every connection from one private address, so a caller
 reaching the port directly looks like the proxy. Keep that port unpublished, or set `none`.
 
+## Banning with fail2ban
+
+Every refusal at the door is one `WARN` line with the caller's address first, read the same way
+as above, so it is only right once the proxy is trusted:
+
+```
+time=2026-11-22T09:14:03.120Z level=WARN msg="sign-in refused" ip=203.0.113.9
+time=2026-11-22T09:14:05.871Z level=WARN msg="token refused" ip=203.0.113.9
+```
+
+| message | when |
+| --- | --- |
+| `sign-in refused` | a wrong password, or an account that does not exist; the two read the same |
+| `sign-in rate limited` | too many tries for one account, or for the whole instance |
+| `token refused` | a token that is not one of ours, revoked, expired, or its account disabled |
+| `token rate limited` | too many token requests from one address |
+| `link refused` | an invitation or recovery link that is not one of ours |
+| `link rate limited` | recovery links being tried faster than sign-ins are allowed |
+
+The username that was tried is never written: it is sometimes a password typed into the wrong
+field. A recovery link that was ours, used or out of date, is not counted; a used invitation is,
+once.
+
+A filter, `/etc/fail2ban/filter.d/taskio.conf`. The optional backslashes match the same line inside
+Docker's JSON log, which escapes the quotes:
+
+```ini
+[Definition]
+failregex = msg=\\?"(?:sign-in refused|sign-in rate limited|token refused|token rate limited|link refused|link rate limited)\\?" ip=<HOST>
+```
+
+And a jail, `/etc/fail2ban/jail.d/taskio.local`:
+
+```ini
+[taskio]
+enabled  = true
+filter   = taskio
+logpath  = /var/lib/docker/containers/*/*-json.log
+maxretry = 10
+findtime = 10m
+bantime  = 1h
+```
+
+With the container logging to journald instead, `backend = systemd` and
+`journalmatch = CONTAINER_NAME=taskio` replace `logpath`.
+
+The ban has to land where the caller's packets do. With the proxy on the same host the default
+works, since it is the proxy's port that is blocked. A port Docker publishes straight from the
+container goes around the host's `INPUT` chain, and wants `chain = DOCKER-USER`. Behind a proxy
+on another machine or a CDN, a firewall here never sees the caller at all: run fail2ban there,
+or have the CDN do the banning.
+
 ## `TASKIO_PUBLIC_URL`
 
 Required, validated at startup, and never inferred from a request. `Host` and

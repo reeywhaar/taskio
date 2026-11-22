@@ -174,6 +174,7 @@ type recoveryBody struct {
 func (s *Server) getRecovery(w http.ResponseWriter, r *http.Request) {
 	link, err := s.store.RecoveryLinkByToken(r.Context(), r.PathValue("token"))
 	if err != nil {
+		s.refusedLink(r, err)
 		s.fail(w, r, err)
 		return
 	}
@@ -212,12 +213,14 @@ func (s *Server) acceptRecovery(w http.ResponseWriter, r *http.Request) {
 	// Shares the login bucket: this endpoint is unauthenticated and runs bcrypt, which is the
 	// property that matters, not what it is called.
 	if !s.loginAll.allow("") {
+		s.refused(r, "link rate limited")
 		refuse(w, http.StatusTooManyRequests, CodeRateLimited, "Too many attempts. Wait a minute.")
 		return
 	}
 
 	p, err := s.store.UseRecoveryLink(r.Context(), r.PathValue("token"), req.Password)
 	if err != nil {
+		s.refusedLink(r, err)
 		s.fail(w, r, err)
 		return
 	}
