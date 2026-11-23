@@ -56,7 +56,7 @@ func TestAnAccessLinkHandsAnAgentATokenForAWhile(t *testing.T) {
 	}
 	body, _ := io.ReadAll(page.Body)
 	text := string(body)
-	for _, want := range []string{"five minutes", base + "/docs.md", "**Garden**", "tags=and(garden,outside)", "`" + project.Slug + "`", "Bearer $(nonced)"} {
+	for _, want := range []string{"five minutes", base + "/docs.md", "**Garden**", "tags=and(garden,outside)", "`" + project.Slug + "`", "Bearer $(nonced)", "Agent access expired, please extend " + made["token"].(string)} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the page does not say %q:\n%s", want, text)
 		}
