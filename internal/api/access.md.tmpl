@@ -1,0 +1,61 @@
+{{- define "reach" -}}
+**{{.Name}}** (`{{.Slug}}`){{if .Scope}}, only the tasks matching `{{.Scope}}`{{end}}
+{{- end -}}
+
+# taskio: access for an agent
+
+This page stops showing the token at {{.LinkExpires}}, five minutes after it was made. Write down
+the token and whatever else you need from here now. The token goes on working until
+{{.TokenExpires}}.
+
+{{.Username}} has let you into their taskio, a task list with an HTTP API.
+
+- Instance: {{.Base}}
+- API reference: {{.Base}}/docs.md, everything the token can do. Read it before the first request.
+{{- if not .Reach}}
+- Projects: every one the account has. Name one with `?project=` on the routes that work inside
+  one; left out, it is the default.
+{{- else if eq (len .Reach) 1}}{{with index .Reach 0}}
+- Project: {{template "reach" .}}. The token reaches this project and nothing else, so
+  `?project=` can be left out.{{if .Scope}} Everything you write there has to match too.{{end}}
+{{- end}}
+{{- else}}
+- Projects: {{range $i, $r := .Reach}}{{if $i}}; {{end}}{{template "reach" $r}}{{end}}. Name one
+  with `?project=` on every request that works inside a project.
+{{- end}}
+{{- with .Group}}
+- Scope: work within the group **{{.Name}}**, the tasks tagged {{.Tags}}. List them with
+  `tags={{.Filter}}`, and give every task you create those tags.
+{{- end}}
+
+## The token
+
+It works until {{.TokenExpires}}, thirty minutes after this link was made, and then stops. When a
+request answers `401`, ask whoever sent the link, in these words:
+
+> Agent access expired, please extend {{.TokenID}}
+
+Once they have, the same token works again. An hour after it stopped there is no such access left
+to extend; ask for a new link then.
+
+```
+{{.Token}}
+```
+
+Keep it out of your transcript from here on: set it once, and send a nonced proof of it instead,
+made fresh for each request and useless five minutes later. The raw token works too, but anything
+it is written into holds a live credential until {{.TokenExpires}}.
+
+```sh
+export TASKIO={{.Base}}
+export TOKEN={{.Token}}
+
+nonced() {
+  key=$(printf %s "$TOKEN" | shasum -a 256 | cut -d' ' -f1)
+  id=${key:0:12}
+  ts=$(date +%s)
+  echo "tkc_$ts.$id.$(printf '%s.%s.%s' "$ts" "$id" "$key" | shasum -a 256 | cut -d' ' -f1)"
+}
+
+curl -sS -H "Authorization: Bearer $(nonced)" "$TASKIO/api/tasks{{.Query}}"
+```

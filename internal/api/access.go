@@ -1,10 +1,11 @@
 package api
 
 import (
+	_ "embed"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
+	"text/template"
 	"time"
 
 	"taskio/internal/store"
@@ -77,97 +78,74 @@ func (s *Server) accessPage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(accessMarkdown(s.cfg.PublicURL.String(), access)))
 }
 
+// accessText is the page, as a template: the words are in access.md.tmpl, where they read as
+// the page does, and this works out only what goes into them.
+//
+//go:embed access.md.tmpl
+var accessText string
+
+var accessTemplate = template.Must(template.New("access").Parse(accessText))
+
+// accessPage is what the template is filled with.
+type accessPage struct {
+	Base, Username, Token, TokenID string
+	LinkExpires, TokenExpires      string
+	// Reach is what the token reaches as it stands, which may no longer be the project it was
+	// made for. None is every project.
+	Reach []accessReach
+	Group *accessGroup
+	// Query is the example request's: the project when the token reaches several, and the
+	// group's tags when there is one.
+	Query string
+}
+
+type accessReach struct{ Name, Slug, Scope string }
+
+type accessGroup struct {
+	Name string
+	// Tags is them as a sentence names them; Filter as a request does.
+	Tags, Filter string
+}
+
 // accessMarkdown is the page itself.
 func accessMarkdown(base string, a *store.Access) string {
 	at := func(t time.Time) string { return t.UTC().Format(time.RFC3339) }
-	var b strings.Builder
-	p := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
-
-	p("# taskio: access for an agent\n\n")
-	p("This page stops showing the token at %s, five minutes after it was made. Write down the "+
-		"token and whatever else you need from here now. The token goes on working until %s.\n\n",
-		at(a.LinkExpiresAt), at(a.TokenExpiresAt))
-	p("%s has let you into their taskio, a task list with an HTTP API.\n\n", a.Principal.Username)
-
-	p("- Instance: %s\n", base)
-	p("- API reference: %s/docs.md, everything the token can do. Read it before the first request.\n", base)
-	// What the token reaches as it stands, which may no longer be the project it was made for.
-	named := func(r store.AccessReach) string {
-		out := fmt.Sprintf("**%s** (`%s`)", r.Project.Name, r.Project.Slug)
-		if r.Scope != "" {
-			out += fmt.Sprintf(", only the tasks matching `%s`", r.Scope)
-		}
-		return out
+	page := accessPage{
+		Base:         base,
+		Username:     a.Principal.Username,
+		Token:        a.Token,
+		TokenID:      a.TokenID,
+		LinkExpires:  at(a.LinkExpiresAt),
+		TokenExpires: at(a.TokenExpiresAt),
 	}
-	several := len(a.Reach) != 1
-	switch len(a.Reach) {
-	case 0:
-		p("- Projects: every one the account has. Name one with `?project=` on the routes that " +
-			"work inside one; left out, it is the default.\n")
-	case 1:
-		p("- Project: %s. The token reaches this project and nothing else, so `?project=` can be "+
-			"left out.", named(a.Reach[0]))
-		if a.Reach[0].Scope != "" {
-			p(" Everything you write there has to match too.")
-		}
-		p("\n")
-	default:
-		names := make([]string, len(a.Reach))
-		for i, r := range a.Reach {
-			names[i] = named(r)
-		}
-		p("- Projects: %s. Name one with `?project=` on every request that works inside a "+
-			"project.\n", strings.Join(names, "; "))
+	for _, r := range a.Reach {
+		page.Reach = append(page.Reach, accessReach{r.Project.Name, r.Project.Slug, r.Scope})
 	}
-	filter := ""
+	var params []string
+	if len(a.Reach) != 1 {
+		params = append(params, "project="+a.Project.Slug)
+	}
 	if a.Group != nil && len(a.Group.Tags) > 0 {
-		filter = "and(" + strings.Join(a.Group.Tags, ",") + ")"
 		tags := make([]string, len(a.Group.Tags))
 		for i, t := range a.Group.Tags {
 			tags[i] = "`" + t + "`"
 		}
-		p("- Scope: work within the group **%s**, the tasks tagged %s. List them with "+
-			"`tags=%s`, and give every task you create those tags.\n", a.Group.Name,
-			strings.Join(tags, ", "), filter)
+		page.Group = &accessGroup{
+			Name:   a.Group.Name,
+			Tags:   strings.Join(tags, ", "),
+			Filter: "and(" + strings.Join(a.Group.Tags, ",") + ")",
+		}
+		params = append(params, "tags="+page.Group.Filter)
+	}
+	if len(params) > 0 {
+		page.Query = "?" + strings.Join(params, "&")
 	}
 
-	p("\n## The token\n\n")
-	p("It works until %s, thirty minutes after this link was made, and then stops. When a request "+
-		"answers `401`, ask whoever sent the link, in these words:\n\n", at(a.TokenExpiresAt))
-	// The id, so the person knows which row in Settings to press Extend on; the same token then
-	// works again, for up to an hour after it stopped.
-	p("> Agent access expired, please extend %s\n\n", a.TokenID)
-	p("Once they have, the same token works again. An hour after it stopped there is no such " +
-		"access left to extend; ask for a new link then.\n\n")
-	p("```\n%s\n```\n\n", a.Token)
-	// Nonced, because an agent's requests end up in its transcript: a raw token there is a live
-	// credential in a document nobody treats as a secret, and a nonced one is spent in five
-	// minutes. The same recipe as /docs.md, as a function, so each request makes a fresh one.
-	p("Keep it out of your transcript from here on: set it once, and send a nonced proof of it "+
-		"instead, made fresh for each request and useless five minutes later. The raw token works "+
-		"too, but anything it is written into holds a live credential until %s.\n\n",
-		at(a.TokenExpiresAt))
-	p("```sh\n")
-	p("export TASKIO=%s\n", base)
-	p("export TOKEN=%s\n\n", a.Token)
-	p("nonced() {\n")
-	p("  key=$(printf %%s \"$TOKEN\" | shasum -a 256 | cut -d' ' -f1)\n")
-	p("  id=${key:0:12}\n")
-	p("  ts=$(date +%%s)\n")
-	p("  echo \"tkc_$ts.$id.$(printf '%%s.%%s.%%s' \"$ts\" \"$id\" \"$key\" | shasum -a 256 | cut -d' ' -f1)\"\n")
-	p("}\n\n")
-	var params []string
-	if several {
-		params = append(params, "project="+a.Project.Slug)
+	var b strings.Builder
+	if err := accessTemplate.Execute(&b, page); err != nil {
+		// The template and what it is given are both this file's: an error is a bug here, and
+		// a page that says so beats half a page.
+		return "This page could not be drawn: " + err.Error() + "\n"
 	}
-	if filter != "" {
-		params = append(params, "tags="+filter)
-	}
-	query := ""
-	if len(params) > 0 {
-		query = "?" + strings.Join(params, "&")
-	}
-	p("curl -sS -H \"Authorization: Bearer $(nonced)\" \"$TASKIO/api/tasks%s\"\n", query)
-	p("```\n")
 	return b.String()
 }
