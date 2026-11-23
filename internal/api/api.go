@@ -187,6 +187,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 	s.handle("POST /api/access", s.requireSession(s.createAccess))
 	s.handle("PATCH /api/tokens/{id}", s.requireSession(s.patchToken))
 	s.handle("POST /api/tokens/{id}/rotate", s.requireSession(s.rotateToken))
+	s.handle("POST /api/tokens/{id}/extend", s.requireSession(s.extendToken))
 	s.handle("DELETE /api/tokens/revoked", s.requireSession(s.forgetRevokedTokens))
 	s.handle("DELETE /api/tokens/{id}", s.requireSession(s.revokeToken))
 

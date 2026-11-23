@@ -19,9 +19,12 @@ const (
 	// and for the agent to read it; short enough that the link in a chat's history, a proxy's log
 	// or a preview is dead by the time anybody else looks.
 	AccessLinkTTL = 5 * time.Minute
-	// AccessTokenTTL is how long the token it shows works, from when the link was made. Enough to
-	// work with, and not enough to be somebody's problem later.
+	// AccessTokenTTL is how long the token it shows works, from when the link was made, and how
+	// much more Extend gives it. Enough to work with, and not enough to be somebody's problem later.
 	AccessTokenTTL = 30 * time.Minute
+	// AccessGrace is how long a lapsed one is kept, listed and extendable, before the sweep deletes
+	// it: an agent that ran out mid-task goes on with the token it has rather than a new link.
+	AccessGrace = time.Hour
 )
 
 // Access is what an access link hands over: a token, and where it is meant to be used.
@@ -197,9 +200,9 @@ func (s *Store) OpenAccess(ctx context.Context, code string) (*Access, error) {
 	}, nil
 }
 
-// SweepAccess drops links past showing their token, and the temporary tokens past working:
-// deleted once they lapse rather than kept in the list as expired, where there would be one for
-// every time somebody let an agent in.
+// SweepAccess drops links past showing their token, and the temporary tokens an hour past working:
+// kept that long to be extended, and deleted after rather than kept in the list as expired, where
+// there would be one for every time somebody let an agent in.
 //
 // Not a change either: what goes is what was never content, and a backup that still holds a
 // lapsed one holds a token that opens nothing.
@@ -210,7 +213,8 @@ func (s *Store) SweepAccess(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	tokens, err := s.writer.ExecContext(ctx,
-		`DELETE FROM tokens WHERE temporary = 1 AND expires_at <= ?`, now)
+		`DELETE FROM tokens WHERE temporary = 1 AND expires_at <= ?`,
+		unix(s.Now().Add(-AccessGrace)))
 	if err != nil {
 		return 0, err
 	}
@@ -221,6 +225,37 @@ func (s *Store) SweepAccess(ctx context.Context) (int64, error) {
 		s.notify("")
 	}
 	return a + b, nil
+}
+
+// ExtendAccess gives an access token another AccessTokenTTL: from when it would have stopped, or
+// from now if it already has. Within AccessGrace of stopping, after which it is gone.
+//
+// Not a change either: no backup goes out because somebody gave an agent more time.
+func (s *Store) ExtendAccess(ctx context.Context, principalID, id string) (*Token, error) {
+	tok, err := s.token(ctx, principalID, id)
+	if err != nil {
+		return nil, err
+	}
+	now := s.Now()
+	if !tok.Temporary || tok.RevokedAt != nil || tok.ExpiresAt == nil ||
+		!tok.ExpiresAt.After(now.Add(-AccessGrace)) {
+		return nil, NotFound("There is no such agent access.")
+	}
+	from := *tok.ExpiresAt
+	if from.Before(now) {
+		from = now
+	}
+	at := from.Add(AccessTokenTTL).UTC().Truncate(time.Second)
+	_, err = s.writer.ExecContext(ctx,
+		`UPDATE tokens SET expires_at = ?
+		  WHERE principal_id = ? AND id = ? AND temporary = 1 AND revoked_at IS NULL`,
+		unix(at), principalID, id)
+	if err != nil {
+		return nil, fmt.Errorf("extend access: %w", err)
+	}
+	tok.ExpiresAt = &at
+	s.notify(principalID)
+	return tok, nil
 }
 
 // groupIn is one of a project's groups by id, or nil for none named.

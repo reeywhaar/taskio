@@ -254,9 +254,9 @@ func (s *Store) mintToken(ctx context.Context, principalID, label string, projec
 
 // Tokens lists one account's, newest first.
 //
-// An access link's among them while it works, so it can be revoked before its half hour is up,
-// and never once it does not: lapsed or revoked, there would be one in the list for every time
-// somebody let an agent in. The sweep deletes the row soon after; this does not wait for it.
+// An access link's among them while it works, to be revoked, and for AccessGrace after it stops,
+// to be extended; not after that, nor once revoked, or there would be one in the list for every
+// time somebody let an agent in. The sweep deletes the row soon after; this does not wait for it.
 func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error) {
 	rows, err := s.reader.QueryContext(ctx,
 		`SELECT id, label, hint, created_at, expires_at, last_used_at, revoked_at,
@@ -264,7 +264,7 @@ func (s *Store) Tokens(ctx context.Context, principalID string) ([]*Token, error
 		   FROM tokens
 		  WHERE principal_id = ?
 		    AND NOT (temporary = 1 AND (revoked_at IS NOT NULL OR expires_at <= ?))
-		  ORDER BY created_at DESC`, principalID, unix(s.Now()))
+		  ORDER BY created_at DESC`, principalID, unix(s.Now().Add(-AccessGrace)))
 	if err != nil {
 		return nil, fmt.Errorf("list tokens: %w", err)
 	}

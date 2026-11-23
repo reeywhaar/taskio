@@ -33,6 +33,7 @@ vi.mock("@app/api/actions/auth", () => ({
 
 const revoke = vi.fn();
 const rotate = vi.fn();
+const extend = vi.fn((_id: string) => Promise.resolve({}));
 let tokens: Token[] = [];
 vi.mock("@app/api/actions/tokens", () => ({
   getTokens: () => Promise.resolve({ tokens }),
@@ -41,6 +42,7 @@ vi.mock("@app/api/actions/tokens", () => ({
   patchTokensById: vi.fn(),
   postTokens: vi.fn(),
   postTokensByIdRotate: (id: string) => rotate(id),
+  postTokensByIdExtend: (id: string) => extend(id),
 }));
 vi.mock("@app/api/actions/projects", () => ({
   getProjects: () =>
@@ -122,6 +124,20 @@ describe("a token's row", () => {
     ];
     mount(<Tokens />);
     expect(await screen.findByText("stops in 10 mins")).toBeDefined();
+  });
+
+  /** An agent's runs out in half an hour: Extend gives it another, and it has no Rotate. */
+  it("offers an agent's token Extend rather than Rotate", async () => {
+    tokens = [
+      token({
+        temporary: true,
+        expires_at: Math.floor(Date.now() / 1000) + 5 * 60,
+      }),
+    ];
+    mount(<Tokens />);
+    fireEvent.click(await screen.findByRole("button", { name: "Extend" }));
+    await waitFor(() => expect(extend).toHaveBeenCalledWith("4b9933cf3430"));
+    expect(screen.queryByRole("button", { name: "Rotate…" })).toBeNull();
   });
 
   /** Edit, Rotate… and Revoke… wrap as one rather than one at a time. */

@@ -144,6 +144,8 @@ export type Token = {
   last_agent: string;
   /** Seconds of disuse before it stops working. 0 is never. */
   idle_seconds: number;
+  /** An agent access token: half an hour, extendable, and gone an hour after it stops. */
+  temporary?: boolean;
 };
 
 export type Asset = {

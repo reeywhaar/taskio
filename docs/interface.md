@@ -385,9 +385,14 @@ The link is not the token. It has its own code, stored as a hash, and keeps the 
 a key the code gives and nothing else does — so the table, in a backup or anywhere, opens
 nothing. Neither counts as a change: making one, opening it, narrowing or revoking its token and
 sweeping it away send no backup.
-The token is listed under Settings → Tokens while it works, to revoke, and never after: lapsed or
-revoked, it would be one more row for every time somebody let an agent in, and the sweep deletes
-it within the minute.
+The token is listed under Settings → Tokens while it works, to revoke, and for an hour after it
+stops, with **Extend**: another thirty minutes, from when it would have stopped or from now if it
+already has, so an agent that ran out mid-task goes on with the token it has rather than a new
+link. An hour past, or once revoked, it leaves the list, and the sweep deletes it: kept longer,
+it would be one more row for every time somebody let an agent in. It has no Rotate. Neither the
+token nor anything else an agent holds can manage tokens: every route that does is a signed-in
+browser's.
+
 ## A task is moved with a field, not a gesture
 
 The task form leads its row with the project — `[project] [priority] … [color]` — because it is

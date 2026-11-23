@@ -85,13 +85,15 @@ func TestAccessIsNotAChangeABackupIsSentFor(t *testing.T) {
 	if _, err := st.AuthenticateToken(ctx, made.Token); err != nil {
 		t.Fatal(err)
 	}
+	// The link goes once it stops showing the token; the token an hour after it stops working,
+	// kept that long to be extended.
 	at(31 * time.Minute)
-	n, err := st.SweepAccess(ctx)
-	if err != nil {
-		t.Fatal(err)
+	if n, err := st.SweepAccess(ctx); err != nil || n != 1 {
+		t.Errorf("swept at 31 minutes = %d, %v; want the link alone", n, err)
 	}
-	if n != 2 {
-		t.Errorf("swept = %d, want the link and its token", n)
+	at(91 * time.Minute)
+	if n, err := st.SweepAccess(ctx); err != nil || n != 1 {
+		t.Errorf("swept at 91 minutes = %d, %v; want the token", n, err)
 	}
 	if after := st.Changes(); after != before {
 		t.Errorf("changes went from %d to %d", before, after)
@@ -103,9 +105,9 @@ func TestAccessIsNotAChangeABackupIsSentFor(t *testing.T) {
 	}
 }
 
-// Listed while it works, to be revoked; never as expired or revoked, where there would be one for
-// every time somebody let an agent in.
-func TestAnAccessTokenIsListedOnlyWhileItWorks(t *testing.T) {
+// Listed while it works, to be revoked, and for an hour after, to be extended; never revoked, nor
+// longer lapsed, where there would be one for every time somebody let an agent in.
+func TestAnAccessTokenIsListedWhileItCanStillBeUsed(t *testing.T) {
 	st, p, project, at := accessFixture(t)
 	ctx := context.Background()
 	_, first, err := st.CreateAccess(ctx, p.ID, project, "")
@@ -136,10 +138,71 @@ func TestAnAccessTokenIsListedOnlyWhileItWorks(t *testing.T) {
 	if got := listed(); len(got) != 1 || got[0] != second.TokenID {
 		t.Errorf("listed after revoking one = %v, want only %s", got, second.TokenID)
 	}
-	// Lapsed, and not yet swept: still not listed.
+	// Lapsed, but within the hour it can be extended in.
 	at(30 * time.Minute)
+	if got := listed(); len(got) != 1 {
+		t.Errorf("listed after thirty minutes = %v, want the lapsed one", got)
+	}
+	// An hour past, and not yet swept: not listed.
+	at(90 * time.Minute)
 	if got := listed(); len(got) != 0 {
-		t.Errorf("listed after thirty minutes = %v, want none", got)
+		t.Errorf("listed after ninety minutes = %v, want none", got)
+	}
+}
+
+// Another half hour: from when it would have stopped, or from now once it has, within the hour
+// it is kept; and no backup for it.
+func TestExtendingAccess(t *testing.T) {
+	st, p, project, at := accessFixture(t)
+	ctx := context.Background()
+	_, made, err := st.CreateAccess(ctx, p.ID, project, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := st.Changes()
+	start := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
+
+	at(10 * time.Minute)
+	tok, err := st.ExtendAccess(ctx, p.ID, made.TokenID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := start.Add(60 * time.Minute); !tok.ExpiresAt.Equal(want) {
+		t.Errorf("extended while working = %v, want %v", tok.ExpiresAt, want)
+	}
+
+	// Lapsed twenty minutes ago: half an hour from now, and it works again.
+	at(80 * time.Minute)
+	if _, err := st.AuthenticateToken(ctx, made.Token); err == nil {
+		t.Fatal("a lapsed token works")
+	}
+	tok, err = st.ExtendAccess(ctx, p.ID, made.TokenID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := start.Add(110 * time.Minute); !tok.ExpiresAt.Equal(want) {
+		t.Errorf("extended after lapsing = %v, want %v", tok.ExpiresAt, want)
+	}
+	if _, err := st.AuthenticateToken(ctx, made.Token); err != nil {
+		t.Errorf("the extended token = %v", err)
+	}
+
+	// More than an hour past: gone, whether or not the sweep has been.
+	at(171 * time.Minute)
+	if _, err := st.ExtendAccess(ctx, p.ID, made.TokenID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("extending an hour past = %v, want not found", err)
+	}
+	if after := st.Changes(); after != before {
+		t.Errorf("changes went from %d to %d", before, after)
+	}
+
+	// Only an agent's: a token made on purpose has its own clocks.
+	plain, _, err := st.CreateToken(ctx, p.ID, "claude", nil, nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.ExtendAccess(ctx, p.ID, plain.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("extending a plain token = %v, want not found", err)
 	}
 }
 

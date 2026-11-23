@@ -136,3 +136,53 @@ func TestTheAccessPageSaysWhatTheTokenReachesNow(t *testing.T) {
 		t.Errorf("the page does not say the narrowed reach:\n%s", page)
 	}
 }
+
+// The token an agent holds cannot change itself, or make itself another: every route that
+// manages tokens is a signed-in browser's, and answers a token 401.
+func TestAnAgentCannotTouchTokens(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	made := c.json(c.do("POST", "/api/access", `{}`))
+	id, _ := made["token"].(string)
+	path := strings.TrimPrefix(made["url"].(string), "https://taskio.example.com")
+	page, _ := io.ReadAll(newClient(t, s).do("GET", path, "").Body)
+	token := regexp.MustCompile(`tk_[A-Za-z0-9_-]+`).FindString(string(page))
+	bearer := map[string]string{"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+
+	for _, call := range []struct{ method, path, body string }{
+		{"GET", "/api/tokens", ""},
+		{"POST", "/api/tokens", `{"label":"more"}`},
+		{"PATCH", "/api/tokens/" + id, `{"projects":[]}`},
+		{"POST", "/api/tokens/" + id + "/rotate", ""},
+		{"POST", "/api/tokens/" + id + "/extend", ""},
+		{"DELETE", "/api/tokens/revoked", ""},
+		{"DELETE", "/api/tokens/" + id, ""},
+		{"POST", "/api/access", `{}`},
+	} {
+		if r := do(t, s, call.method, call.path, call.body, bearer); r.StatusCode != http.StatusUnauthorized {
+			t.Errorf("%s %s with the agent's token = %s, want 401", call.method, call.path, r.Status)
+		}
+	}
+	// And it still works for what it is for.
+	if r := do(t, s, "GET", "/api/tasks", "", bearer); r.StatusCode != http.StatusOK {
+		t.Errorf("the token on tasks = %s", r.Status)
+	}
+}
+
+// Extend is the browser's, gives another half hour, and the row says the token is an agent's.
+func TestExtendingAnAgentsAccess(t *testing.T) {
+	s, st := newServerStore(t, nil)
+	c := signIn(t, s, st)
+	made := c.json(c.do("POST", "/api/access", `{}`))
+	id, _ := made["token"].(string)
+	was := made["token_expires_at"].(float64)
+
+	resp := c.do("POST", "/api/tokens/"+id+"/extend", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("extend = %s", resp.Status)
+	}
+	got := c.json(resp)
+	if got["expires_at"] != was+30*60 || got["temporary"] != true {
+		t.Errorf("extended = %v, want half an hour more on a temporary token", got)
+	}
+}

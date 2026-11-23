@@ -35,6 +35,10 @@ export const patchTokensById = (id: string, body: TokenPatch) =>
   request<Token>(`/api/tokens/${id}`, { method: "PATCH", body });
 
 /** A new secret, everything else kept; the old one stops at once, and the id changes with it. */
+/** Another half hour for an agent access token, from when it stops or from now. */
+export const postTokensByIdExtend = (id: string) =>
+  request<Token>(`/api/tokens/${id}/extend`, { method: "POST" });
+
 export const postTokensByIdRotate = (id: string) =>
   request<{ token: Token; secret: string }>(`/api/tokens/${id}/rotate`, {
     method: "POST",

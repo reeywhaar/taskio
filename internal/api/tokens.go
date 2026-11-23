@@ -29,6 +29,8 @@ type tokenBody struct {
 	LastAgent string `json:"last_agent"`
 	// IdleSeconds is how long it may go unused before it stops working. 0 is never.
 	IdleSeconds int64 `json:"idle_seconds"`
+	// Temporary is an agent access token: half an hour, extendable, and gone an hour after.
+	Temporary bool `json:"temporary"`
 }
 
 // tokenRow is one project a token reaches, and what confines it there.
@@ -69,7 +71,26 @@ func renderToken(t *store.Token, projects map[string]*store.Project) tokenBody {
 		IdleSeconds: int64(t.IdleTTL / time.Second),
 		RevokedAt:   unixPtr(t.RevokedAt),
 		RotatedAt:   unixPtr(t.RotatedAt),
+		Temporary:   t.Temporary,
 	}
+}
+
+// extendToken gives an agent access token another half hour, so an agent that ran out goes on
+// with the token it already has.
+func (s *Server) extendToken(w http.ResponseWriter, r *http.Request) {
+	tok, err := s.store.ExtendAccess(r.Context(), principalOf(r).ID, r.PathValue("id"))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	s.log.Info("agent access extended", "principal", principalOf(r).ID, "token", tok.ID,
+		"expires", tok.ExpiresAt)
+	projects, err := s.projectsByID(r, []*store.Token{tok})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, renderToken(tok, projects))
 }
 
 func unixPtr(t *time.Time) *int64 {

@@ -133,7 +133,8 @@ func accessMarkdown(base string, a *store.Access) string {
 
 	p("\n## The token\n\n")
 	p("It works until %s, thirty minutes after this link was made, and then stops. For more time, "+
-		"ask for a new link.\n\n", at(a.TokenExpiresAt))
+		"ask whoever sent the link to extend it: the same token goes on working.\n\n",
+		at(a.TokenExpiresAt))
 	p("```\n%s\n```\n\n", a.Token)
 	// Nonced, because an agent's requests end up in its transcript: a raw token there is a live
 	// credential in a document nobody treats as a secret, and a nonced one is spent in five

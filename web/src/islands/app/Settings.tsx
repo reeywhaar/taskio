@@ -17,6 +17,7 @@ import {
   deleteTokensById,
   deleteTokensRevoked,
   getTokens,
+  postTokensByIdExtend,
   postTokensByIdRotate,
 } from "@app/api/actions/tokens";
 import type { Token } from "@app/api/types";
@@ -417,6 +418,11 @@ export function Tokens() {
     },
   });
 
+  const extend = useMutation({
+    mutationFn: (id: string) => postTokensByIdExtend(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.tokens }),
+  });
+
   const revoke = useMutation({
     mutationFn: (id: string) => deleteTokensById(id),
     onSuccess: () => client.invalidateQueries({ queryKey: qk.tokens }),
@@ -494,31 +500,47 @@ export function Tokens() {
               {!token.revoked_at ? (
                 // Together, so they wrap as one rather than one at a time.
                 <span className="flex shrink-0 gap-3">
+                  {/* An agent's runs out in half an hour; this gives it another, the same token
+                      going on working, for an hour after it stops. Not asked: it takes nothing
+                      away. */}
+                  {token.temporary ? (
+                    <Button
+                      variant="link"
+                      title="Another 30 minutes"
+                      disabled={extend.isPending}
+                      onClick={() => extend.mutate(token.id)}
+                    >
+                      Extend
+                    </Button>
+                  ) : null}
                   <Button variant="link" onClick={() => setEditing(token)}>
                     Edit
                   </Button>
                   {/* Asked, because the secret in use stops at once: whatever holds it is broken
-                      until it is given the new one. Everything else about the token stays. */}
-                  <Button
-                    variant="link"
-                    disabled={rotate.isPending}
-                    onClick={async () => {
-                      const yes = await confirm({
-                        title: "Rotate this token?",
-                        message: (
-                          <>
-                            It gets a new secret and keeps everything else.
-                            Whatever uses <b>{token.label}</b> stops working
-                            until it is given the new one.
-                          </>
-                        ),
-                        confirm: "Rotate",
-                      });
-                      if (yes) rotate.mutate(token.id);
-                    }}
-                  >
-                    Rotate…
-                  </Button>
+                      until it is given the new one. Everything else about the token stays. Not
+                      on an agent's, which is given a new link rather than a new secret. */}
+                  {token.temporary ? null : (
+                    <Button
+                      variant="link"
+                      disabled={rotate.isPending}
+                      onClick={async () => {
+                        const yes = await confirm({
+                          title: "Rotate this token?",
+                          message: (
+                            <>
+                              It gets a new secret and keeps everything else.
+                              Whatever uses <b>{token.label}</b> stops working
+                              until it is given the new one.
+                            </>
+                          ),
+                          confirm: "Rotate",
+                        });
+                        if (yes) rotate.mutate(token.id);
+                      }}
+                    >
+                      Rotate…
+                    </Button>
+                  )}
                   {/* Asked, because it is the one thing on this row that cannot be taken back:
                       whatever holds the token stops working on its next request, and the only
                       way on is a new token pasted into every place the old one was. */}
