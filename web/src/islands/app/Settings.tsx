@@ -388,9 +388,16 @@ function Panel({
  * When a token stops, said the way that matters: how long is left for one ending within the
  * day, which is what an agent's half-hour token is — a date there said nothing but today — and
  * the date for one further off.
+ *
+ * In minutes under three hours: an agent's extended to 65 minutes said "in 1 hour", and so did
+ * 90 and 100, which is the difference Extend is pressed to make.
  */
 function stops(at: number): string {
   const left = at - Date.now() / 1000;
+  if (left >= 60 && left < 3 * 3600) {
+    const mins = Math.floor(left / 60);
+    return `stops in ${mins} ${mins === 1 ? "min" : "mins"}`;
+  }
   if (Math.abs(left) < 24 * 3600) {
     return left > 0 ? `stops ${ahead(at)}` : `stopped ${ago(at)}`;
   }

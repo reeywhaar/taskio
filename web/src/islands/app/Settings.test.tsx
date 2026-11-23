@@ -140,6 +140,18 @@ describe("a token's row", () => {
     expect(screen.queryByRole("button", { name: "Rotate…" })).toBeNull();
   });
 
+  /** Extended past an hour, "in 1 hour" hid what Extend did: minutes until three hours. */
+  it("counts minutes until three hours are left, then hours", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    tokens = [
+      token({ id: "a", label: "short", expires_at: now + 65 * 60 + 30 }),
+      token({ id: "b", label: "long", expires_at: now + 3 * 3600 + 20 * 60 }),
+    ];
+    mount(<Tokens />);
+    expect(await screen.findByText("stops in 65 mins")).toBeDefined();
+    expect(screen.getByText("stops in 3 hours")).toBeDefined();
+  });
+
   /** Edit, Rotate… and Revoke… wrap as one rather than one at a time. */
   it("keeps a row's actions together", async () => {
     tokens = [token()];
