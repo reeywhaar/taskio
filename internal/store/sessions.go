@@ -38,6 +38,9 @@ type Session struct {
 	CreatedAt   time.Time
 	LastSeenAt  time.Time
 	ExpiresAt   time.Time
+	// LastIP is where it was last used from, as the proxies in front say. Empty for a session
+	// not used since the column was added.
+	LastIP string
 }
 
 // SessionID names in public the session presenting this token, without a lookup.
@@ -54,15 +57,15 @@ func hashToken(token string) []byte {
 }
 
 // CreateSession records a sign-in. token is the cookie value; only its hash is stored.
-func (s *Store) CreateSession(ctx context.Context, token, principalID, userAgent string) (*Session, error) {
+func (s *Store) CreateSession(ctx context.Context, token, principalID, userAgent, ip string) (*Session, error) {
 	now := s.Now()
 	expires := now.Add(SessionLifetime)
 	userAgent = truncate(userAgent, userAgentMax)
 
 	_, err := s.writer.ExecContext(ctx,
-		`INSERT INTO sessions (id_hash, principal_id, user_agent, created_at, last_seen_at, expires_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		hashToken(token), principalID, userAgent, unix(now), unix(now), unix(expires))
+		`INSERT INTO sessions (id_hash, principal_id, user_agent, created_at, last_seen_at, expires_at, last_ip)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		hashToken(token), principalID, userAgent, unix(now), unix(now), unix(expires), ip)
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
@@ -73,6 +76,7 @@ func (s *Store) CreateSession(ctx context.Context, token, principalID, userAgent
 		CreatedAt:   now,
 		LastSeenAt:  now,
 		ExpiresAt:   expires,
+		LastIP:      ip,
 	}, nil
 }
 
@@ -86,10 +90,10 @@ func (s *Store) SessionByToken(ctx context.Context, token string) (*Session, err
 		created, lastSeen, expires int64
 	)
 	err := s.reader.QueryRowContext(ctx,
-		`SELECT principal_id, user_agent, created_at, last_seen_at, expires_at
+		`SELECT principal_id, user_agent, created_at, last_seen_at, expires_at, last_ip
 		   FROM sessions WHERE id_hash = ? AND expires_at > ?`,
 		hashToken(token), unix(s.Now())).
-		Scan(&sess.PrincipalID, &sess.UserAgent, &created, &lastSeen, &expires)
+		Scan(&sess.PrincipalID, &sess.UserAgent, &created, &lastSeen, &expires, &sess.LastIP)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -101,6 +105,20 @@ func (s *Store) SessionByToken(ctx context.Context, token string) (*Session, err
 	sess.LastSeenAt = time.Unix(lastSeen, 0).UTC()
 	sess.ExpiresAt = time.Unix(expires, 0).UTC()
 	return &sess, nil
+}
+
+// SessionIP records where a session is being used from now, when that is somewhere else. A write
+// only when it differs, which is seldom: the same browser on the same network is one address.
+//
+// Not a change to anybody's content, like the touch.
+func (s *Store) SessionIP(ctx context.Context, token, ip string) error {
+	_, err := s.writer.ExecContext(ctx,
+		`UPDATE sessions SET last_ip = ? WHERE id_hash = ? AND last_ip <> ?`,
+		ip, hashToken(token), ip)
+	if err != nil {
+		return fmt.Errorf("session ip: %w", err)
+	}
+	return nil
 }
 
 // TouchSession slides the window forward and reports whether it moved.
@@ -128,7 +146,7 @@ func (s *Store) TouchSession(ctx context.Context, token, userAgent string) (time
 // session that expired four minutes ago should not still be offered for revoking.
 func (s *Store) Sessions(ctx context.Context, principalID string) ([]*Session, error) {
 	rows, err := s.reader.QueryContext(ctx,
-		`SELECT id_hash, user_agent, created_at, last_seen_at, expires_at
+		`SELECT id_hash, user_agent, created_at, last_seen_at, expires_at, last_ip
 		   FROM sessions WHERE principal_id = ? AND expires_at > ?
 		  ORDER BY last_seen_at DESC`,
 		principalID, unix(s.Now()))
@@ -144,7 +162,7 @@ func (s *Store) Sessions(ctx context.Context, principalID string) ([]*Session, e
 			created, lastSeen, expires int64
 			sess                       = Session{PrincipalID: principalID}
 		)
-		if err := rows.Scan(&idHash, &sess.UserAgent, &created, &lastSeen, &expires); err != nil {
+		if err := rows.Scan(&idHash, &sess.UserAgent, &created, &lastSeen, &expires, &sess.LastIP); err != nil {
 			return nil, fmt.Errorf("list sessions: %w", err)
 		}
 		sess.ID = sessionID(idHash)

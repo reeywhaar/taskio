@@ -100,11 +100,11 @@ func TestExpiredSessionsAreSweptAndLiveOnesAreNot(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
-	if _, err := st.CreateSession(ctx, "old-token", p.ID, "curl/8"); err != nil {
+	if _, err := st.CreateSession(ctx, "old-token", p.ID, "curl/8", "192.0.2.1"); err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(SessionLifetime + time.Hour)
-	if _, err := st.CreateSession(ctx, "new-token", p.ID, "curl/8"); err != nil {
+	if _, err := st.CreateSession(ctx, "new-token", p.ID, "curl/8", "192.0.2.1"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -129,7 +129,7 @@ func TestALapsedSessionIsNeitherUsableNorListed(t *testing.T) {
 	st.SetClock(func() time.Time { return now })
 
 	p, _ := st.CreatePrincipal(ctx, "misha", "a good password", RoleUser)
-	st.CreateSession(ctx, "token", p.ID, "curl/8")
+	st.CreateSession(ctx, "token", p.ID, "curl/8", "192.0.2.1")
 
 	now = now.Add(SessionLifetime + time.Minute)
 	if _, err := st.SessionByToken(ctx, "token"); err == nil {

@@ -680,6 +680,13 @@ function Sessions() {
                 {session.current ? (
                   <span className="text-xs text-muted">this browser</span>
                 ) : null}
+                {/* Where from, which with the device is what tells a session somebody forgot
+                    from one that is not theirs. */}
+                {session.last_ip ? (
+                  <span className="text-xs text-faint">
+                    from {session.last_ip}
+                  </span>
+                ) : null}
               </div>
               {/* The summary is a parse of a field browsers have been lying in since 1993, so
                   the string it was guessed from sits under it. */}

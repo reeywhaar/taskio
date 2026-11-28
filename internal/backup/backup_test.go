@@ -80,7 +80,7 @@ func TestOnlyMeaningfulWritesCountAsChanges(t *testing.T) {
 	before := st.Changes()
 
 	// A session touch is the process noticing itself, not somebody writing something down.
-	if _, err := st.CreateSession(ctx, "token", p.ID, "curl/8"); err != nil {
+	if _, err := st.CreateSession(ctx, "token", p.ID, "curl/8", "192.0.2.1"); err != nil {
 		t.Fatal(err)
 	}
 	if st.Changes() != before {

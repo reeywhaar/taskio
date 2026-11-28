@@ -42,6 +42,7 @@ var all = []Migration{
 	commentDeleted,
 	taskSnoozed,
 	accessLinks,
+	sessionIP,
 }
 
 // exec runs a statement block as one migration.

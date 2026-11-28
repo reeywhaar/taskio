@@ -20,10 +20,13 @@ const CookieName = "taskio_auth"
 type Manager struct {
 	store  *store.Store
 	secure bool
+	// client is where a request came from, which only the API knows how to read through the
+	// proxies in front of it.
+	client func(*http.Request) string
 }
 
-func New(st *store.Store, secure bool) *Manager {
-	return &Manager{store: st, secure: secure}
+func New(st *store.Store, secure bool, client func(*http.Request) string) *Manager {
+	return &Manager{store: st, secure: secure, client: client}
 }
 
 // Issue signs somebody in and sets the cookie.
@@ -32,7 +35,7 @@ func (m *Manager) Issue(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	sess, err := m.store.CreateSession(ctx, token, principalID, r.UserAgent())
+	sess, err := m.store.CreateSession(ctx, token, principalID, r.UserAgent(), m.client(r))
 	if err != nil {
 		return err
 	}
@@ -57,6 +60,15 @@ func (m *Manager) Resolve(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// Somewhere else than last time: a phone off the wifi, a laptop at another desk. Written as
+	// it happens rather than hourly with the touch, since where a session is now is the
+	// question somebody asks of it. Best effort, like the touch.
+	if ip := m.client(r); ip != sess.LastIP {
+		if err := m.store.SessionIP(ctx, token, ip); err == nil {
+			sess.LastIP = ip
+		}
 	}
 
 	// Only when the window is due to move. Asked on every request, the UPDATE's own WHERE made it

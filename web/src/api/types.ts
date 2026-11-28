@@ -114,6 +114,8 @@ export type Session = {
   expires_at: number;
   device: string;
   user_agent: string;
+  /** Where it was last used from. Empty for one not used since this was recorded. */
+  last_ip: string;
 };
 
 /** One project a token reaches, and what confines it there. */

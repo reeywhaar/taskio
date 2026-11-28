@@ -81,10 +81,11 @@ func (s *Server) handleAgent(pattern string, h http.Handler) {
 // to check: one registered without its guard is visibly registered without it.
 func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *Docs) *Server {
 	s := &Server{
-		cfg:      cfg,
-		log:      log,
-		store:    st,
-		sessions: session.New(st, cfg.Secure),
+		cfg:   cfg,
+		log:   log,
+		store: st,
+		// Set below, once there is a server to read the caller's address with.
+		sessions: nil,
 		spa:      spa,
 		docs:     docs,
 		mux:      http.NewServeMux(),
@@ -97,6 +98,7 @@ func New(cfg *config.Config, log *slog.Logger, st *store.Store, spa *SPA, docs *
 
 		writeDeadline: WriteDeadline,
 	}
+	s.sessions = session.New(st, cfg.Secure, s.clientOf)
 
 	s.mux.HandleFunc("GET /healthz", s.healthz)
 

@@ -26,6 +26,8 @@ type sessionBody struct {
 	// honest thing to do with a guess is show its working.
 	Device    string `json:"device"`
 	UserAgent string `json:"user_agent"`
+	// LastIP is where it was last used from. Empty for one not used since this was recorded.
+	LastIP string `json:"last_ip"`
 }
 
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +47,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt:  sess.ExpiresAt.Unix(),
 			Device:     describeAgent(sess.UserAgent),
 			UserAgent:  sess.UserAgent,
+			LastIP:     sess.LastIP,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"sessions": out})
