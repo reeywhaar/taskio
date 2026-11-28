@@ -684,8 +684,9 @@ function Sessions() {
               {/* The summary is a parse of a field browsers have been lying in since 1993, so
                   the string it was guessed from sits under it. */}
               {/* Where from first, which with the device is what tells a session somebody
-                  forgot from one that is not theirs. */}
-              <p className="truncate text-xs text-faint">
+                  forgot from one that is not theirs. Scrolled rather than cut short: the end of
+                  a user agent is where the browser and its version are. */}
+              <p className="overflow-x-auto overscroll-x-contain text-xs whitespace-nowrap text-faint [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {session.last_ip ? `${session.last_ip} · ` : ""}
                 {session.user_agent}
               </p>
