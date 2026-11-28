@@ -384,19 +384,27 @@ function Panel({
   );
 }
 
+/** "1 hour", "3 hours": the plural is the only thing that varies. */
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+
 /**
  * When a token stops, said the way that matters: how long is left for one ending within the
  * day, which is what an agent's half-hour token is — a date there said nothing but today — and
  * the date for one further off.
  *
- * In minutes under three hours: an agent's extended to 65 minutes said "in 1 hour", and so did
- * 90 and 100, which is the difference Extend is pressed to make.
+ * In minutes under three hours, and hours and minutes over: an agent's extended to 65 minutes
+ * said "in 1 hour", and so did 90 and 100, which is the difference Extend is pressed to make.
  */
 function stops(at: number): string {
   const left = at - Date.now() / 1000;
-  if (left >= 60 && left < 3 * 3600) {
+  if (left >= 60 && left < 24 * 3600) {
     const mins = Math.floor(left / 60);
-    return `stops in ${mins} ${mins === 1 ? "min" : "mins"}`;
+    if (mins < 180) return `stops in ${plural(mins, "min")}`;
+    // Hours and the minutes over them: whole hours alone said "3 hours" before Extend and after
+    // it, the half hour it gave lost to the rounding.
+    const rest = mins % 60;
+    const hours = plural(Math.floor(mins / 60), "hour");
+    return `stops in ${hours}${rest ? `, ${plural(rest, "minute")}` : ""}`;
   }
   if (Math.abs(left) < 24 * 3600) {
     return left > 0 ? `stops ${ahead(at)}` : `stopped ${ago(at)}`;

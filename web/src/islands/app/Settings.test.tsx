@@ -140,16 +140,23 @@ describe("a token's row", () => {
     expect(screen.queryByRole("button", { name: "Rotate…" })).toBeNull();
   });
 
-  /** Extended past an hour, "in 1 hour" hid what Extend did: minutes until three hours. */
-  it("counts minutes until three hours are left, then hours", async () => {
+  /** Extended past an hour, "in 1 hour" hid what Extend did: minutes, then hours and minutes. */
+  it("counts minutes until three hours are left, then hours and minutes", async () => {
     const now = Math.floor(Date.now() / 1000);
     tokens = [
       token({ id: "a", label: "short", expires_at: now + 65 * 60 + 30 }),
-      token({ id: "b", label: "long", expires_at: now + 3 * 3600 + 20 * 60 }),
+      token({
+        id: "b",
+        label: "long",
+        expires_at: now + 3 * 3600 + 30 * 60 + 30,
+      }),
+      token({ id: "c", label: "even", expires_at: now + 4 * 3600 + 30 }),
     ];
     mount(<Tokens />);
     expect(await screen.findByText("stops in 65 mins")).toBeDefined();
-    expect(screen.getByText("stops in 3 hours")).toBeDefined();
+    // The half hour Extend gives shows, past three hours too.
+    expect(screen.getByText("stops in 3 hours, 30 minutes")).toBeDefined();
+    expect(screen.getByText("stops in 4 hours")).toBeDefined();
   });
 
   /** Edit, Rotate… and Revoke… wrap as one rather than one at a time. */
