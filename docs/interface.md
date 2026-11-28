@@ -385,6 +385,12 @@ The link is not the token. It has its own code, stored as a hash, and keeps the 
 a key the code gives and nothing else does — so the table, in a backup or anywhere, opens
 nothing. Neither counts as a change: making one, opening it, narrowing or revoking its token and
 sweeping it away send no backup.
+A task's dialog has **Agent access** too, beside Edit, and a selection has it under More. Opened
+there, the link comes with what to do with it — "check 8qw4tz9k", or several ids — and one press
+copies both, which were pasted into an agent one after the other every time a task was handed
+over. The dialog's own foot has **+30 minutes** and **Revoke**, so more time or none is a press
+away while it is still open.
+
 The token is listed under Settings → Tokens while it works, to revoke, and for an hour after it
 stops, with **Extend**: another thirty minutes, from when it would have stopped or from now if it
 already has, so an agent that ran out mid-task goes on with the token it has rather than a new

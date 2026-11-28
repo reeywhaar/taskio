@@ -595,6 +595,8 @@ function List({
           tags={tags.data?.tags ?? []}
           view={filters.view}
           project={filters.project}
+          agentProject={where.project}
+          agentGroup={where.group}
           leaving={leaving}
           onLeft={() => {
             setLeaving(false);
@@ -646,6 +648,7 @@ function List({
             })
           }
           project={filters.project}
+          group={where.group}
           onClose={() => onClose({ ...location, route: { name: "list" } })}
           // Replaced rather than pushed: it is the same place, drawn over the right list.
           onElsewhere={(there) =>

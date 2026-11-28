@@ -17,6 +17,7 @@ import { copy } from "@app/clipboard";
 import { getProjects } from "@app/api/actions/projects";
 import type {
   Comment,
+  Group,
   Project,
   Task,
   TaskDetail,
@@ -38,6 +39,7 @@ import { CommentDialog, type Writing } from "@app/islands/app/CommentDialog";
 import { emptyDraft, TaskForm, type Draft } from "@app/islands/app/TaskForm";
 import { Preview } from "@app/islands/app/Preview";
 import { NewTaskDialog } from "@app/islands/app/NewTaskDialog";
+import { AgentAccessDialog } from "@app/islands/app/AgentAccess";
 import { dayOf, SnoozeDialog } from "@app/islands/app/SnoozeDialog";
 import { isOpen } from "@app/api/status";
 import { finishInComment, finishInTask } from "@app/uploads";
@@ -94,6 +96,7 @@ export function TaskDialog({
   initialMode = "preview",
   toComment,
   onComment,
+  group,
 }: {
   id: string;
   /** The project the list behind it is showing, by slug; empty is the default. */
@@ -107,6 +110,9 @@ export function TaskDialog({
   /** A comment's number pressed, for the address to name it. Only the dialog the address is
    *  about has one; a task opened over it from a mention leaves the address alone. */
   onComment?: (n: number) => void;
+  /** The group the list is showing, which a link for an agent made from here asks it to keep
+   *  to — when the task is one of the group's. */
+  group?: Group;
 }) {
   const client = useQueryClient();
   const projects = useQuery({ queryKey: qk.projects, queryFn: getProjects });
@@ -117,6 +123,8 @@ export function TaskDialog({
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [error, setError] = useState("");
   const [mode, setMode] = useState<Mode>(initialMode);
+  /** The dialog that lets an agent in on this task. */
+  const [agent, setAgent] = useState(false);
   /** The task a mention opened over this one, read first, and the comment it named if any. */
   const [peek, setPeek] = useState<{ id: string; comment?: number } | null>(
     null,
@@ -358,6 +366,19 @@ export function TaskDialog({
       setError(err instanceof ApiError ? err.message : "Something went wrong."),
   });
 
+  /** The task's own project, which is what a link for an agent made from here reaches. */
+  const home = task.data
+    ? projectNamed(projects.data?.projects ?? [], task.data.project)
+    : undefined;
+  const lit = new Set(task.data?.tags ?? []);
+  const agentGroup =
+    group &&
+    home &&
+    projectNamed(projects.data?.projects ?? [], project)?.id === home.id &&
+    group.tags.every((t) => lit.has(t))
+      ? group
+      : undefined;
+
   return (
     <Dialog
       open
@@ -369,27 +390,34 @@ export function TaskDialog({
       hideTitle
       actions={
         task.data ? (
-          mode === "edit" ? (
-            // Even with no description: the read face is the title, the facts and the comments
-            // too, and hiding the way to it left the task with no way back to reading.
-            <Button size="compact" onClick={read}>
-              View
+          <>
+            {/* The link and "check 8qw4tz9k" in one copy: what was pasted into an agent, in two
+                goes, every time a task was handed over. */}
+            <Button size="compact" onClick={() => setAgent(true)}>
+              Agent access
             </Button>
-          ) : (
-            <>
-              {newer ? (
-                <Button
-                  size="compact"
-                  onClick={() => setShown(draft.description)}
-                >
-                  Update
-                </Button>
-              ) : null}
-              <Button size="compact" onClick={() => setMode("edit")}>
-                Edit
+            {mode === "edit" ? (
+              // Even with no description: the read face is the title, the facts and the comments
+              // too, and hiding the way to it left the task with no way back to reading.
+              <Button size="compact" onClick={read}>
+                View
               </Button>
-            </>
-          )
+            ) : (
+              <>
+                {newer ? (
+                  <Button
+                    size="compact"
+                    onClick={() => setShown(draft.description)}
+                  >
+                    Update
+                  </Button>
+                ) : null}
+                <Button size="compact" onClick={() => setMode("edit")}>
+                  Edit
+                </Button>
+              </>
+            )}
+          </>
         ) : null
       }
       aside={
@@ -566,6 +594,13 @@ export function TaskDialog({
         tags={copying?.tags ?? []}
         from={copying ?? undefined}
         onClose={() => setCopying(null)}
+      />
+      <AgentAccessDialog
+        open={agent}
+        onClose={() => setAgent(false)}
+        project={home}
+        group={agentGroup}
+        tasks={[id]}
       />
       <SnoozeDialog
         open={snoozing}

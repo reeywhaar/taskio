@@ -9,7 +9,8 @@ import {
   postTasksBulkTodo,
 } from "@app/api/actions/tasks";
 import type { Filters } from "@app/islands/app/route";
-import type { Tag, Task } from "@app/api/types";
+import type { Group, Project, Tag, Task } from "@app/api/types";
+import { AgentAccessDialog } from "@app/islands/app/AgentAccess";
 import { Button } from "@app/components/Button";
 import { useConfirm } from "@app/components/Confirm";
 import { Menu, MenuItem } from "@app/components/Menu";
@@ -49,6 +50,8 @@ export function BulkBar({
   tags,
   view,
   project,
+  agentProject,
+  agentGroup,
   onDone,
   onCancel,
   onSelectAll,
@@ -65,6 +68,9 @@ export function BulkBar({
   view: Filters["view"];
   /** The project on screen, which is where the selection is now. Empty is the default. */
   project: string;
+  /** The same project, and the group on screen, for a link that lets an agent in on these. */
+  agentProject?: Project;
+  agentGroup?: Group;
   onDone: () => void;
   /** Done picking, having done nothing. */
   onCancel: () => void;
@@ -85,6 +91,8 @@ export function BulkBar({
     "tag" | "priority" | "project" | "list" | null
   >(null);
   const [busy, setBusy] = useState(false);
+  /** The dialog that lets an agent in on the selection. */
+  const [agent, setAgent] = useState(false);
   const confirm = useConfirm();
   const [copied, setCopied] = useState(false);
 
@@ -272,6 +280,17 @@ export function BulkBar({
                 >
                   Move…
                 </MenuItem>
+                {/* The link and "check" with the ids, in one copy: handing an agent several
+                    tasks was the link pasted, then the ids typed after it. */}
+                <MenuItem
+                  disabled={ids.length === 0}
+                  onClick={() => {
+                    close();
+                    setAgent(true);
+                  }}
+                >
+                  Agent access…
+                </MenuItem>
                 <MenuItem
                   danger
                   disabled={busy || ids.length === 0}
@@ -326,6 +345,13 @@ export function BulkBar({
         </div>
       </div>
 
+      <AgentAccessDialog
+        open={agent}
+        onClose={() => setAgent(false)}
+        project={agentProject}
+        group={agentGroup}
+        tasks={ids}
+      />
       <SelectionDialog
         open={asking === "list"}
         ids={ids}

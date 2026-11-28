@@ -2,9 +2,14 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { postAccess } from "@app/api/actions/access";
-import { patchTokensById } from "@app/api/actions/tokens";
+import {
+  deleteTokensById,
+  patchTokensById,
+  postTokensByIdExtend,
+} from "@app/api/actions/tokens";
+import { copy } from "@app/clipboard";
 import type { Group, Project } from "@app/api/types";
-import { AgentAccess } from "@app/islands/app/AgentAccess";
+import { AgentAccess, AgentAccessDialog } from "@app/islands/app/AgentAccess";
 import { mount } from "@app/test/harness";
 
 vi.mock("@app/api/actions/access", () => ({
@@ -20,7 +25,13 @@ vi.mock("@app/api/actions/access", () => ({
 
 vi.mock("@app/api/actions/tokens", () => ({
   patchTokensById: vi.fn(() => Promise.resolve({})),
+  // Half an hour on from the 1_800_001_800 the link was made with.
+  postTokensByIdExtend: vi.fn(() =>
+    Promise.resolve({ id: "65a106afd2d3", expires_at: 1_800_003_600 }),
+  ),
+  deleteTokensById: vi.fn(() => Promise.resolve()),
 }));
+vi.mock("@app/clipboard", () => ({ copy: vi.fn(() => Promise.resolve(true)) }));
 vi.mock("@app/api/actions/projects", () => ({
   getProjects: () => Promise.resolve({ projects: [main, side] }),
 }));
@@ -33,6 +44,13 @@ vi.mock("@app/api/actions/tags", () => ({
       ],
     }),
 }));
+
+/** A time of day as the dialog says it. */
+const at = (s: number) =>
+  new Date(s * 1000).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const main: Project = {
   id: "pj_1",
@@ -83,8 +101,10 @@ describe("AgentAccess", () => {
     );
     // Beside the link, not at the foot of the dialog.
     expect(
-      screen.getByRole("button", { name: "Copy link" }).parentElement,
-    ).toBe(screen.getByLabelText("Link").parentElement);
+      screen
+        .getByRole("button", { name: "Copy link" })
+        .parentElement!.contains(screen.getByLabelText("Link")),
+    ).toBe(true);
     expect(screen.getByText("Garden")).toBeDefined();
     expect(screen.getByText(/for five minutes/)).toBeDefined();
   });
@@ -123,5 +143,51 @@ describe("AgentAccess", () => {
         }),
       { timeout: 2000 },
     );
+  });
+
+  /** Opened on tasks, one copy is the link and what to do with it. */
+  it("copies the link with the tasks to check", async () => {
+    mount(
+      <AgentAccessDialog
+        open
+        onClose={vi.fn()}
+        project={side}
+        group={undefined}
+        tasks={["s511kxe8", "2h1gm9bs"]}
+      />,
+    );
+    expect(await screen.findByText("check s511kxe8, 2h1gm9bs")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    await waitFor(() =>
+      expect(copy).toHaveBeenCalledWith(
+        "https://taskio.example.com/access/abc\n\ncheck s511kxe8, 2h1gm9bs",
+      ),
+    );
+  });
+
+  /** More time, or none, while the dialog that made the token is still open. */
+  it("extends and revokes from the dialog", async () => {
+    mount(
+      <AgentAccessDialog
+        open
+        onClose={vi.fn()}
+        project={side}
+        group={undefined}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "+30 minutes" }));
+    await waitFor(() =>
+      expect(postTokensByIdExtend).toHaveBeenCalledWith("65a106afd2d3"),
+    );
+    expect(
+      await screen.findByText(new RegExp(`works until ${at(1_800_003_600)}`)),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
+    await waitFor(() =>
+      expect(deleteTokensById).toHaveBeenCalledWith("65a106afd2d3"),
+    );
+    expect(await screen.findByText(/Revoked/)).toBeDefined();
+    expect(screen.queryByRole("button", { name: "+30 minutes" })).toBeNull();
   });
 });
