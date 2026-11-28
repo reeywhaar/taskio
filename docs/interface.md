@@ -395,7 +395,8 @@ The token is listed under Settings → Tokens while it works, to revoke, and for
 stops, with **Extend**: another thirty minutes, from when it would have stopped or from now if it
 already has, so an agent that ran out mid-task goes on with the token it has rather than a new
 link. An hour past, or once revoked, it leaves the list, and the sweep deletes it: kept longer,
-it would be one more row for every time somebody let an agent in. It has no Rotate. Neither the
+it would be one more row for every time somebody let an agent in. It has no Rotate, and its
+Revoke does not ask: it is in one place, a new link replaces it, and it goes in half an hour. Neither the
 token nor anything else an agent holds can manage tokens: every route that does is a signed-in
 browser's.
 

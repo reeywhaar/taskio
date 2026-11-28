@@ -558,10 +558,16 @@ export function Tokens() {
                   )}
                   {/* Asked, because it is the one thing on this row that cannot be taken back:
                       whatever holds the token stops working on its next request, and the only
-                      way on is a new token pasted into every place the old one was. */}
+                      way on is a new token pasted into every place the old one was. Not for an
+                      agent's: it is in one place, a new link replaces it, and it goes in half an
+                      hour anyway. */}
                   <Button
                     variant="link"
                     onClick={async () => {
+                      if (token.temporary) {
+                        revoke.mutate(token.id);
+                        return;
+                      }
                       const yes = await confirm({
                         title: "Revoke this token?",
                         message: (
@@ -576,7 +582,7 @@ export function Tokens() {
                       if (yes) revoke.mutate(token.id);
                     }}
                   >
-                    Revoke…
+                    {token.temporary ? "Revoke" : "Revoke…"}
                   </Button>
                 </span>
               ) : null}

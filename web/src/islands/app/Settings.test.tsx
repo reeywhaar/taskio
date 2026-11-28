@@ -140,6 +140,21 @@ describe("a token's row", () => {
     expect(screen.queryByRole("button", { name: "Rotate…" })).toBeNull();
   });
 
+  /** An agent's is in one place and goes in half an hour: revoked without asking. */
+  it("revokes an agent's token without asking", async () => {
+    revoke.mockClear();
+    tokens = [
+      token({
+        temporary: true,
+        expires_at: Math.floor(Date.now() / 1000) + 5 * 60,
+      }),
+    ];
+    mount(<Tokens />);
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith("4b9933cf3430"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   /** Extended past an hour, "in 1 hour" hid what Extend did: minutes, then hours and minutes. */
   it("counts minutes until three hours are left, then hours and minutes", async () => {
     const now = Math.floor(Date.now() / 1000);
