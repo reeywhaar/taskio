@@ -167,10 +167,11 @@ describe("AgentAccess", () => {
 
   /** More time, or none, while the dialog that made the token is still open. */
   it("extends and revokes from the dialog", async () => {
+    const onClose = vi.fn();
     mount(
       <AgentAccessDialog
         open
-        onClose={vi.fn()}
+        onClose={onClose}
         project={side}
         group={undefined}
       />,
@@ -187,7 +188,7 @@ describe("AgentAccess", () => {
     await waitFor(() =>
       expect(deleteTokensById).toHaveBeenCalledWith("65a106afd2d3"),
     );
-    expect(await screen.findByText(/Revoked/)).toBeDefined();
-    expect(screen.queryByRole("button", { name: "+30 minutes" })).toBeNull();
+    // Nothing left to show: it closes.
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });

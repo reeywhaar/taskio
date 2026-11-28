@@ -105,7 +105,6 @@ export function AgentAccessDialog({
   const [rows, setRows] = useState<ReachRow[]>([]);
   /** When the token stops, which +30 minutes moves on. */
   const [stops, setStops] = useState(0);
-  const [revoked, setRevoked] = useState(false);
   const make = useMutation({
     mutationFn: () =>
       postAccess(
@@ -125,7 +124,6 @@ export function AgentAccessDialog({
   useEffect(() => {
     if (!open) return;
     setCopied(false);
-    setRevoked(false);
     setRows(project ? [{ project: project.slug, tags: [], any: true }] : []);
     make.mutate();
     // One link per opening, and only on opening.
@@ -152,7 +150,7 @@ export function AgentAccessDialog({
 
   // Here as well as in Settings, so more time or none is a press away while the dialog that made
   // the token is still open. Revoke is not asked: the token is minutes old, and the person who
-  // made it is the one pressing.
+  // made it is the one pressing. It closes the dialog, which has nothing left to show.
   const extend = useMutation({
     mutationFn: () => postTokensByIdExtend(link!.token),
     onSuccess: (tok) => {
@@ -163,8 +161,8 @@ export function AgentAccessDialog({
   const revoke = useMutation({
     mutationFn: () => deleteTokensById(link!.token),
     onSuccess: () => {
-      setRevoked(true);
       void client.invalidateQueries({ queryKey: qk.tokens });
+      onClose();
     },
   });
 
@@ -174,7 +172,7 @@ export function AgentAccessDialog({
       onClose={onClose}
       title="Agent access"
       footer={
-        link && !revoked ? (
+        link ? (
           <>
             <Button
               variant="danger"
@@ -205,11 +203,7 @@ export function AgentAccessDialog({
         {/* The whole of it, wrapped, on the ground a code block has, and the copy beside it:
             read at a glance and copied in one press, where a field showed the start of it and
             the copy was a button at the foot of the dialog. */}
-        <div
-          className={`flex items-start gap-2 rounded-md bg-fill py-2.5 pr-2 pl-3 ${
-            revoked ? "opacity-50" : ""
-          }`}
-        >
+        <div className="flex items-start gap-2 rounded-md bg-fill py-2.5 pr-2 pl-3">
           {link ? (
             <div className="min-w-0 flex-1 py-0.5 font-mono text-xs break-all text-fg">
               {/* A link, so the page can be looked at before it is handed over. */}
@@ -218,7 +212,7 @@ export function AgentAccessDialog({
                 href={link.url}
                 target="_blank"
                 rel="noreferrer"
-                className={`underline-offset-2 hover:underline ${revoked ? "line-through" : ""}`}
+                className="underline-offset-2 hover:underline"
               >
                 {link.url}
               </a>
@@ -235,7 +229,7 @@ export function AgentAccessDialog({
             type="button"
             aria-label={copied ? "Copied" : "Copy link"}
             title={copied ? "Copied" : "Copy link"}
-            disabled={!link || revoked}
+            disabled={!link}
             onClick={async () => {
               if (!link || !(await copy(text))) return;
               setCopied(true);
@@ -247,21 +241,15 @@ export function AgentAccessDialog({
           </button>
         </div>
         {link ? (
-          revoked ? (
-            <p className="text-xs text-accent">
-              Revoked: the link and its token no longer work.
-            </p>
-          ) : (
-            <p className="text-xs text-muted">
-              The link shows the token until {clock(link.expires_at)}, for five
-              minutes. The token works until {clock(stops)}.
-            </p>
-          )
+          <p className="text-xs text-muted">
+            The link shows the token until {clock(link.expires_at)}, for five
+            minutes. The token works until {clock(stops)}.
+          </p>
         ) : null}
         {/* The same rows a token's own dialog edits, here before the link goes anywhere: a
             project it was made for to begin with, narrowed to some tags or joined by another
             project as the work needs. The page says what it reaches when it is opened. */}
-        {link && !revoked ? (
+        {link ? (
           <>
             <Rows value={rows} onChange={changeRows} />
             {reach.isError ? (
